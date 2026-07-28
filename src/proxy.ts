@@ -1,16 +1,20 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { ROLE_HOME } from "@/lib/roles";
+import type { Role } from "@prisma/client";
 
-const ROLE_HOME: Record<string, string> = {
-  PATIENT: "/patient",
-  DOCTOR: "/doctor",
-  ADMIN_RECEPTION: "/admin",
-  SUPER_ADMIN: "/admin",
-};
+const ADMIN_CONSOLE_ROLES = new Set<Role>([
+  "ADMIN_RECEPTION",
+  "SUPER_ADMIN",
+  "NURSE",
+  "RECEPTIONIST",
+  "LAB",
+  "PHARMACIST",
+]);
 
 export const proxy = auth((req) => {
   const { pathname } = req.nextUrl;
-  const role = req.auth?.user?.role as string | undefined;
+  const role = req.auth?.user?.role as Role | undefined;
 
   const isPatientRoute = pathname.startsWith("/patient");
   const isDoctorRoute = pathname.startsWith("/doctor");
@@ -26,7 +30,7 @@ export const proxy = auth((req) => {
   const allowed =
     (isPatientRoute && role === "PATIENT") ||
     (isDoctorRoute && role === "DOCTOR") ||
-    (isAdminRoute && (role === "ADMIN_RECEPTION" || role === "SUPER_ADMIN"));
+    (isAdminRoute && ADMIN_CONSOLE_ROLES.has(role));
 
   if (!allowed) {
     return NextResponse.redirect(new URL(ROLE_HOME[role] ?? "/login", req.url));
