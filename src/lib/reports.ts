@@ -1,18 +1,6 @@
 import { db } from "@/lib/db";
 import { JourneyStep } from "@prisma/client";
 
-export async function recordJourneyEvent(
-  tenantId: string,
-  appointmentId: string,
-  patientId: string,
-  step: JourneyStep,
-  recordedById?: string
-) {
-  return db.patientJourneyEvent.create({
-    data: { tenantId, appointmentId, patientId, step, recordedById },
-  });
-}
-
 export async function getMasterReport(
   tenantId: string,
   filters: { from?: Date; to?: Date; doctorId?: string }
