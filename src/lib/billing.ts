@@ -11,7 +11,7 @@ export async function createInvoice(params: {
   appointmentId?: string;
   serviceType: ServiceType;
   source?: AppointmentSource;
-  lineItems: { description: string; serviceType: ServiceType; quantity: number; unitPrice: number }[];
+  lineItems: { description: string; serviceType: ServiceType; quantity: number; unitPrice: number; serviceId?: string }[];
   discountAmount?: number;
 }) {
   const subtotal = params.lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
@@ -36,6 +36,7 @@ export async function createInvoice(params: {
           quantity: li.quantity,
           unitPrice: li.unitPrice,
           lineTotal: li.quantity * li.unitPrice,
+          serviceId: li.serviceId,
         })),
       },
     },

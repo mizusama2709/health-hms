@@ -115,6 +115,7 @@ model Tenant {
   pharmacyReturns     PharmacyReturn[]
   knowledgeBaseDocs   KnowledgeBaseDocument[]
   whatsAppMessages    WhatsAppMessage[]
+  services            Service[]
 }
 
 model User {
@@ -252,6 +253,8 @@ model InvoiceLineItem {
   id             String      @id @default(cuid())
   invoiceId      String
   invoice        Invoice     @relation(fields: [invoiceId], references: [id])
+  serviceId      String?
+  service        Service?    @relation(fields: [serviceId], references: [id])
   description    String
   serviceType    ServiceType
   quantity       Int         @default(1)
@@ -263,6 +266,25 @@ model InvoiceLineItem {
   pharmacyReturns PharmacyReturn[]
 
   @@index([invoiceId])
+  @@index([serviceId])
+}
+
+model Service {
+  id               String      @id @default(cuid())
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  name             String
+  serviceType      ServiceType
+  defaultUnitPrice Decimal
+  description      String?
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  lineItems InvoiceLineItem[]
+
+  @@index([tenantId, serviceType])
+  @@index([tenantId, isActive])
 }
 
 model Payment {

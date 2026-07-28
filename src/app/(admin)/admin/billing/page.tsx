@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoices } from "@/lib/billing";
+import { listServices } from "@/lib/services";
 import { billPatient, recordInvoicePayment, refundInvoicePayment, voidInvoiceAction } from "./actions";
 import type { InvoiceStatus, ServiceType } from "@prisma/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -19,10 +20,13 @@ export default async function BillingPage({
   const tenantId = await requireTenantId();
   const params = await searchParams;
 
-  const invoices = await listInvoices(tenantId, {
-    status: params.status ? (params.status as InvoiceStatus) : undefined,
-    serviceType: params.serviceType ? (params.serviceType as ServiceType) : undefined,
-  });
+  const [invoices, services] = await Promise.all([
+    listInvoices(tenantId, {
+      status: params.status ? (params.status as InvoiceStatus) : undefined,
+      serviceType: params.serviceType ? (params.serviceType as ServiceType) : undefined,
+    }),
+    listServices(tenantId, { isActive: true }),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +51,19 @@ export default async function BillingPage({
               <option value="LAB">Lab</option>
               <option value="PHARMACY">Pharmacy</option>
             </NativeSelect>
+            {services.length > 0 && (
+              <>
+                <Label htmlFor="serviceId">Catalog service (optional)</Label>
+                <NativeSelect id="serviceId" name="serviceId" defaultValue="">
+                  <option value="">Custom / one-off item</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} — {Number(s.defaultUnitPrice).toFixed(2)}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </>
+            )}
             <Label htmlFor="description">Description</Label>
             <Input id="description" name="description" placeholder="Description" required />
             <div className="flex gap-2">

@@ -18,6 +18,7 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
   {
     title: "Clinical",
     items: [
+      { label: "Services", href: "/admin/services" },
       {
         label: "Billing",
         children: [
