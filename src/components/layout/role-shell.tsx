@@ -11,44 +11,59 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SignOutButton } from "@/components/layout/sign-out-button";
+import { NavGroup } from "@/components/layout/nav-group";
 
-export type NavItem = { label: string; href: string };
+export type NavItem = { label: string; href?: string; children?: NavItem[] };
+export type NavSection = { title?: string; items: NavItem[] };
 
-function NavLinks({ items }: { items: NavItem[] }) {
+function NavLinks({ sections }: { sections: NavSection[] }) {
   return (
-    <nav className="flex flex-col gap-1">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className="rounded-md px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-        >
-          {item.label}
-        </Link>
+    <nav className="flex flex-col gap-4">
+      {sections.map((section, i) => (
+        <div key={section.title ?? i} className="flex flex-col gap-1">
+          {section.title && (
+            <div className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {section.title}
+            </div>
+          )}
+          {section.items.map((item) =>
+            item.children ? (
+              <NavGroup key={item.label} label={item.label} items={item.children} />
+            ) : (
+              <Link
+                key={item.href}
+                href={item.href!}
+                className="rounded-md px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+              >
+                {item.label}
+              </Link>
+            )
+          )}
+        </div>
       ))}
     </nav>
   );
 }
 
 export function RoleShell({
-  navItems,
+  navSections,
   roleLabel,
   userName,
   children,
 }: {
-  navItems: NavItem[];
+  navSections: NavSection[];
   roleLabel: string;
   userName?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-screen w-full">
-      <aside className="hidden w-56 shrink-0 flex-col border-r bg-muted/30 p-4 md:flex">
+      <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r bg-muted/30 p-4 md:flex">
         <div className="mb-4 px-2">
           <div className="text-sm font-semibold">Health HMS</div>
           <div className="text-xs text-muted-foreground">{roleLabel}</div>
         </div>
-        <NavLinks items={navItems} />
+        <NavLinks sections={navSections} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -60,12 +75,12 @@ export function RoleShell({
               >
                 <Menu className="size-4" />
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-4">
+              <SheetContent side="left" className="w-64 overflow-y-auto p-4">
                 <SheetHeader>
                   <SheetTitle>{roleLabel}</SheetTitle>
                 </SheetHeader>
                 <Separator className="my-3" />
-                <NavLinks items={navItems} />
+                <NavLinks sections={navSections} />
               </SheetContent>
             </Sheet>
             <span className="text-sm font-medium md:hidden">Health HMS</span>
