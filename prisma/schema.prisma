@@ -94,6 +94,19 @@ enum WhatsAppMessageStatus {
   SIMULATED
 }
 
+enum LabOrderStatus {
+  ORDERED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum LabResultFlag {
+  NORMAL
+  ABNORMAL
+  CRITICAL
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -116,6 +129,9 @@ model Tenant {
   knowledgeBaseDocs   KnowledgeBaseDocument[]
   whatsAppMessages    WhatsAppMessage[]
   services            Service[]
+  labTestCatalogs     LabTestCatalog[]
+  labOrders           LabOrder[]
+  labReportTemplates  LabReportTemplate[]
 }
 
 model User {
@@ -162,6 +178,7 @@ model Patient {
   appointments  Appointment[]
   invoices      Invoice[]
   journeyEvents PatientJourneyEvent[]
+  labOrders     LabOrder[]
 
   @@index([tenantId])
 }
@@ -189,6 +206,7 @@ model Appointment {
   invoices        Invoice[]
   journeyEvents   PatientJourneyEvent[]
   whatsAppMessage WhatsAppMessage?
+  labOrders       LabOrder[]
 
   @@index([tenantId, datetime])
   @@index([tenantId, status])
@@ -459,4 +477,78 @@ model WhatsAppMessage {
 
   @@index([tenantId, direction, status])
   @@index([tenantId, createdAt])
+}
+
+model LabTestCatalog {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  name           String
+  code           String?
+  defaultPrice   Decimal
+  turnaroundTime String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  orderItems LabOrderItem[]
+
+  @@index([tenantId])
+}
+
+model LabOrder {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  patientId     String
+  patient       Patient        @relation(fields: [patientId], references: [id])
+  appointmentId String?
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
+  orderedById   String
+  status        LabOrderStatus @default(ORDERED)
+  orderedAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  items   LabOrderItem[]
+  reports LabReport[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, patientId])
+}
+
+model LabOrderItem {
+  id             String          @id @default(cuid())
+  labOrderId     String
+  labOrder       LabOrder        @relation(fields: [labOrderId], references: [id])
+  labTestId      String
+  labTest        LabTestCatalog  @relation(fields: [labTestId], references: [id])
+  resultValue    String?
+  resultUnit     String?
+  referenceRange String?
+  flag           LabResultFlag?
+  createdAt      DateTime        @default(now())
+
+  @@index([labOrderId])
+}
+
+model LabReport {
+  id           String   @id @default(cuid())
+  labOrderId   String
+  labOrder     LabOrder @relation(fields: [labOrderId], references: [id])
+  fileUrl      String
+  uploadedById String
+  uploadedAt   DateTime @default(now())
+
+  @@index([labOrderId])
+}
+
+model LabReportTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }

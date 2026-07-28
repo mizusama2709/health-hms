@@ -26,6 +26,15 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
           { label: "Ledger", href: "/admin/billing/ledger" },
         ],
       },
+      {
+        label: "Lab",
+        children: [
+          { label: "Lab Tests", href: "/admin/lab/tests" },
+          { label: "Lab Orders", href: "/admin/lab/orders" },
+          { label: "Upload Report", href: "/admin/lab/reports/upload" },
+          { label: "Report Templates", href: "/admin/lab/templates" },
+        ],
+      },
     ],
   },
   {
