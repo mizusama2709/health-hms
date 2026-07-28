@@ -12,6 +12,16 @@ enum Role {
   DOCTOR
   ADMIN_RECEPTION
   SUPER_ADMIN
+  NURSE
+  RECEPTIONIST
+  LAB
+  PHARMACIST
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
 }
 
 enum AppointmentStatus {
@@ -26,10 +36,62 @@ enum AppointmentType {
   FOLLOW_UP
 }
 
+enum AppointmentSource {
+  MANUAL
+  WHATSAPP
+}
+
+enum ServiceType {
+  CONSULTATION
+  LAB
+  PHARMACY
+}
+
 enum InvoiceStatus {
-  PENDING
+  UNPAID
+  PARTIALLY_PAID
   PAID
   VOID
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  RAZORPAY
+  OTHER
+}
+
+enum PaymentStatus {
+  SUCCESS
+  REFUNDED
+  PARTIALLY_REFUNDED
+  FAILED
+}
+
+enum JourneyStep {
+  APPOINTMENT_BOOKED
+  VITALS_TAKEN
+  OPD_STARTED
+  OPD_COMPLETED
+  LAB_ORDERED
+  LAB_COMPLETED
+  MEDICINES_PRESCRIBED
+  MEDICINES_DISPENSED
+}
+
+enum WhatsAppDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WhatsAppMessageStatus {
+  RECEIVED
+  PARSED
+  PROCESSED
+  FAILED
+  SENT
+  SIMULATED
 }
 
 model Tenant {
@@ -39,75 +101,111 @@ model Tenant {
   plan      String   @default("free")
   createdAt DateTime @default(now())
 
-  users        User[]
-  doctors      Doctor[]
-  patients     Patient[]
-  appointments Appointment[]
-  invoices     Invoice[]
+  users               User[]
+  doctors             Doctor[]
+  patients            Patient[]
+  appointments        Appointment[]
+  invoices            Invoice[]
+  payments            Payment[]
+  refunds             Refund[]
+  journeyEvents       PatientJourneyEvent[]
+  organizationProfile OrganizationProfile?
+  hospitalSettings    HospitalSettings?
+  departments         Department[]
+  pharmacyReturns     PharmacyReturn[]
+  knowledgeBaseDocs   KnowledgeBaseDocument[]
+  whatsAppMessages    WhatsAppMessage[]
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  phone        String?
   role         Role
+  status       UserStatus @default(ACTIVE)
   passwordHash String
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
+  tenantId     String?
+  tenant       Tenant?    @relation(fields: [tenantId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   doctor  Doctor?
   patient Patient?
+
+  @@index([tenantId, role])
+  @@index([tenantId, status])
 }
 
 model Doctor {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id])
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  specialty     String
-  workingHours  Json?
+  id           String @id @default(cuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id])
+  tenantId     String
+  tenant       Tenant @relation(fields: [tenantId], references: [id])
+  specialty    String
+  workingHours Json?
 
-  appointments  Appointment[]
+  appointments Appointment[]
+
+  @@index([tenantId])
 }
 
 model Patient {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id])
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  appointments Appointment[]
-  invoices     Invoice[]
+  appointments  Appointment[]
+  invoices      Invoice[]
+  journeyEvents PatientJourneyEvent[]
+
+  @@index([tenantId])
 }
 
 model Appointment {
-  id        String            @id @default(cuid())
-  tenantId  String
-  tenant    Tenant            @relation(fields: [tenantId], references: [id])
-  doctorId  String
-  doctor    Doctor            @relation(fields: [doctorId], references: [id])
-  patientId String
-  patient   Patient           @relation(fields: [patientId], references: [id])
-  datetime  DateTime
-  status    AppointmentStatus @default(BOOKED)
-  type      AppointmentType   @default(NEW)
-  createdAt DateTime          @default(now())
+  id          String            @id @default(cuid())
+  tenantId    String
+  tenant      Tenant            @relation(fields: [tenantId], references: [id])
+  doctorId    String
+  doctor      Doctor            @relation(fields: [doctorId], references: [id])
+  patientId   String
+  patient     Patient           @relation(fields: [patientId], references: [id])
+  datetime    DateTime
+  status      AppointmentStatus @default(BOOKED)
+  type        AppointmentType   @default(NEW)
+  serviceType ServiceType       @default(CONSULTATION)
+  source      AppointmentSource @default(MANUAL)
+  feeAmount   Decimal?
+  paymentMode PaymentMode?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
-  visitRecord VisitRecord?
-  followUp    FollowUp?
-  invoice     Invoice?
+  visitRecord     VisitRecord?
+  followUp        FollowUp?
+  invoices        Invoice[]
+  journeyEvents   PatientJourneyEvent[]
+  whatsAppMessage WhatsAppMessage?
+
+  @@index([tenantId, datetime])
+  @@index([tenantId, status])
+  @@index([tenantId, doctorId, datetime])
+  @@index([tenantId, source])
 }
 
 model FollowUp {
-  id                String   @id @default(cuid())
-  appointmentId     String   @unique
+  id                String      @id @default(cuid())
+  appointmentId     String      @unique
   appointment       Appointment @relation(fields: [appointmentId], references: [id])
   dueDate           DateTime
-  status            String   @default("pending")
-  reminderScheduled Boolean  @default(false)
+  status            String      @default("pending")
+  reminderScheduled Boolean     @default(false)
+  reminderAt        DateTime?
+  reminderMessage   String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 model VisitRecord {
@@ -118,17 +216,225 @@ model VisitRecord {
   diagnosis     String?
   prescription  String?
   createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Invoice {
-  id            String        @id @default(cuid())
+  id             String            @id @default(cuid())
+  tenantId       String
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  patientId      String
+  patient        Patient           @relation(fields: [patientId], references: [id])
+  appointmentId  String?
+  appointment    Appointment?      @relation(fields: [appointmentId], references: [id])
+  invoiceNumber  String            @unique
+  serviceType    ServiceType
+  source         AppointmentSource @default(MANUAL)
+  subtotal       Decimal
+  discountAmount Decimal           @default(0)
+  totalAmount    Decimal
+  amountPaid     Decimal           @default(0)
+  status         InvoiceStatus     @default(UNPAID)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  lineItems InvoiceLineItem[]
+  payments  Payment[]
+  refunds   Refund[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, serviceType])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, source])
+}
+
+model InvoiceLineItem {
+  id             String      @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice     @relation(fields: [invoiceId], references: [id])
+  description    String
+  serviceType    ServiceType
+  quantity       Int         @default(1)
+  unitPrice      Decimal
+  discountAmount Decimal     @default(0)
+  lineTotal      Decimal
+  createdAt      DateTime    @default(now())
+
+  pharmacyReturns PharmacyReturn[]
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  invoiceId    String
+  invoice      Invoice       @relation(fields: [invoiceId], references: [id])
+  amount       Decimal
+  mode         PaymentMode
+  status       PaymentStatus @default(SUCCESS)
+  reference    String?
+  paidAt       DateTime      @default(now())
+  recordedById String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  refunds Refund[]
+
+  @@index([tenantId, paidAt])
+  @@index([tenantId, status])
+  @@index([invoiceId])
+}
+
+model Refund {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+  paymentId    String?
+  payment      Payment? @relation(fields: [paymentId], references: [id])
+  amount       Decimal
+  reason       String?
+  refundedAt   DateTime @default(now())
+  recordedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, refundedAt])
+  @@index([invoiceId])
+}
+
+model PatientJourneyEvent {
+  id            String      @id @default(cuid())
   tenantId      String
-  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
   patientId     String
-  patient       Patient       @relation(fields: [patientId], references: [id])
-  appointmentId String        @unique
-  appointment   Appointment   @relation(fields: [appointmentId], references: [id])
-  amount        Decimal
-  status        InvoiceStatus @default(PENDING)
-  createdAt     DateTime      @default(now())
+  patient       Patient     @relation(fields: [patientId], references: [id])
+  step          JourneyStep
+  occurredAt    DateTime    @default(now())
+  recordedById  String?
+  createdAt     DateTime    @default(now())
+
+  @@index([tenantId, appointmentId, step])
+  @@index([tenantId, patientId, occurredAt])
+}
+
+model OrganizationProfile {
+  id             String   @id @default(cuid())
+  tenantId       String   @unique
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  legalName      String?
+  gstNumber      String?
+  companySize    String?
+  hqAddressLine1 String?
+  hqAddressLine2 String?
+  hqCity         String?
+  hqState        String?
+  hqPostalCode   String?
+  hqCountry      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model HospitalSettings {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  registrationNumber String?
+  addressLine1       String?
+  addressLine2        String?
+  city                String?
+  state               String?
+  postalCode          String?
+  defaultWorkingHours Json?
+
+  bookingLeadTimeMinutes    Int?
+  cancellationWindowMinutes Int?
+  bookingPolicyNotes        String?
+
+  pharmacyGstNumber String?
+
+  paymentQrImageUrl   String?
+  paymentUpiId        String?
+  paymentPayeeName    String?
+  razorpayPaymentLink String?
+  labUpiId            String?
+  pharmacyUpiId       String?
+
+  invoiceHeaderLogoUrl    String?
+  invoiceHeaderText       String?
+  pharmacyInvoiceTemplate String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments Department[]
+}
+
+model Department {
+  id                 String           @id @default(cuid())
+  tenantId           String
+  tenant             Tenant           @relation(fields: [tenantId], references: [id])
+  hospitalSettingsId String
+  hospitalSettings   HospitalSettings @relation(fields: [hospitalSettingsId], references: [id])
+  name               String
+  createdAt          DateTime         @default(now())
+
+  @@index([tenantId])
+}
+
+model PharmacyReturn {
+  id                String          @id @default(cuid())
+  tenantId          String
+  tenant            Tenant          @relation(fields: [tenantId], references: [id])
+  invoiceLineItemId String
+  invoiceLineItem   InvoiceLineItem @relation(fields: [invoiceLineItemId], references: [id])
+  invoiceId         String
+  quantityReturned  Int
+  refundAmount      Decimal?
+  reason            String?
+  recordedById      String?
+  returnedAt        DateTime        @default(now())
+  createdAt         DateTime        @default(now())
+
+  @@index([tenantId, returnedAt])
+  @@index([invoiceId])
+}
+
+model KnowledgeBaseDocument {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  title        String
+  fileUrl      String
+  fileType     String?
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model WhatsAppMessage {
+  id                   String                @id @default(cuid())
+  tenantId             String
+  tenant               Tenant                @relation(fields: [tenantId], references: [id])
+  direction            WhatsAppDirection
+  status               WhatsAppMessageStatus @default(RECEIVED)
+  fromPhone            String?
+  toPhone              String?
+  rawPayload           Json
+  parsedIntent         String?
+  relatedAppointmentId String?               @unique
+  relatedAppointment   Appointment?          @relation(fields: [relatedAppointmentId], references: [id])
+  relatedInvoiceId     String?
+  errorMessage         String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([tenantId, direction, status])
+  @@index([tenantId, createdAt])
 }
