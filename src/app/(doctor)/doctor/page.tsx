@@ -17,7 +17,10 @@ export default async function DoctorHome() {
 
   return (
     <main style={{ maxWidth: 720, margin: "40px auto" }}>
-      <h1>Your schedule</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <h1>Your schedule</h1>
+        <a href="/doctor/calendar">Calendar view</a>
+      </div>
       {appointments.length === 0 && <p>No appointments yet.</p>}
       <ul style={{ listStyle: "none", padding: 0 }}>
         {appointments.map((appt) => (

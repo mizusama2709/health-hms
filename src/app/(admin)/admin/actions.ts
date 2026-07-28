@@ -5,16 +5,18 @@ import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { requireTenantId } from "@/lib/tenant";
 import { createAppointment } from "@/lib/appointments";
+import { recordJourneyEvent } from "@/lib/journey";
 import { db } from "@/lib/db";
 
 async function requireAdmin() {
   const session = await auth();
   const role = session?.user?.role;
   if (role !== "ADMIN_RECEPTION" && role !== "SUPER_ADMIN") throw new Error("Not authorized");
+  return session!;
 }
 
 export async function bookWalkIn(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const tenantId = await requireTenantId();
   const doctorId = formData.get("doctorId") as string;
   const patientEmail = formData.get("patientEmail") as string;
@@ -25,11 +27,19 @@ export async function bookWalkIn(formData: FormData) {
   });
   if (!patient) throw new Error(`No patient found in this hospital with email ${patientEmail}`);
 
-  await createAppointment({
+  const appointment = await createAppointment({
     tenantId,
     doctorId,
     patientId: patient.id,
     datetime: new Date(datetime),
+  });
+
+  await recordJourneyEvent({
+    tenantId,
+    appointmentId: appointment.id,
+    patientId: patient.id,
+    step: "APPOINTMENT_BOOKED",
+    recordedById: session.user.id,
   });
 
   revalidatePath("/admin");
