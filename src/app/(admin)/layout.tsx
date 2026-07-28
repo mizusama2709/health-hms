@@ -7,6 +7,7 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/admin" },
       { label: "Inbox", href: "/admin/inbox" },
+      { label: "Queue", href: "/admin/queue" },
     ],
   },
   {
