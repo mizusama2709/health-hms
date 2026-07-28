@@ -35,6 +35,15 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
           { label: "Report Templates", href: "/admin/lab/templates" },
         ],
       },
+      {
+        label: "Pharmacy",
+        children: [
+          { label: "Dashboard", href: "/admin/pharmacy" },
+          { label: "Medicines", href: "/admin/pharmacy/medicines" },
+          { label: "Goods Receipt", href: "/admin/pharmacy/goods-receipt" },
+          { label: "Suppliers", href: "/admin/pharmacy/suppliers" },
+        ],
+      },
     ],
   },
   {

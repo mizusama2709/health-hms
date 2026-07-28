@@ -132,6 +132,9 @@ model Tenant {
   labTestCatalogs     LabTestCatalog[]
   labOrders           LabOrder[]
   labReportTemplates  LabReportTemplate[]
+  medicines           Medicine[]
+  suppliers           Supplier[]
+  goodsReceipts       GoodsReceipt[]
 }
 
 model User {
@@ -551,4 +554,64 @@ model LabReportTemplate {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+model Medicine {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  name          String
+  sku           String?
+  unitPrice     Decimal
+  stockQuantity Int      @default(0)
+  reorderLevel  Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  goodsReceiptItems GoodsReceiptLineItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, stockQuantity])
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String
+  contactPhone String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+
+  goodsReceipts GoodsReceipt[]
+
+  @@index([tenantId])
+}
+
+model GoodsReceipt {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  supplierId   String
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  receivedById String
+  receivedAt   DateTime @default(now())
+  notes        String?
+
+  lineItems GoodsReceiptLineItem[]
+
+  @@index([tenantId, receivedAt])
+}
+
+model GoodsReceiptLineItem {
+  id               String       @id @default(cuid())
+  goodsReceiptId   String
+  goodsReceipt     GoodsReceipt @relation(fields: [goodsReceiptId], references: [id])
+  medicineId       String
+  medicine         Medicine     @relation(fields: [medicineId], references: [id])
+  quantityReceived Int
+  unitCost         Decimal
+
+  @@index([goodsReceiptId])
 }
