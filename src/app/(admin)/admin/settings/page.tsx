@@ -1,31 +1,21 @@
 import { requireTenantId } from "@/lib/tenant";
 import { getHospitalSettings } from "@/lib/hospitalSettings";
-import { listInvoices } from "@/lib/billing";
 import {
   saveHospitalSettings,
   savePaymentSettingsAction,
   addDepartmentAction,
   removeDepartmentAction,
-  recordPharmacyReturnAction,
 } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Badge } from "@/components/ui/badge";
 
 export default async function HospitalSettingsPage() {
   const tenantId = await requireTenantId();
-  const [settings, pharmacyInvoices] = await Promise.all([
-    getHospitalSettings(tenantId),
-    listInvoices(tenantId, { serviceType: "PHARMACY" }),
-  ]);
-
-  const pharmacyLineItems = pharmacyInvoices.flatMap((inv) =>
-    inv.lineItems.map((li) => ({ ...li, invoiceId: inv.id, invoiceNumber: inv.invoiceNumber }))
-  );
+  const settings = await getHospitalSettings(tenantId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -143,37 +133,6 @@ export default async function HospitalSettingsPage() {
               Add department
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>Pharmacy returns</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pharmacyLineItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pharmacy line items to return yet.</p>
-          ) : (
-            <form action={recordPharmacyReturnAction} className="flex flex-col gap-2">
-              <Label htmlFor="invoiceLineItemId">Pharmacy line item</Label>
-              <NativeSelect id="invoiceLineItemId" name="invoiceLineItemId" required>
-                {pharmacyLineItems.map((li) => (
-                  <option key={li.id} value={li.id}>
-                    {li.invoiceNumber} — {li.description} (qty {li.quantity})
-                  </option>
-                ))}
-              </NativeSelect>
-              <Label htmlFor="quantityReturned">Quantity returned</Label>
-              <Input id="quantityReturned" name="quantityReturned" type="number" min={1} required />
-              <Label htmlFor="refundAmount">Refund amount (optional)</Label>
-              <Input id="refundAmount" name="refundAmount" type="number" step="0.01" />
-              <Label htmlFor="reason">Reason</Label>
-              <Input id="reason" name="reason" />
-              <Button type="submit" className="mt-2 self-start">
-                Record return
-              </Button>
-            </form>
-          )}
         </CardContent>
       </Card>
     </div>

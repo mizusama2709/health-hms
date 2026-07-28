@@ -1,0 +1,98 @@
+import { requireTenantId } from "@/lib/tenant";
+import { listPrescriptions, listMedicines } from "@/lib/pharmacy";
+import { createPrescriptionAction, dispensePrescriptionAction } from "../actions";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+
+export default async function DispensePage() {
+  const tenantId = await requireTenantId();
+  const [prescriptions, medicines] = await Promise.all([
+    listPrescriptions(tenantId),
+    listMedicines(tenantId, { isActive: true }),
+  ]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold">Dispense / Rx Queue</h1>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Create prescription</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={createPrescriptionAction} className="flex flex-col gap-2">
+            <Label htmlFor="patientEmail">Patient email</Label>
+            <Input id="patientEmail" name="patientEmail" type="email" required />
+            <Label htmlFor="medicineId">Medicine</Label>
+            <NativeSelect id="medicineId" name="medicineId" required>
+              {medicines.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} (stock: {m.stockQuantity})
+                </option>
+              ))}
+            </NativeSelect>
+            <Label htmlFor="quantity">Quantity</Label>
+            <Input id="quantity" name="quantity" type="number" min={1} required />
+            <Label htmlFor="dosageInstructions">Dosage instructions (optional)</Label>
+            <Input id="dosageInstructions" name="dosageInstructions" />
+            <Button type="submit" className="mt-2">
+              Create prescription
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Queue ({prescriptions.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {prescriptions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No prescriptions yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {prescriptions.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.patient.user.name}</TableCell>
+                    <TableCell>
+                      {p.items.map((i) => `${i.medicine.name} x${i.quantity}`).join(", ")}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={p.status === "DISPENSED" ? "default" : "outline"}>{p.status}</Badge>
+                    </TableCell>
+                    <TableCell>{p.createdAt.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {p.status === "PENDING" && (
+                        <form action={dispensePrescriptionAction}>
+                          <input type="hidden" name="prescriptionId" value={p.id} />
+                          <Button type="submit" size="sm" variant="outline">
+                            Dispense
+                          </Button>
+                        </form>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

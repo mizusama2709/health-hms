@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { recordJourneyEvent } from "@/lib/journey";
+import type { PrescriptionStatus } from "@prisma/client";
 
 export async function listMedicines(tenantId: string, filters?: { isActive?: boolean; lowStock?: boolean }) {
   const medicines = await db.medicine.findMany({
@@ -88,5 +90,107 @@ export async function listGoodsReceipts(tenantId: string) {
     where: { tenantId },
     include: { supplier: true, lineItems: { include: { medicine: true } } },
     orderBy: { receivedAt: "desc" },
+  });
+}
+
+export async function listPrescriptions(tenantId: string, filters?: { status?: PrescriptionStatus }) {
+  return db.prescription.findMany({
+    where: { tenantId, ...(filters?.status && { status: filters.status }) },
+    include: { patient: { include: { user: true } }, items: { include: { medicine: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function createPrescription(params: {
+  tenantId: string;
+  patientId: string;
+  visitRecordId?: string;
+  appointmentId?: string;
+  recordedById?: string;
+  items: { medicineId: string; quantity: number; dosageInstructions?: string }[];
+}) {
+  const prescription = await db.prescription.create({
+    data: {
+      tenantId: params.tenantId,
+      patientId: params.patientId,
+      visitRecordId: params.visitRecordId,
+      appointmentId: params.appointmentId,
+      items: {
+        create: params.items.map((i) => ({
+          medicineId: i.medicineId,
+          quantity: i.quantity,
+          dosageInstructions: i.dosageInstructions,
+        })),
+      },
+    },
+    include: { items: true },
+  });
+
+  if (params.appointmentId) {
+    await recordJourneyEvent({
+      tenantId: params.tenantId,
+      appointmentId: params.appointmentId,
+      patientId: params.patientId,
+      step: "MEDICINES_PRESCRIBED",
+      recordedById: params.recordedById,
+    });
+  }
+
+  return prescription;
+}
+
+export async function dispensePrescription(tenantId: string, prescriptionId: string, dispensedById?: string) {
+  return db.$transaction(async (tx) => {
+    const prescription = await tx.prescription.findFirstOrThrow({
+      where: { id: prescriptionId, tenantId },
+      include: { items: true },
+    });
+
+    await tx.prescription.update({ where: { id: prescriptionId }, data: { status: "DISPENSED" } });
+
+    for (const item of prescription.items) {
+      await tx.medicine.updateMany({
+        where: { id: item.medicineId, tenantId },
+        data: { stockQuantity: { decrement: item.quantity } },
+      });
+    }
+
+    if (prescription.appointmentId) {
+      await recordJourneyEvent({
+        tenantId,
+        appointmentId: prescription.appointmentId,
+        patientId: prescription.patientId,
+        step: "MEDICINES_DISPENSED",
+        recordedById: dispensedById,
+      });
+    }
+
+    return prescription;
+  });
+}
+
+export async function createStoreCredit(params: {
+  tenantId: string;
+  patientId: string;
+  amount: number;
+  reason?: string;
+  relatedPharmacyReturnId?: string;
+}) {
+  return db.storeCredit.create({
+    data: {
+      tenantId: params.tenantId,
+      patientId: params.patientId,
+      amount: params.amount,
+      reason: params.reason,
+      relatedPharmacyReturnId: params.relatedPharmacyReturnId,
+    },
+  });
+}
+
+export async function listStoreCredits(tenantId: string, patientId?: string) {
+  return db.storeCredit.findMany({
+    where: { tenantId, ...(patientId && { patientId }) },
+    include: { patient: { include: { user: true } } },
+    orderBy: { createdAt: "desc" },
   });
 }
