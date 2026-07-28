@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN_RECEPTION
+  SUPER_ADMIN
+}
+
+enum AppointmentStatus {
+  BOOKED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AppointmentType {
+  NEW
+  FOLLOW_UP
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  VOID
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+
+  users        User[]
+  doctors      Doctor[]
+  patients     Patient[]
+  appointments Appointment[]
+  invoices     Invoice[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+
+  doctor  Doctor?
+  patient Patient?
+}
+
+model Doctor {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  specialty     String
+  workingHours  Json?
+
+  appointments  Appointment[]
+}
+
+model Patient {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  appointments Appointment[]
+  invoices     Invoice[]
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  tenantId  String
+  tenant    Tenant            @relation(fields: [tenantId], references: [id])
+  doctorId  String
+  doctor    Doctor            @relation(fields: [doctorId], references: [id])
+  patientId String
+  patient   Patient           @relation(fields: [patientId], references: [id])
+  datetime  DateTime
+  status    AppointmentStatus @default(BOOKED)
+  type      AppointmentType   @default(NEW)
+  createdAt DateTime          @default(now())
+
+  visitRecord VisitRecord?
+  followUp    FollowUp?
+  invoice     Invoice?
+}
+
+model FollowUp {
+  id                String   @id @default(cuid())
+  appointmentId     String   @unique
+  appointment       Appointment @relation(fields: [appointmentId], references: [id])
+  dueDate           DateTime
+  status            String   @default("pending")
+  reminderScheduled Boolean  @default(false)
+}
+
+model VisitRecord {
+  id            String      @id @default(cuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  notes         String
+  diagnosis     String?
+  prescription  String?
+  createdAt     DateTime    @default(now())
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  patientId     String
+  patient       Patient       @relation(fields: [patientId], references: [id])
+  appointmentId String        @unique
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id])
+  amount        Decimal
+  status        InvoiceStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+}
