@@ -50,6 +50,71 @@ async function main() {
     },
   });
 
+  const patientUser = await db.user.findUniqueOrThrow({
+    where: { email: "patient@demo.com" },
+    include: { patient: true },
+  });
+  const doctorUser = await db.user.findUniqueOrThrow({
+    where: { email: "doctor@demo.com" },
+    include: { doctor: true },
+  });
+
+  const appointment = await db.appointment.upsert({
+    where: { id: "seed-appointment-1" },
+    update: {},
+    create: {
+      id: "seed-appointment-1",
+      tenantId: tenant.id,
+      doctorId: doctorUser.doctor!.id,
+      patientId: patientUser.patient!.id,
+      datetime: new Date(),
+      status: "COMPLETED",
+      serviceType: "CONSULTATION",
+      feeAmount: 500,
+      paymentMode: "CASH",
+    },
+  });
+
+  const invoice = await db.invoice.upsert({
+    where: { invoiceNumber: "INV-SEED-0001" },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      patientId: patientUser.patient!.id,
+      appointmentId: appointment.id,
+      invoiceNumber: "INV-SEED-0001",
+      serviceType: "CONSULTATION",
+      subtotal: 500,
+      totalAmount: 500,
+      amountPaid: 500,
+      status: "PAID",
+      lineItems: {
+        create: [
+          {
+            description: "General Consultation",
+            serviceType: "CONSULTATION",
+            quantity: 1,
+            unitPrice: 500,
+            lineTotal: 500,
+          },
+        ],
+      },
+    },
+  });
+
+  await db.payment.upsert({
+    where: { id: "seed-payment-1" },
+    update: {},
+    create: {
+      id: "seed-payment-1",
+      tenantId: tenant.id,
+      invoiceId: invoice.id,
+      amount: 500,
+      mode: "CASH",
+      status: "SUCCESS",
+    },
+  });
+
   console.log("Seeded: patient@demo.com / doctor@demo.com / admin@demo.com — password: password123");
 }
 
