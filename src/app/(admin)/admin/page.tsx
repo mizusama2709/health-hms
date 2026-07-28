@@ -1,6 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant, listDoctorsForTenant } from "@/lib/appointments";
-import { bookWalkIn } from "./actions";
+import { bookWalkIn, addDoctor } from "./actions";
 
 export default async function AdminHome() {
   const tenantId = await requireTenantId();
@@ -14,6 +14,22 @@ export default async function AdminHome() {
       <h1>Admin / reception console</h1>
 
       <section style={{ marginTop: 24 }}>
+        <h2>Doctors</h2>
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {doctors.map((d) => (
+            <li key={d.id}>{d.user.name} — {d.specialty} ({d.user.email})</li>
+          ))}
+        </ul>
+        <form action={addDoctor} style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 360, marginTop: 12 }}>
+          <input name="name" placeholder="Full name" required />
+          <input name="email" type="email" placeholder="Email" required />
+          <input name="specialty" placeholder="Specialty" required />
+          <input name="password" type="password" placeholder="Temporary password" required minLength={8} />
+          <button type="submit">Add doctor</button>
+        </form>
+      </section>
+
+      <section style={{ marginTop: 32 }}>
         <h2>Book a walk-in</h2>
         <form action={bookWalkIn} style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 360 }}>
           <select name="doctorId" required>
