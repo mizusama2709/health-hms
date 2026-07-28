@@ -1,6 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant, listDoctorsForTenant } from "@/lib/appointments";
-import { bookWalkIn, addDoctor } from "./actions";
+import { bookWalkIn, addDoctor, sendInvoiceWhatsApp } from "./actions";
 
 export default async function AdminHome() {
   const tenantId = await requireTenantId();
@@ -41,6 +41,16 @@ export default async function AdminHome() {
           <input name="patientEmail" type="email" placeholder="Patient email" required />
           <input name="datetime" type="datetime-local" required />
           <button type="submit">Book appointment</button>
+        </form>
+      </section>
+
+      <section style={{ marginTop: 32 }}>
+        <h2>Send invoice via WhatsApp</h2>
+        <p style={{ fontSize: 13, color: "#666" }}>Mocked for now — no real WhatsApp credentials yet. Sends log to the server console and record in WhatsAppMessage.</p>
+        <form action={sendInvoiceWhatsApp} style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 360 }}>
+          <input name="invoiceId" placeholder="Invoice ID" required />
+          <input name="toPhone" placeholder="Patient phone (e.g. +911234567890)" required />
+          <button type="submit">Send invoice</button>
         </form>
       </section>
 

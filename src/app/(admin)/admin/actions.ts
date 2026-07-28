@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { requireTenantId } from "@/lib/tenant";
 import { createAppointment } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
+import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
 import { db } from "@/lib/db";
 
 async function requireAdmin() {
@@ -69,6 +70,18 @@ export async function addDoctor(formData: FormData) {
       doctor: { create: { tenantId, specialty } },
     },
   });
+
+  revalidatePath("/admin");
+}
+
+export async function sendInvoiceWhatsApp(formData: FormData) {
+  await requireAdmin();
+  const tenantId = await requireTenantId();
+
+  const invoiceId = formData.get("invoiceId") as string;
+  const toPhone = formData.get("toPhone") as string;
+
+  await sendInvoiceViaWhatsApp({ tenantId, invoiceId, toPhone });
 
   revalidatePath("/admin");
 }
