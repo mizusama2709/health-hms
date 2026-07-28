@@ -1,6 +1,13 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listStaff } from "@/lib/staff";
 import { createStaff, changeStaffRole, changeStaffStatus } from "./actions";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { StatusBadge } from "@/components/status-badge";
 
 const STAFF_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "NURSE", "RECEPTIONIST", "LAB", "PHARMACIST"] as const;
 const STATUSES = ["ACTIVE", "INACTIVE", "SUSPENDED"] as const;
@@ -10,66 +17,101 @@ export default async function StaffPage() {
   const staff = await listStaff(tenantId);
 
   return (
-    <main style={{ maxWidth: 900, margin: "40px auto" }}>
-      <h1>Staff</h1>
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold">Staff</h1>
 
-      <section style={{ marginTop: 24 }}>
-        <h2>Add staff</h2>
-        <form action={createStaff} style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 360 }}>
-          <input name="name" placeholder="Full name" required />
-          <input name="email" type="email" placeholder="Email" required />
-          <input name="phone" placeholder="Phone (optional)" />
-          <select name="role" required>
-            {STAFF_ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-          <input name="password" type="password" placeholder="Temporary password" required minLength={8} />
-          <button type="submit">Add staff</button>
-        </form>
-      </section>
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Add staff</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={createStaff} className="flex flex-col gap-2">
+            <Label htmlFor="name">Full name</Label>
+            <Input id="name" name="name" placeholder="Full name" required />
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" name="email" type="email" placeholder="Email" required />
+            <Label htmlFor="phone">Phone (optional)</Label>
+            <Input id="phone" name="phone" placeholder="Phone (optional)" />
+            <Label htmlFor="role">Role</Label>
+            <NativeSelect id="role" name="role" required>
+              {STAFF_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </NativeSelect>
+            <Label htmlFor="password">Temporary password</Label>
+            <Input id="password" name="password" type="password" placeholder="Temporary password" required minLength={8} />
+            <Button type="submit" className="mt-2">
+              Add staff
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <section style={{ marginTop: 32 }}>
-        <h2>All staff ({staff.length})</h2>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {staff.map((u) => (
-            <li key={u.id} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 10 }}>
-              <div>
-                <b>{u.name}</b> — {u.email} {u.phone && `· ${u.phone}`}
-              </div>
-              <div>
-                Role: {u.role} · Status: {u.status}
-              </div>
-              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                <form action={changeStaffRole} style={{ display: "flex", gap: 4 }}>
-                  <input type="hidden" name="userId" value={u.id} />
-                  <select name="role" defaultValue={u.role}>
-                    {STAFF_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit">Change role</button>
-                </form>
-                <form action={changeStaffStatus} style={{ display: "flex", gap: 4 }}>
-                  <input type="hidden" name="userId" value={u.id} />
-                  <select name="status" defaultValue={u.status}>
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit">Change status</button>
-                </form>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+      <Card>
+        <CardHeader>
+          <CardTitle>All staff ({staff.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staff.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">{u.name}</TableCell>
+                  <TableCell>
+                    {u.email}
+                    {u.phone && ` · ${u.phone}`}
+                  </TableCell>
+                  <TableCell>{u.role}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={u.status} type="user" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1.5">
+                      <form action={changeStaffRole} className="flex items-center gap-1">
+                        <input type="hidden" name="userId" value={u.id} />
+                        <NativeSelect name="role" defaultValue={u.role} className="w-40">
+                          {STAFF_ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                        <Button type="submit" size="sm" variant="outline">
+                          Save
+                        </Button>
+                      </form>
+                      <form action={changeStaffStatus} className="flex items-center gap-1">
+                        <input type="hidden" name="userId" value={u.id} />
+                        <NativeSelect name="status" defaultValue={u.status} className="w-40">
+                          {STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                        <Button type="submit" size="sm" variant="outline">
+                          Save
+                        </Button>
+                      </form>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
