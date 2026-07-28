@@ -4,7 +4,10 @@ import { RoleShell, type NavSection } from "@/components/layout/role-shell";
 const ADMIN_NAV_SECTIONS: NavSection[] = [
   {
     title: "Workspace",
-    items: [{ label: "Dashboard", href: "/admin" }],
+    items: [
+      { label: "Dashboard", href: "/admin" },
+      { label: "Inbox", href: "/admin/inbox" },
+    ],
   },
   {
     title: "Clinical",
