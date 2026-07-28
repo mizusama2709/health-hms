@@ -72,11 +72,11 @@ Phase 0's schema/refactor has landed on `master` (PR #1): `prisma/schema.prisma`
 
 ### Builder 1 (Abhk) — Appointments, Calendar, WhatsApp
 
-| Phase | Task | Depends on |
-|---|---|---|
-| 1 | Extend `lib/appointments.ts`: `updateAppointmentTiming`, `cancelAppointment`, `rescheduleAppointment`, filterable `listAppointmentsForTenant`, `getAppointmentForCalendar`; extend `createAppointment` for `serviceType`/`source`/`feeAmount`/`paymentMode`. Build `lib/billing.ts` **core only**: `createInvoice`, `recordPayment`, `getInvoiceWithBalance`. | Phase 0 |
-| 3 | Calendar: `getAppointmentForCalendar` wired to a doctor day/list view. Patient journey: `recordJourneyEvent` calls wired into booking + status-change actions (`APPOINTMENT_BOOKED`, `OPD_COMPLETED`, etc). | Phase 1 |
-| 6 (last) | WhatsApp: `lib/whatsapp/provider.ts` interface, `lib/whatsapp/mockProvider.ts`, `lib/whatsapp.ts` domain logic (`handleInboundWebhook`, `sendInvoiceViaWhatsApp`). Webhook route `src/app/api/whatsapp/webhook/route.ts`. "Send invoice via WhatsApp" button on the appointment dashboard. | Phases 1–2 (needs `createInvoice` + `createAppointment`) |
+| Phase | Task | Depends on | Status |
+|---|---|---|---|
+| 1 | Extend `lib/appointments.ts`: `updateAppointmentTiming`, `cancelAppointment`, `rescheduleAppointment`, filterable `listAppointmentsForTenant`, `getAppointmentForCalendar`; extend `createAppointment` for `serviceType`/`source`/`feeAmount`/`paymentMode`. Build `lib/billing.ts` **core only**: `createInvoice`, `recordPayment`, `getInvoiceWithBalance`. | Phase 0 | ✅ Done |
+| 3 | Calendar: `getAppointmentForCalendar` wired to a doctor day/list view. Patient journey: `recordJourneyEvent` calls wired into booking + status-change actions (`APPOINTMENT_BOOKED`, `OPD_COMPLETED`, etc). | Phase 1 | ✅ Done |
+| 6 (last) | WhatsApp: `lib/whatsapp/provider.ts` interface, `lib/whatsapp/mockProvider.ts`, `lib/whatsapp.ts` domain logic (`handleInboundWebhook`, `sendInvoiceViaWhatsApp`). Webhook route `src/app/api/whatsapp/webhook/route.ts`. "Send invoice via WhatsApp" button on the appointment dashboard. | Phases 1–2 (needs `createInvoice` + `createAppointment`) | ✅ Done — sent from admin console as a standalone form; will attach to invoice rows once Builder 2's billing UI lands
 
 ### Builder 2 (friend) — Billing, Reports, Org/Hospital Settings
 
