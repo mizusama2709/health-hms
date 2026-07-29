@@ -1,6 +1,6 @@
 # Page-wise Plan
 
-Every route in the app, what it does, which role(s) can reach it, and the `lib/` functions it's backed by. Originally written after the Phase 0–6 backend expansion (see `ASSIGNMENTS.md` for that phase history); updated after the nav-expansion work (Phases 8–15b, PR #4) added Patients, Inbox, Queue, Reminders, Services, Lab, and Pharmacy. Reflects what's actually in `master`.
+Every route in the app, what it does, which role(s) can reach it, and the `lib/` functions it's backed by. Originally written after the Phase 0–6 backend expansion (see `ASSIGNMENTS.md` for that phase history); updated after the nav-expansion work (Phases 8–15b, PR #4) added Patients, Inbox, Queue, Reminders, Services, Lab, and Pharmacy; updated again after PR #5 (Vitals capture) and PR #6 (Live Queue tracker) merged. Reflects what's actually in `master`.
 
 Role-based routing is enforced in `src/proxy.ts`: `/patient/*` → `PATIENT`, `/doctor/*` → `DOCTOR`, `/admin/*` → `ADMIN_RECEPTION`, `SUPER_ADMIN`, `NURSE`, `RECEPTIONIST`, `LAB`, `PHARMACIST`. Unauthenticated users are redirected to `/login`; authenticated users hitting the wrong surface are redirected to their role's home via `lib/roles.ts`.
 
@@ -19,11 +19,13 @@ The admin sidebar is grouped into four sections (`src/app/(admin)/layout.tsx`): 
 |---|---|---|
 | `/admin` | Doctor list + add-doctor form, walk-in appointment booking, a standalone "send invoice via WhatsApp" form (invoice ID + phone, not yet wired to specific invoice rows — see Known gaps), and the full appointments list for the tenant. | `lib/appointments.ts`, `lib/whatsapp.ts` |
 | `/admin/patients` | Patients directory with search by name/email. | `lib/patients.ts` (`listPatients`) |
-| `/admin/patients/[id]` | Patient chart view: appointment history with per-appointment visit notes/diagnosis/prescription and linked invoices, in one page. | `lib/patients.ts` (`getPatientWithHistory`) |
+| `/admin/patients/[id]` | Patient chart view: appointment history with per-appointment visit notes/diagnosis/prescription and linked invoices, plus a vitals history table, in one page. | `lib/patients.ts` (`getPatientWithHistory`, now includes `vitals`) |
 | `/admin/inbox` | List of `WhatsAppMessage` rows, filterable by direction (inbound/outbound) and status. | `lib/whatsappInbox.ts` (`listWhatsAppMessages`) |
 | `/admin/inbox/[id]` | Single message detail: direction, phone, parsed intent, error (if any), and raw payload JSON. | `lib/whatsappInbox.ts` (`getWhatsAppMessage`) |
 | `/admin/schedule/reminders` | Follow-ups list (auto-created when a doctor marks a visit Completed); schedule a reminder (datetime + message) or update a follow-up's status (pending/done/cancelled). | `lib/followUps.ts` |
-| `/admin/queue` | Today's appointments joined with each one's latest patient-journey step (Booked → Vitals taken → In consultation → ... → Medicines dispensed), read-only. | `lib/appointments.ts`, `lib/journey.ts` (`getLatestJourneyStepsForAppointments`) |
+| `/admin/queue` | **Live patient tracker** (rebuilt in PR #6 to match InZob's actual product — previously a flat "Current step" badge). Six pipeline columns — Registration, Vitals, Consultation, Lab, Consultation 2, Pharmacy — each cell showing who's handling the patient and elapsed time, with a Start/Complete action per stage; a stage renders in red once it exceeds its configured turnaround time. Stat tiles count how many patients are currently at each stage. The Vitals cell also links to `/admin/queue/[appointmentId]/vitals`. | `lib/appointments.ts`, `lib/staff.ts`, `lib/queueStages.ts` (`listStageConfigs`, `getStageEntriesForAppointments`, `startStage`, `completeStage`) |
+| `/admin/queue/configure` | Edit each stage's turnaround-minute threshold (the red-flag cutoff on the Queue board), mirroring InZob's "Configure flow" button. | `lib/queueStages.ts` (`upsertStageConfig`) |
+| `/admin/queue/[appointmentId]/vitals` | Record vitals (blood pressure, glucose, weight, SpO₂) for a patient tied to a specific appointment; also lists that patient's previous vitals. Recording vitals fires the `VITALS_TAKEN` patient-journey event. | `lib/vitals.ts` (`recordVitals`, `listVitalsForPatient`) |
 
 ## Admin / Reception console — Clinical
 
@@ -86,8 +88,9 @@ The admin sidebar is grouped into four sections (`src/app/(admin)/layout.tsx`): 
 - **"Send invoice via WhatsApp" on `/admin`** is a standalone form (paste an invoice ID + phone) rather than a button on each invoice row in `/admin/billing` — functional, but not yet integrated into the Billing page UI.
 - **WhatsApp inbound booking uses a fixed slot heuristic** (next day 10am, tenant's first doctor) rather than real availability — fine for the mock/demo stage, would need real scheduling logic before this touches a live WhatsApp number. It's also single-keyword (`"book"`) intent matching — no natural-language understanding, no multi-language support.
 - **Multi-line-item invoices**: `Bill Patient` currently creates one line item per invoice. `lib/billing.ts`'s `createInvoice` already supports multiple line items — only the UI is single-item for now.
-- **No vitals-capture flow**: `VITALS_TAKEN` exists as a `PatientJourneyEvent` step (referenced in Queue's step labels and Reports' Self-Efficacy calc) but nothing in the app actually records it — there's no vitals form or model anywhere.
 - **No visit-record creation UI**: `VisitRecord` (notes/diagnosis/prescription free text, shown on the patient chart) has no create/edit form anywhere in the app — a pre-existing gap, not addressed by this expansion.
+- **Queue stage assignment has no reassignment/undo path**: once a stage is started, the only actions are Complete or leaving it running — no way to reassign staff mid-stage, reopen a completed stage, or remove an entry created by mistake.
+- **Consultation 2 and Pharmacy stages have no auto-trigger tie-in**: unlike Vitals (linked to the vitals-recording flow), the Consultation, Lab, Consultation 2, and Pharmacy stage cells are pure manual Start/Complete — they don't yet call into the actual lab-order, prescription, or dispensing flows the way the Vitals cell does.
 - **Lab results are entered manually**, one value at a time — no report-file parsing, no automatic out-of-range flagging beyond what a user sets on the `flag` field themselves, no alerting.
 - **Pharmacy invoices don't include GST HSN/SAC line-item codes** — `HospitalSettings.pharmacyGst`/`pharmacyInvoiceTemplate` exist for branding text, but invoice generation doesn't compute or attach tax codes.
 - A duplicate `recordJourneyEvent` briefly existed in both `lib/journey.ts` (Builder 1, wired into `/doctor` and `/admin` actions) and `lib/reports.ts` (Builder 2, unused) — the unused copy in `lib/reports.ts` has been removed; `lib/journey.ts` is the canonical one.
