@@ -163,6 +163,14 @@ export default async function QueuePage() {
                                   Complete
                                 </Button>
                               </form>
+                              {stage === "VITALS" && (
+                                <Link
+                                  href={`/admin/queue/${appt.id}/vitals`}
+                                  className="mt-1 block text-primary hover:underline"
+                                >
+                                  Record vitals →
+                                </Link>
+                              )}
                             </TableCell>
                           );
                         }

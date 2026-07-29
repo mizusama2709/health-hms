@@ -32,6 +32,9 @@ export async function getPatientWithHistory(patientId: string, tenantId: string)
         },
         orderBy: { datetime: "desc" },
       },
+      vitals: {
+        orderBy: { recordedAt: "desc" },
+      },
     },
   });
 }

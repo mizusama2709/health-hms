@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getPatientWithHistory } from "@/lib/patients";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 
 export default async function PatientChartPage({ params }: { params: Promise<{ id: string }> }) {
@@ -71,6 +72,42 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
                 </li>
               ))}
             </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Vitals history ({patient.vitals.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {patient.vitals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No vitals recorded yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>BP</TableHead>
+                  <TableHead>Glucose</TableHead>
+                  <TableHead>Weight</TableHead>
+                  <TableHead>SpO₂</TableHead>
+                  <TableHead>Source</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {patient.vitals.map((v) => (
+                  <TableRow key={v.id}>
+                    <TableCell>{v.recordedAt.toLocaleString()}</TableCell>
+                    <TableCell>{v.bp ?? "—"}</TableCell>
+                    <TableCell>{v.glucose ? Number(v.glucose).toFixed(1) : "—"}</TableCell>
+                    <TableCell>{v.weight ? Number(v.weight).toFixed(1) : "—"}</TableCell>
+                    <TableCell>{v.spo2 ?? "—"}</TableCell>
+                    <TableCell>{v.source}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
