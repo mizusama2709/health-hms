@@ -117,6 +117,15 @@ enum VitalsSource {
   WHATSAPP
 }
 
+enum QueueStage {
+  REGISTRATION
+  VITALS
+  CONSULTATION
+  LAB
+  CONSULTATION_2
+  PHARMACY
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -148,6 +157,8 @@ model Tenant {
   prescriptions       Prescription[]
   storeCredits        StoreCredit[]
   vitals              Vitals[]
+  queueStageEntries   QueueStageEntry[]
+  queueStageConfigs   QueueStageConfig[]
 }
 
 model User {
@@ -165,6 +176,8 @@ model User {
 
   doctor  Doctor?
   patient Patient?
+
+  assignedQueueStageEntries QueueStageEntry[]
 
   @@index([tenantId, role])
   @@index([tenantId, status])
@@ -228,6 +241,7 @@ model Appointment {
   labOrders       LabOrder[]
   prescriptions   Prescription[]
   vitals          Vitals[]
+  queueStageEntries QueueStageEntry[]
 
   @@index([tenantId, datetime])
   @@index([tenantId, status])
@@ -404,6 +418,34 @@ model Vitals {
 
   @@index([tenantId, patientId, recordedAt])
   @@index([appointmentId])
+}
+
+model QueueStageEntry {
+  id            String      @id @default(cuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  stage         QueueStage
+  assignedToId  String?
+  assignedTo    User?       @relation(fields: [assignedToId], references: [id])
+  remark        String?
+  startedAt     DateTime    @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@unique([appointmentId, stage])
+  @@index([tenantId, appointmentId])
+}
+
+model QueueStageConfig {
+  id                String     @id @default(cuid())
+  tenantId          String
+  tenant            Tenant     @relation(fields: [tenantId], references: [id])
+  stage             QueueStage
+  turnaroundMinutes Int        @default(15)
+
+  @@unique([tenantId, stage])
 }
 
 model OrganizationProfile {
