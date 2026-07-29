@@ -42,12 +42,12 @@ Role-based routing is enforced in `src/proxy.ts`: `/patient/*` → `PATIENT`, `/
 | Route | Purpose | Notes |
 |---|---|---|
 | `/api/auth/[...nextauth]` | NextAuth request handler. | Unchanged from the original scaffold. |
-| `/api/whatsapp/webhook` (`POST`) | Mock inbound WhatsApp webhook — accepts `{ tenantId, from, text }`, logs a `WhatsAppMessage` row, and does simple keyword parsing (`"book"` → `parsedIntent: "BOOK_APPOINTMENT"`). | **Known gap**: does not yet actually create an `Appointment` from a parsed booking intent — it only classifies and logs the message. Wiring `handleInboundWebhook` through to `lib/appointments.createAppointment` is the remaining piece for "confirmation automatically reflected in the patient's dashboard." |
+| `/api/whatsapp/webhook` (`POST`) | Inbound WhatsApp webhook — accepts `{ tenantId, from, text }`, logs a `WhatsAppMessage` row, parses `"book"` keyword intent, and on a match looks up the patient by `User.phone`, books the next-day 10am slot with the tenant's first doctor (`source: WHATSAPP`), records an `APPOINTMENT_BOOKED` journey event, and links the message to the created appointment (`status: PROCESSED`). Unknown phone or no doctors in tenant → `status: FAILED` with `errorMessage`, no crash. | Slot/doctor selection is a fixed heuristic (next day 10am, first doctor) — no real availability check yet. |
 
 ## Known gaps / next steps
 
 - **Patient-facing booking flow** (browse doctors, book, cancel/reschedule, follow-ups, visit history) — not started, tracked separately in `ASSIGNMENTS.md`'s original Builder 2 patient-surface table.
-- **WhatsApp inbound booking is not fully wired** — see the webhook row above. The mock provider/interface (`lib/whatsapp/provider.ts`, `lib/whatsapp/mockProvider.ts`) is in place and outbound "send invoice via WhatsApp" works end-to-end (logs a `WhatsAppMessage` row, no real send), but inbound message → appointment creation is still a stub.
 - **"Send invoice via WhatsApp" on `/admin`** is a standalone form (paste an invoice ID + phone) rather than a button on each invoice row in `/admin/billing` — functional, but not yet integrated into the Billing page UI.
+- **WhatsApp inbound booking uses a fixed slot heuristic** (next day 10am, tenant's first doctor) rather than real availability — fine for the mock/demo stage, would need real scheduling logic before this touches a live WhatsApp number.
 - **Multi-line-item invoices**: `Bill Patient` currently creates one line item per invoice. `lib/billing.ts`'s `createInvoice` already supports multiple line items — only the UI is single-item for now.
 - A duplicate `recordJourneyEvent` briefly existed in both `lib/journey.ts` (Builder 1, wired into `/doctor` and `/admin` actions) and `lib/reports.ts` (Builder 2, unused) — the unused copy in `lib/reports.ts` has been removed; `lib/journey.ts` is the canonical one.
