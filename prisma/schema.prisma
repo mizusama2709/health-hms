@@ -112,6 +112,11 @@ enum PrescriptionStatus {
   DISPENSED
 }
 
+enum VitalsSource {
+  IN_CLINIC
+  WHATSAPP
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -142,6 +147,7 @@ model Tenant {
   goodsReceipts       GoodsReceipt[]
   prescriptions       Prescription[]
   storeCredits        StoreCredit[]
+  vitals              Vitals[]
 }
 
 model User {
@@ -191,6 +197,7 @@ model Patient {
   labOrders     LabOrder[]
   prescriptions Prescription[]
   storeCredits  StoreCredit[]
+  vitals        Vitals[]
 
   @@index([tenantId])
 }
@@ -220,6 +227,7 @@ model Appointment {
   whatsAppMessage WhatsAppMessage?
   labOrders       LabOrder[]
   prescriptions   Prescription[]
+  vitals          Vitals[]
 
   @@index([tenantId, datetime])
   @@index([tenantId, status])
@@ -375,6 +383,27 @@ model PatientJourneyEvent {
 
   @@index([tenantId, appointmentId, step])
   @@index([tenantId, patientId, occurredAt])
+}
+
+model Vitals {
+  id            String       @id @default(cuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  patientId     String
+  patient       Patient      @relation(fields: [patientId], references: [id])
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  bp            String?
+  glucose       Decimal?
+  weight        Decimal?
+  spo2          Int?
+  source        VitalsSource @default(IN_CLINIC)
+  recordedById  String?
+  recordedAt    DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+
+  @@index([tenantId, patientId, recordedAt])
+  @@index([appointmentId])
 }
 
 model OrganizationProfile {

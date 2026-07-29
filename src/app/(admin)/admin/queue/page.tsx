@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant } from "@/lib/appointments";
 import { getLatestJourneyStepsForAppointments } from "@/lib/journey";
@@ -51,6 +52,7 @@ export default async function QueuePage() {
                   <TableHead>Doctor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Current step</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -68,6 +70,14 @@ export default async function QueuePage() {
                       </TableCell>
                       <TableCell>
                         {step ? <Badge variant="outline">{STEP_LABELS[step] ?? step}</Badge> : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/admin/queue/${appt.id}/vitals`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          Record vitals
+                        </Link>
                       </TableCell>
                     </TableRow>
                   );
