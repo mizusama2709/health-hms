@@ -1,6 +1,11 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getAppointmentForCalendar } from "@/lib/appointments";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { StatusBadge } from "@/components/status-badge";
+import { cn } from "@/lib/utils";
 
 function formatDateParam(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -18,7 +23,12 @@ export default async function DoctorCalendar({
 
   const doctor = await db.doctor.findUnique({ where: { userId } });
   if (!doctor) {
-    return <main><h1>Calendar</h1><p>No doctor profile linked to this account.</p></main>;
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-2xl font-semibold">Calendar</h1>
+        <p className="text-sm text-muted-foreground">No doctor profile linked to this account.</p>
+      </div>
+    );
   }
 
   const day = date ? new Date(date) : new Date();
@@ -30,28 +40,45 @@ export default async function DoctorCalendar({
   const appointments = await getAppointmentForCalendar(doctor.id, tenantId, day);
 
   return (
-    <main style={{ maxWidth: 720, margin: "40px auto" }}>
-      <h1>Calendar</h1>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "16px 0" }}>
-        <a href={`/doctor/calendar?date=${formatDateParam(prev)}`}>&larr; Prev</a>
-        <b>{day.toDateString()}</b>
-        <a href={`/doctor/calendar?date=${formatDateParam(next)}`}>Next &rarr;</a>
-        <a href="/doctor" style={{ marginLeft: "auto" }}>Back to schedule</a>
-      </div>
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold">Calendar</h1>
 
-      {appointments.length === 0 && <p>No appointments on this day.</p>}
-      <ul style={{ listStyle: "none", padding: 0 }}>
-        {appointments.map((appt) => (
-          <li key={appt.id} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 10 }}>
-            <div>
-              <b>{new Date(appt.datetime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b>
-              {" — "}
-              {appt.patient.user.name}
-            </div>
-            <div>Type: {appt.type} · Status: {appt.status}</div>
-          </li>
-        ))}
-      </ul>
-    </main>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href={`/doctor/calendar?date=${formatDateParam(prev)}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              ← Prev
+            </Link>
+            <CardTitle>{day.toDateString()}</CardTitle>
+            <Link href={`/doctor/calendar?date=${formatDateParam(next)}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              Next →
+            </Link>
+          </div>
+          <Link href="/doctor" className="text-sm font-medium text-primary hover:underline">
+            Back to schedule
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {appointments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No appointments on this day.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {appointments.map((appt) => (
+                <li key={appt.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <span className="font-medium">
+                      {new Date(appt.datetime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className="text-sm text-muted-foreground"> — {appt.patient.user.name}</span>
+                    <div className="text-sm text-muted-foreground">Type: {appt.type}</div>
+                  </div>
+                  <StatusBadge status={appt.status} type="appointment" />
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

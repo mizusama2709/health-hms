@@ -81,8 +81,9 @@ export async function recordPharmacyReturn(params: {
   refundAmount?: number;
   reason?: string;
   recordedById?: string;
+  asStoreCredit?: { patientId: string };
 }) {
-  return db.pharmacyReturn.create({
+  const pharmacyReturn = await db.pharmacyReturn.create({
     data: {
       tenantId: params.tenantId,
       invoiceLineItemId: params.invoiceLineItemId,
@@ -93,4 +94,17 @@ export async function recordPharmacyReturn(params: {
       recordedById: params.recordedById,
     },
   });
+
+  if (params.asStoreCredit && params.refundAmount) {
+    const { createStoreCredit } = await import("@/lib/pharmacy");
+    await createStoreCredit({
+      tenantId: params.tenantId,
+      patientId: params.asStoreCredit.patientId,
+      amount: params.refundAmount,
+      reason: `Pharmacy return: ${params.reason ?? "no reason given"}`,
+      relatedPharmacyReturnId: pharmacyReturn.id,
+    });
+  }
+
+  return pharmacyReturn;
 }

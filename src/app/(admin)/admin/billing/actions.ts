@@ -18,6 +18,7 @@ export async function billPatient(formData: FormData) {
   const description = formData.get("description") as string;
   const unitPrice = Number(formData.get("unitPrice"));
   const quantity = Number(formData.get("quantity") || 1);
+  const serviceId = (formData.get("serviceId") as string) || undefined;
 
   const patient = await db.patient.findFirst({
     where: { tenantId, user: { email: patientEmail } },
@@ -28,7 +29,7 @@ export async function billPatient(formData: FormData) {
     tenantId,
     patientId: patient.id,
     serviceType,
-    lineItems: [{ description, serviceType, quantity, unitPrice }],
+    lineItems: [{ description, serviceType, quantity, unitPrice, serviceId }],
   });
 
   revalidatePath("/admin/billing");

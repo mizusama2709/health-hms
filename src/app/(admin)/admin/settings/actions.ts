@@ -3,14 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
-import {
-  updateHospitalSettings,
-  savePaymentSettings,
-  addDepartment,
-  removeDepartment,
-  recordPharmacyReturn,
-} from "@/lib/hospitalSettings";
-import { db } from "@/lib/db";
+import { updateHospitalSettings, savePaymentSettings, addDepartment, removeDepartment } from "@/lib/hospitalSettings";
 
 const SETTINGS_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
 
@@ -75,31 +68,6 @@ export async function removeDepartmentAction(formData: FormData) {
 
   const departmentId = formData.get("departmentId") as string;
   await removeDepartment(tenantId, departmentId);
-
-  revalidatePath("/admin/settings");
-}
-
-export async function recordPharmacyReturnAction(formData: FormData) {
-  await requireRole(...SETTINGS_ROLES);
-  const tenantId = await requireTenantId();
-
-  const invoiceLineItemId = formData.get("invoiceLineItemId") as string;
-  const quantityReturned = Number(formData.get("quantityReturned"));
-  const refundAmount = formData.get("refundAmount") ? Number(formData.get("refundAmount")) : undefined;
-  const reason = (formData.get("reason") as string) || undefined;
-
-  const lineItem = await db.invoiceLineItem.findFirstOrThrow({
-    where: { id: invoiceLineItemId, invoice: { tenantId } },
-  });
-
-  await recordPharmacyReturn({
-    tenantId,
-    invoiceLineItemId,
-    invoiceId: lineItem.invoiceId,
-    quantityReturned,
-    refundAmount,
-    reason,
-  });
 
   revalidatePath("/admin/settings");
 }

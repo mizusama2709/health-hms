@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { requireTenantId } from "@/lib/tenant";
 import { updateAppointmentStatus } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
+import { createFollowUp } from "@/lib/followUps";
 import { db } from "@/lib/db";
 import { AppointmentStatus, JourneyStep } from "@prisma/client";
 
@@ -31,6 +32,12 @@ export async function setAppointmentStatus(appointmentId: string, status: Appoin
         recordedById: session.user.id,
       });
     }
+  }
+
+  if (status === "COMPLETED") {
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+    await createFollowUp({ appointmentId, dueDate });
   }
 
   revalidatePath("/doctor");

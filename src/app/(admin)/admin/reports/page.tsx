@@ -1,6 +1,22 @@
 import { requireTenantId } from "@/lib/tenant";
 import { getMasterReport, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
 import { listDoctorsForTenant } from "@/lib/appointments";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+const MASTER_REPORT_LABELS: Record<string, string> = {
+  totalAppointments: "Total appointments",
+  consultations: "Consultations",
+  pharmacy: "Pharmacy",
+  lab: "Lab",
+  totalRevenue: "Total revenue",
+  totalDiscounts: "Total discounts",
+  totalRefunds: "Total refunds",
+};
 
 export default async function ReportsPage({
   searchParams,
@@ -24,74 +40,120 @@ export default async function ReportsPage({
   ]);
 
   return (
-    <main style={{ maxWidth: 900, margin: "40px auto" }}>
-      <h1>Reports</h1>
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold">Reports</h1>
 
-      <form method="get" style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-        <input name="from" type="date" defaultValue={params.from ?? ""} />
-        <input name="to" type="date" defaultValue={params.to ?? ""} />
-        <select name="doctorId" defaultValue={params.doctorId ?? ""}>
-          <option value="">All doctors</option>
-          {doctors.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.user.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit">Filter</button>
-      </form>
+      <Card>
+        <CardContent className="pt-0">
+          <form method="get" className="flex flex-wrap gap-2 pt-4">
+            <Input name="from" type="date" defaultValue={params.from ?? ""} className="w-40" />
+            <Input name="to" type="date" defaultValue={params.to ?? ""} className="w-40" />
+            <NativeSelect name="doctorId" defaultValue={params.doctorId ?? ""} className="w-52">
+              <option value="">All doctors</option>
+              {doctors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.user.name}
+                </option>
+              ))}
+            </NativeSelect>
+            <Button type="submit" variant="outline">
+              Filter
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <section style={{ marginTop: 16 }}>
-        <h2>Master Report</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {Object.entries(master).map(([key, value]) => (
-            <div key={key} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>{key}</div>
-              <div style={{ fontSize: 20, fontWeight: 600 }}>{value}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Tabs defaultValue="master">
+        <TabsList>
+          <TabsTrigger value="master">Master Report</TabsTrigger>
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="self-efficacy">Self-Efficacy</TabsTrigger>
+        </TabsList>
 
-      <section style={{ marginTop: 32 }}>
-        <h2>Transactions</h2>
-        {transactions.length === 0 && <p>No transactions in this range.</p>}
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {transactions.map((t) => (
-            <li key={t.id} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 8 }}>
-              {t.paidAt.toLocaleString()} — {Number(t.amount).toFixed(2)} — {t.mode} — {t.status} —{" "}
-              {t.invoice.invoiceNumber} ({t.invoice.patient.user.name})
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section style={{ marginTop: 32 }}>
-        <h2>Self-Efficacy (Patient Journey)</h2>
-        <p style={{ fontSize: 13, opacity: 0.7 }}>
-          {selfEfficacy.appointmentsConsidered} appointment(s) considered in range.
-        </p>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 6 }}>Transition</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 6 }}>Avg minutes</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 6 }}>Sample size</th>
-            </tr>
-          </thead>
-          <tbody>
-            {selfEfficacy.transitions.map((t) => (
-              <tr key={`${t.from}-${t.to}`}>
-                <td style={{ padding: 6 }}>
-                  {t.from} → {t.to}
-                </td>
-                <td style={{ padding: 6 }}>{t.avgMinutes !== null ? t.avgMinutes.toFixed(1) : "—"}</td>
-                <td style={{ padding: 6 }}>{t.sampleSize}</td>
-              </tr>
+        <TabsContent value="master" className="mt-4">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {Object.entries(master).map(([key, value]) => (
+              <Card key={key}>
+                <CardContent className="pt-0">
+                  <div className="pt-4 text-xs text-muted-foreground">{MASTER_REPORT_LABELS[key] ?? key}</div>
+                  <div className="text-2xl font-semibold">{value}</div>
+                </CardContent>
+              </Card>
             ))}
-          </tbody>
-        </table>
-      </section>
-    </main>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="transactions" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Transactions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {transactions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No transactions in this range.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Patient</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell>{t.paidAt.toLocaleString()}</TableCell>
+                        <TableCell>{Number(t.amount).toFixed(2)}</TableCell>
+                        <TableCell>{t.mode}</TableCell>
+                        <TableCell>{t.status}</TableCell>
+                        <TableCell className="font-medium">{t.invoice.invoiceNumber}</TableCell>
+                        <TableCell>{t.invoice.patient.user.name}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="self-efficacy" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Self-Efficacy (Patient Journey)</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {selfEfficacy.appointmentsConsidered} appointment(s) considered in range.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Transition</TableHead>
+                    <TableHead>Avg minutes</TableHead>
+                    <TableHead>Sample size</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selfEfficacy.transitions.map((t) => (
+                    <TableRow key={`${t.from}-${t.to}`}>
+                      <TableCell>
+                        {t.from} → {t.to}
+                      </TableCell>
+                      <TableCell>{t.avgMinutes !== null ? t.avgMinutes.toFixed(1) : "—"}</TableCell>
+                      <TableCell>{t.sampleSize}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

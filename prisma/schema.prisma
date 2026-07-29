@@ -94,6 +94,24 @@ enum WhatsAppMessageStatus {
   SIMULATED
 }
 
+enum LabOrderStatus {
+  ORDERED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum LabResultFlag {
+  NORMAL
+  ABNORMAL
+  CRITICAL
+}
+
+enum PrescriptionStatus {
+  PENDING
+  DISPENSED
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -115,6 +133,15 @@ model Tenant {
   pharmacyReturns     PharmacyReturn[]
   knowledgeBaseDocs   KnowledgeBaseDocument[]
   whatsAppMessages    WhatsAppMessage[]
+  services            Service[]
+  labTestCatalogs     LabTestCatalog[]
+  labOrders           LabOrder[]
+  labReportTemplates  LabReportTemplate[]
+  medicines           Medicine[]
+  suppliers           Supplier[]
+  goodsReceipts       GoodsReceipt[]
+  prescriptions       Prescription[]
+  storeCredits        StoreCredit[]
 }
 
 model User {
@@ -161,6 +188,9 @@ model Patient {
   appointments  Appointment[]
   invoices      Invoice[]
   journeyEvents PatientJourneyEvent[]
+  labOrders     LabOrder[]
+  prescriptions Prescription[]
+  storeCredits  StoreCredit[]
 
   @@index([tenantId])
 }
@@ -188,6 +218,8 @@ model Appointment {
   invoices        Invoice[]
   journeyEvents   PatientJourneyEvent[]
   whatsAppMessage WhatsAppMessage?
+  labOrders       LabOrder[]
+  prescriptions   Prescription[]
 
   @@index([tenantId, datetime])
   @@index([tenantId, status])
@@ -217,6 +249,8 @@ model VisitRecord {
   prescription  String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  prescriptions Prescription[]
 }
 
 model Invoice {
@@ -252,6 +286,8 @@ model InvoiceLineItem {
   id             String      @id @default(cuid())
   invoiceId      String
   invoice        Invoice     @relation(fields: [invoiceId], references: [id])
+  serviceId      String?
+  service        Service?    @relation(fields: [serviceId], references: [id])
   description    String
   serviceType    ServiceType
   quantity       Int         @default(1)
@@ -263,6 +299,25 @@ model InvoiceLineItem {
   pharmacyReturns PharmacyReturn[]
 
   @@index([invoiceId])
+  @@index([serviceId])
+}
+
+model Service {
+  id               String      @id @default(cuid())
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  name             String
+  serviceType      ServiceType
+  defaultUnitPrice Decimal
+  description      String?
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  lineItems InvoiceLineItem[]
+
+  @@index([tenantId, serviceType])
+  @@index([tenantId, isActive])
 }
 
 model Payment {
@@ -401,8 +456,57 @@ model PharmacyReturn {
   returnedAt        DateTime        @default(now())
   createdAt         DateTime        @default(now())
 
+  storeCredit StoreCredit?
+
   @@index([tenantId, returnedAt])
   @@index([invoiceId])
+}
+
+model Prescription {
+  id            String             @id @default(cuid())
+  tenantId      String
+  tenant        Tenant             @relation(fields: [tenantId], references: [id])
+  visitRecordId String?
+  visitRecord   VisitRecord?       @relation(fields: [visitRecordId], references: [id])
+  appointmentId String?
+  appointment   Appointment?       @relation(fields: [appointmentId], references: [id])
+  patientId     String
+  patient       Patient            @relation(fields: [patientId], references: [id])
+  status        PrescriptionStatus @default(PENDING)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  items PrescriptionItem[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, patientId])
+}
+
+model PrescriptionItem {
+  id                 String       @id @default(cuid())
+  prescriptionId     String
+  prescription       Prescription @relation(fields: [prescriptionId], references: [id])
+  medicineId         String
+  medicine           Medicine     @relation(fields: [medicineId], references: [id])
+  quantity           Int
+  dosageInstructions String?
+
+  @@index([prescriptionId])
+}
+
+model StoreCredit {
+  id                      String          @id @default(cuid())
+  tenantId                String
+  tenant                  Tenant          @relation(fields: [tenantId], references: [id])
+  patientId               String
+  patient                 Patient         @relation(fields: [patientId], references: [id])
+  amount                  Decimal
+  reason                  String?
+  relatedPharmacyReturnId String?         @unique
+  relatedPharmacyReturn   PharmacyReturn? @relation(fields: [relatedPharmacyReturnId], references: [id])
+  createdAt               DateTime        @default(now())
+
+  @@index([tenantId, patientId])
 }
 
 model KnowledgeBaseDocument {
@@ -437,4 +541,139 @@ model WhatsAppMessage {
 
   @@index([tenantId, direction, status])
   @@index([tenantId, createdAt])
+}
+
+model LabTestCatalog {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  name           String
+  code           String?
+  defaultPrice   Decimal
+  turnaroundTime String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  orderItems LabOrderItem[]
+
+  @@index([tenantId])
+}
+
+model LabOrder {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  patientId     String
+  patient       Patient        @relation(fields: [patientId], references: [id])
+  appointmentId String?
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
+  orderedById   String
+  status        LabOrderStatus @default(ORDERED)
+  orderedAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  items   LabOrderItem[]
+  reports LabReport[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, patientId])
+}
+
+model LabOrderItem {
+  id             String          @id @default(cuid())
+  labOrderId     String
+  labOrder       LabOrder        @relation(fields: [labOrderId], references: [id])
+  labTestId      String
+  labTest        LabTestCatalog  @relation(fields: [labTestId], references: [id])
+  resultValue    String?
+  resultUnit     String?
+  referenceRange String?
+  flag           LabResultFlag?
+  createdAt      DateTime        @default(now())
+
+  @@index([labOrderId])
+}
+
+model LabReport {
+  id           String   @id @default(cuid())
+  labOrderId   String
+  labOrder     LabOrder @relation(fields: [labOrderId], references: [id])
+  fileUrl      String
+  uploadedById String
+  uploadedAt   DateTime @default(now())
+
+  @@index([labOrderId])
+}
+
+model LabReportTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Medicine {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  name          String
+  sku           String?
+  unitPrice     Decimal
+  stockQuantity Int      @default(0)
+  reorderLevel  Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  goodsReceiptItems GoodsReceiptLineItem[]
+  prescriptionItems PrescriptionItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, stockQuantity])
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String
+  contactPhone String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+
+  goodsReceipts GoodsReceipt[]
+
+  @@index([tenantId])
+}
+
+model GoodsReceipt {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  supplierId   String
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  receivedById String
+  receivedAt   DateTime @default(now())
+  notes        String?
+
+  lineItems GoodsReceiptLineItem[]
+
+  @@index([tenantId, receivedAt])
+}
+
+model GoodsReceiptLineItem {
+  id               String       @id @default(cuid())
+  goodsReceiptId   String
+  goodsReceipt     GoodsReceipt @relation(fields: [goodsReceiptId], references: [id])
+  medicineId       String
+  medicine         Medicine     @relation(fields: [medicineId], references: [id])
+  quantityReceived Int
+  unitCost         Decimal
+
+  @@index([goodsReceiptId])
 }

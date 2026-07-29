@@ -2,6 +2,12 @@ import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { getConsolidatedLedger } from "@/lib/billing";
 import type { AppointmentSource, ServiceType } from "@prisma/client";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 export default async function LedgerPage({
   searchParams,
@@ -19,46 +25,72 @@ export default async function LedgerPage({
   });
 
   return (
-    <main style={{ maxWidth: 900, margin: "40px auto" }}>
-      <p>
-        <Link href="/admin/billing">← Back to Billing</Link>
-      </p>
-      <h1>Consolidated Ledger</h1>
+    <div className="flex flex-col gap-6">
+      <div>
+        <Link href="/admin/billing" className="text-sm font-medium text-primary hover:underline">
+          ← Back to Billing
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold">Consolidated Ledger</h1>
+      </div>
 
-      <form method="get" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <input name="from" type="date" defaultValue={params.from ?? ""} />
-        <input name="to" type="date" defaultValue={params.to ?? ""} />
-        <select name="source" defaultValue={params.source ?? ""}>
-          <option value="">All sources</option>
-          <option value="MANUAL">Manual</option>
-          <option value="WHATSAPP">WhatsApp</option>
-        </select>
-        <select name="serviceType" defaultValue={params.serviceType ?? ""}>
-          <option value="">All types</option>
-          <option value="CONSULTATION">Consultation</option>
-          <option value="LAB">Lab</option>
-          <option value="PHARMACY">Pharmacy</option>
-        </select>
-        <button type="submit">Filter</button>
-      </form>
+      <Card>
+        <CardHeader>
+          <CardTitle>Entries</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <form method="get" className="flex flex-wrap gap-2">
+            <Input name="from" type="date" defaultValue={params.from ?? ""} className="w-40" />
+            <Input name="to" type="date" defaultValue={params.to ?? ""} className="w-40" />
+            <NativeSelect name="source" defaultValue={params.source ?? ""} className="w-40">
+              <option value="">All sources</option>
+              <option value="MANUAL">Manual</option>
+              <option value="WHATSAPP">WhatsApp</option>
+            </NativeSelect>
+            <NativeSelect name="serviceType" defaultValue={params.serviceType ?? ""} className="w-44">
+              <option value="">All types</option>
+              <option value="CONSULTATION">Consultation</option>
+              <option value="LAB">Lab</option>
+              <option value="PHARMACY">Pharmacy</option>
+            </NativeSelect>
+            <Button type="submit" variant="outline">
+              Filter
+            </Button>
+          </form>
 
-      {entries.length === 0 && <p>No ledger entries in this range.</p>}
-      <ul style={{ listStyle: "none", padding: 0 }}>
-        {entries.map((e) => (
-          <li
-            key={`${e.kind}-${e.id}`}
-            style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 8 }}
-          >
-            <div>
-              <b>{e.kind}</b> — {e.timestamp.toLocaleString()} — {e.amount.toFixed(2)}
-            </div>
-            <div>
-              {e.invoice.invoiceNumber} · {e.invoice.serviceType} · {e.invoice.source} · patient{" "}
-              {e.invoice.patient.user.name}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </main>
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No ledger entries in this range.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Patient</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((e) => (
+                  <TableRow key={`${e.kind}-${e.id}`}>
+                    <TableCell>
+                      <Badge variant={e.kind === "PAYMENT" ? "default" : "destructive"}>{e.kind}</Badge>
+                    </TableCell>
+                    <TableCell>{e.timestamp.toLocaleString()}</TableCell>
+                    <TableCell>{e.amount.toFixed(2)}</TableCell>
+                    <TableCell className="font-medium">{e.invoice.invoiceNumber}</TableCell>
+                    <TableCell>{e.invoice.serviceType}</TableCell>
+                    <TableCell>{e.invoice.source}</TableCell>
+                    <TableCell>{e.invoice.patient.user.name}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
