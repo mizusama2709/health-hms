@@ -52,7 +52,10 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Insights",
-    items: [{ label: "Reports", href: "/admin/reports" }],
+    items: [
+      { label: "Reports", href: "/admin/reports" },
+      { label: "InZi Assistant", href: "/admin/assistant" },
+    ],
   },
   {
     title: "Admin",
