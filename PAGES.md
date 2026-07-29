@@ -1,6 +1,6 @@
 # Page-wise Plan
 
-Every route in the app, what it does, which role(s) can reach it, and the `lib/` functions it's backed by. Originally written after the Phase 0–6 backend expansion (see `ASSIGNMENTS.md` for that phase history); updated after the nav-expansion work (Phases 8–15b, PR #4) added Patients, Inbox, Queue, Reminders, Services, Lab, and Pharmacy; updated again after PR #5 (Vitals capture) and PR #6 (Live Queue tracker) merged. Reflects what's actually in `master`.
+Every route in the app, what it does, which role(s) can reach it, and the `lib/` functions it's backed by. Originally written after the Phase 0–6 backend expansion (see `ASSIGNMENTS.md` for that phase history); updated after the nav-expansion work (Phases 8–15b, PR #4) added Patients, Inbox, Queue, Reminders, Services, Lab, and Pharmacy; updated again after PR #5 (Vitals capture), PR #6 (Live Queue tracker), and PR #8 (Doctor Co-Pilot + InZi Assistant) merged. Reflects what's actually in `master`.
 
 Role-based routing is enforced in `src/proxy.ts`: `/patient/*` → `PATIENT`, `/doctor/*` → `DOCTOR`, `/admin/*` → `ADMIN_RECEPTION`, `SUPER_ADMIN`, `NURSE`, `RECEPTIONIST`, `LAB`, `PHARMACIST`. Unauthenticated users are redirected to `/login`; authenticated users hitting the wrong surface are redirected to their role's home via `lib/roles.ts`.
 
@@ -52,6 +52,7 @@ The admin sidebar is grouped into four sections (`src/app/(admin)/layout.tsx`): 
 | Route | Purpose | Backed by |
 |---|---|---|
 | `/admin/reports` | **Master Report**: total appointments, consultations, pharmacy/lab invoice counts, revenue, discounts, refunds — filterable by date range and doctor. **Transactions**: raw `Payment` feed (reuses the ledger data, not duplicated). **Self-Efficacy**: average time between patient-journey steps (booked → vitals → OPD → lab → medicines), computed from `PatientJourneyEvent` rows. | `lib/reports.ts` |
+| `/admin/assistant` | **InZi Assistant** (staff scope) — a chat panel for onboarding/operational questions about using the system. First stateful client-side chat UI in the app. Requires `ANTHROPIC_API_KEY` in `.env`; without it, shows a clear "not configured" message instead of erroring. | `lib/ai/client.ts` (`answerClinicalQuery`) |
 
 ## Admin / Reception console — Admin
 
@@ -66,8 +67,10 @@ The admin sidebar is grouped into four sections (`src/app/(admin)/layout.tsx`): 
 
 | Route | Purpose | Backed by |
 |---|---|---|
-| `/doctor` | Today's/all schedule for the signed-in doctor; mark an appointment Completed / No-show / Cancelled. Marking Completed also records an `OPD_COMPLETED` patient-journey event and creates a follow-up. | `lib/appointments.ts`, `lib/journey.ts`, `lib/followUps.ts` |
+| `/doctor` | Today's/all schedule for the signed-in doctor; mark an appointment Completed / No-show / Cancelled. Marking Completed also records an `OPD_COMPLETED` patient-journey event and creates a follow-up. Each row links to a Co-Pilot summary. | `lib/appointments.ts`, `lib/journey.ts`, `lib/followUps.ts` |
 | `/doctor/calendar` | Day-by-day calendar view (prev/next navigation) of the doctor's own appointments. | `lib/appointments.ts` (`getAppointmentForCalendar`) |
+| `/doctor/[appointmentId]/summary` | **Doctor Co-Pilot** — an AI-generated pre-consultation brief for the appointment: summarizes the patient's past visit notes/diagnoses, lab results, and pending prescriptions. Read-only, writes nothing. Requires `ANTHROPIC_API_KEY`; without it, shows a clear "not configured" message. | `lib/copilot.ts` (`generatePreConsultSummary`) |
+| `/doctor/assistant` | **InZi Assistant** (doctor/clinical scope) — same chat component as the admin assistant, different system prompt. | `lib/ai/client.ts` (`answerClinicalQuery`) |
 
 ## Patient (`PATIENT`)
 
@@ -94,3 +97,7 @@ The admin sidebar is grouped into four sections (`src/app/(admin)/layout.tsx`): 
 - **Lab results are entered manually**, one value at a time — no report-file parsing, no automatic out-of-range flagging beyond what a user sets on the `flag` field themselves, no alerting.
 - **Pharmacy invoices don't include GST HSN/SAC line-item codes** — `HospitalSettings.pharmacyGst`/`pharmacyInvoiceTemplate` exist for branding text, but invoice generation doesn't compute or attach tax codes.
 - A duplicate `recordJourneyEvent` briefly existed in both `lib/journey.ts` (Builder 1, wired into `/doctor` and `/admin` actions) and `lib/reports.ts` (Builder 2, unused) — the unused copy in `lib/reports.ts` has been removed; `lib/journey.ts` is the canonical one.
+- **`ANTHROPIC_API_KEY` is not set** in this environment — Doctor Co-Pilot and InZi Assistant are fully built and wired but return a clear "not configured" message instead of a real answer until that key is added to `.env` and the server restarted.
+- **InZi has no persistent conversation history**: chat state lives only in the client component's memory — refreshing the page or navigating away loses it. Nothing is written to the database.
+- **Doctor Co-Pilot regenerates on every page load**: `/doctor/[appointmentId]/summary` calls the LLM fresh each time the page is visited rather than caching the result — fine for a demo, but would add real per-visit cost at scale.
+- **Knowledge base retrieval is title-only**: `KnowledgeBaseDocument` only stores a `fileUrl` link, not extracted text, so Co-Pilot and InZi can reference document titles by name but can't actually read their contents — real RAG would need a fetch+parse step this doesn't have yet.
