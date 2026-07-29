@@ -6,17 +6,20 @@ Companion to `ASSIGNMENTS.md` (Phases 0–6, the original two-builder backend pl
 
 **Since this plan was written**, `/admin/queue` was also rebuilt from a flat "Current step" badge into a real multi-stage live-tracker board (PR #6, merged, not originally part of this plan — it came out of a separate sidebar/feature audit against InZob's actual product). This changes the ground truth for §C1 and §C4 below: Queue now reads from a new `QueueStageEntry`/`QueueStageConfig` pair of models, not just `PatientJourneyEvent`, and the Vitals-recording flow (§C4) is now surfaced as a link inside the Queue board's Vitals stage cell rather than a bare per-row action.
 
+**A second, much more detailed audit** (a walkthrough of InZob's live admin panel, not just marketing screenshots) surfaced that §B2 below significantly understates what "the WhatsApp integration" actually is in the reference product — it's a full **Communication Settings hub** with six sub-surfaces (WhatsApp, Booking Form, Webchat, Flows, Voice Agent, phone number provisioning), not a single webhook. See new §F for the corrected scope. §B2 is left as originally written below since it's still an accurate *subset* (the WhatsApp piece specifically) — §F is additive context, not a replacement.
+
 ---
 
 ## A. Vendor decisions needed before implementation starts
 
 These aren't things I can choose for you — they involve accounts, billing, and terms of service:
 
-1. **WhatsApp channel provider.** Options: Meta's WhatsApp Cloud API directly (free tier, more setup), or a BSP (Gupshup, Twilio, Interakt, etc. — paid, easier onboarding, India-specific ones handle template approval for you). This app is a multi-tenant SaaS, so whichever you pick needs to support per-tenant phone numbers or a shared-number + routing model.
+1. **WhatsApp channel provider.** Options: Meta's WhatsApp Cloud API directly (free tier, more setup), or a BSP (Gupshup, Twilio, Interakt, etc. — paid, easier onboarding, India-specific ones handle template approval for you). This app is a multi-tenant SaaS, so whichever you pick needs to support per-tenant phone numbers or a shared-number + routing model. **Caution from the detailed audit (§F1):** InZob's own WhatsApp message templates are currently showing `REJECTED` in their live account — Meta's template-approval process is a real, non-trivial hurdle even for the reference product, not just a setup checkbox. Budget for template rejections and resubmission when you plan this.
 2. **LLM provider.** Given this is Claude Code, the natural default is the **Anthropic API** (a Claude model) for intent parsing, summarization, and the InZi assistant. I'll build against that unless you tell me otherwise — but you'll need an Anthropic API key in `.env` (`ANTHROPIC_API_KEY`).
 3. **Drug-drug interaction dataset**, for §5 in the original gap list. This is a licensed clinical dataset (e.g., a commercial interaction-checking API, or a curated open dataset like a subset of DrugBank/RxNorm depending on license terms). I'm flagging this as its own decision — it's the one item in the whole plan that's a clinical-safety feature, so I'd rather you explicitly choose the source than have me pick a random dataset.
+4. **Telephony/voice provider**, newly identified in §F1 — InZob's "Voice Agent" is an AI receptionist for inbound phone calls on a dedicated number, with self-serve number provisioning (~₹394/mo, India-only, KYC required). This needs a voice/telephony vendor (e.g. Twilio Voice, Exotel, Knowlarity) with speech-to-text/text-to-speech, entirely separate from the WhatsApp provider in #1. Flagging as its own decision since it's a materially different integration (phone numbers + call handling, not messaging) and a recurring per-number cost.
 
-Everything else below (§0–§9 minus the interaction dataset) can proceed without waiting on you, using seed/mock data until real credentials exist — same pattern as the current WhatsApp webhook, which already runs fully mocked.
+Everything else below (§0–§9 minus the interaction dataset) can proceed without waiting on you, using seed/mock data until real credentials exist — same pattern as the current WhatsApp webhook, which already runs fully mocked. §F's newly-identified items (Booking Form, Webchat, Flows) don't need a new vendor decision beyond #1 and #2 above — they're additive UI/automation on the same WhatsApp + LLM foundation.
 
 ---
 
@@ -130,10 +133,40 @@ Several features above (§C2 slot-hold cleanup, §C8 escalation checks, potentia
 
 1. ~~**C4** (Vitals capture)~~ — ✅ shipped (PR #5), plus the unplanned Queue live-tracker rebuild (PR #6) that now hosts it.
 2. ~~**B1 (partial) + C3 + C9** (LLM client, Doctor Co-Pilot, InZi Assistant)~~ — ✅ shipped (PR #8). Built and verified end-to-end, but **not functional yet** — blocked purely on adding `ANTHROPIC_API_KEY` to `.env` (§A.2), no further code changes needed once that's added.
-3. **B2** (real WhatsApp client) — needed before §1's AI Receptionist can be anything but mocked. Requires a WhatsApp provider choice (§A.1).
-4. **B3 + B4 + C1 + C2** (conversation state, alerts, real AI Receptionist, real scheduling) — the core WhatsApp booking rebuild, highest visible impact.
-5. **C6** (Lab parsing/alerts) — needs vision extraction (already have B1's Anthropic client to build on, just need the image-input helper); **C5** (interaction checking) waits on §A.3's dataset decision.
-6. **C7** (GST/UPI) — needs an invoice-PDF/print view built first as a sub-step.
-7. **C8** (escalation/recall) — needs §D's job runner decided first.
+3. **(Optional, anytime) F2** (Rx Templates, Quick Phrases, AI service creator) — no AI/WhatsApp dependency for the first two, small and independent; good filler work between the AI-dependent phases below.
+4. **B2, redesigned channel-agnostic per §F1** (real WhatsApp client, built so Webchat/Voice can plug into the same conversation-state model later instead of requiring a rewrite) — needed before §1's AI Receptionist can be anything but mocked. Requires a WhatsApp provider choice (§A.1), and budget time for Meta template approval/resubmission (§F1's real-world caution).
+5. **B3 + B4 + C1 + C2** (conversation state, alerts, real AI Receptionist, real scheduling) — the core WhatsApp booking rebuild, highest visible impact.
+6. **F1's Booking Form** — can ship in parallel with or right after B2, since it's a standalone public route, not deep WhatsApp-webhook logic; depends on C2's `getAvailableSlots` for real slot data.
+7. **C6** (Lab parsing/alerts) — needs vision extraction (already have B1's Anthropic client to build on, just need the image-input helper); **C5** (interaction checking) waits on §A.3's dataset decision.
+8. **C7** (GST/UPI) — needs an invoice-PDF/print view built first as a sub-step.
+9. **C8, merged with F1's Flows concept** (escalation/recall/automation rules) — needs §D's job runner decided first; worth designing as one automation-rules feature rather than building §C8 and then rebuilding it as "Flows" later.
+10. **F1's Webchat, then Voice Agent + Get a Number** — Webchat is low-cost once B1/B3 are channel-agnostic (mostly a widget + embed script). Voice Agent needs the telephony vendor decision (§A.4) and is the most novel/expensive integration in this whole document — do it last, after everything else has validated the AI pipeline in text form.
 
 Each numbered step above would get its own schema migration (where applicable) + `lib/` functions + pages + browser verification + commit, same discipline as every phase shipped so far.
+
+---
+
+## F. Newly discovered scope (from a detailed walkthrough of InZob's live admin panel)
+
+Nothing in this section is built. It's here to correct §A/§B2's scope before any of it gets built, so effort isn't spent against an understated picture.
+
+### F1. Communication Settings — the real shape of "the WhatsApp integration"
+
+InZob doesn't have a single WhatsApp webhook — it has a **Communication Settings hub** with six tabs, all channel/automation surfaces feeding the same underlying AI pipeline:
+
+1. **WhatsApp** — connection status, webhook health, provider (`meta`), delivery-rate stats, a **Message Templates library** (Meta requires pre-approved templates for business-initiated messages — this app's current mock skips that entirely). Actions: Reconnect, Test Message, Rotate Token, Disconnect. This is the piece §B2 already covers architecturally (`lib/whatsapp/client.ts`), but §B2 didn't account for template management — add a `WhatsAppTemplate` model (`name`, `status: PENDING | APPROVED | REJECTED`, `body`) and a template-picker for any outbound message that isn't a live conversational reply (Meta requires templates specifically for messages sent outside a 24-hour customer-initiated window).
+2. **Booking Form** — a configurable, branded patient-facing web page (editable welcome banner, patient-info fields, problem description) that WhatsApp booking links point patients to, rather than the whole booking flow happening inside the chat. This is a new public route (e.g. `/book/[tenantSlug]`), not a WhatsApp feature — it's a lightweight alternative to conversational slot-filling and could ship independently of B2/B3, using C2's `getAvailableSlots` once that exists.
+3. **Webchat** — a website live-chat widget explicitly described as using "the same AI pipeline as WhatsApp." This is the strongest signal that B1 (LLM client) and B3 (conversation state) should be designed **channel-agnostic** from the start — e.g. `WhatsAppConversation` in §B3 should probably be renamed/generalized to something like `ConversationSession { channel: WHATSAPP | WEBCHAT, ... }` rather than being WhatsApp-specific, so this channel is additive later instead of a rewrite.
+4. **Flows** — automation rules for what gets sent to which patient, on which channel, when (e.g. auto-reminders, post-visit follow-ups). Notably, **this was empty/unconfigured in InZob's own account** — even the reference product hasn't finished this piece. Overlaps significantly with this plan's existing §C8 (Follow-Up Engine) — worth building as one thing, not two.
+5. **Voice Agent** — an AI receptionist for inbound phone calls (book/reschedule/cancel, falling back to sending the Booking Form link via WhatsApp/SMS if the caller can't complete on the call). Needs the telephony vendor from §A.4. Architecturally this is C1's AI Receptionist logic again, just voice-in/voice-out instead of text — another argument for channel-agnostic intent classification in B1.
+6. **Get a Number** — self-serve phone number provisioning (~₹394/mo) with city/STD-code filtering and KYC, feeding the Voice Agent. Purely a vendor-account/billing feature, not something to build custom — this would be a thin UI over whatever telephony vendor's number-provisioning API is chosen.
+
+**Practical takeaway:** don't build B2/B3 as WhatsApp-only. The one-line architectural change (channel field on conversation state, intent classifier that doesn't assume WhatsApp payload shapes) costs little now and avoids a rewrite when Webchat or Voice get built later.
+
+### F2. Smaller newly-identified features (no new vendor decision needed)
+
+- **AI service creator** on `/admin/services` — InZob's Services page has a natural-language-to-structured-service creator (describe a service in plain text, get back name/type/fee). `/admin/services` today is plain CRUD. Small addition once B1 exists: a form that sends free text to an LLM call returning a structured `{name, serviceType, defaultUnitPrice}` object to pre-fill the existing create form (not auto-submit — human confirms before saving, consistent with this plan's stance on AI outputs elsewhere).
+- **Rx Templates** — reusable prescription sets tagged by disease/condition, one-click-loaded into a patient's prescription. New `RxTemplate`/`RxTemplateItem` models (mirrors `Prescription`/`PrescriptionItem`'s shape), a management page under Pharmacy, and a "load template" action on `/admin/pharmacy/dispense`'s create-prescription form. No AI involved — pure data/workflow feature, could be built independently of everything else in this document.
+- **Quick Phrases** — canned text snippets for consult notes, with token interpolation (e.g. `{name}`, `{next_review}`, `{hba1c}`) substituted at insert time, scoped by section (so different snippet sets for different note fields). New `QuickPhrase` model (`text`, `section`, `tenantId`), a management page, and a token-substitution helper. Also no AI — pure data feature. The token set would need to be defined against this app's actual fields (e.g. `{patientName}`, `{doctorName}`, `{nextFollowUpDate}` mapped from existing models) rather than copied verbatim from InZob's.
+
+Both Rx Templates and Quick Phrases are schema-light, don't touch AI or WhatsApp, and could be built as a quick standalone pass whenever there's a gap between the AI-dependent phases above.
