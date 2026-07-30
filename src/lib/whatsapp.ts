@@ -99,3 +99,32 @@ export async function sendInvoiceViaWhatsApp(params: {
     },
   });
 }
+
+export async function sendLabReportViaWhatsApp(params: {
+  tenantId: string;
+  labReportId: string;
+  toPhone: string;
+}) {
+  const report = await db.labReport.findFirst({
+    where: { id: params.labReportId, labOrder: { tenantId: params.tenantId } },
+    include: { labOrder: { include: { patient: { include: { user: true } }, items: { include: { labTest: true } } } } },
+  });
+  if (!report) throw new Error("Lab report not found");
+
+  const testNames = report.labOrder.items.map((i) => i.labTest.name).join(", ");
+  const body = `Lab report for ${report.labOrder.patient.user.name}\nTests: ${testNames}\nView report: ${report.fileUrl}`;
+
+  const result = await provider.sendMessage(params.toPhone, body);
+
+  return db.whatsAppMessage.create({
+    data: {
+      tenantId: params.tenantId,
+      direction: "OUTBOUND",
+      status: result.status === "SENT" ? "SENT" : result.status === "SIMULATED" ? "SIMULATED" : "FAILED",
+      toPhone: params.toPhone,
+      rawPayload: { body },
+      relatedLabReportId: params.labReportId,
+      errorMessage: result.errorMessage,
+    },
+  });
+}
