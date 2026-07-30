@@ -24,7 +24,9 @@ export const proxy = auth((req) => {
   if (!isProtected) return NextResponse.next();
 
   if (!role) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    // Temporary: skip the login screen, auto-sign in as the demo admin.
+    // Revert to `NextResponse.redirect(new URL("/login", req.url))` to restore real login.
+    return NextResponse.redirect(new URL(`/api/auto-login?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
   }
 
   const allowed =

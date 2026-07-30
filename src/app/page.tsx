@@ -7,5 +7,7 @@ export default async function Home() {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
 
-  redirect(role ? (ROLE_HOME[role] ?? "/login") : "/login");
+  // Temporary: skip the login screen, auto-sign in as the demo admin.
+  // Revert to `redirect(role ? ROLE_HOME[role] ?? "/login" : "/login")` to restore real login.
+  redirect(role ? (ROLE_HOME[role] ?? "/login") : "/api/auto-login?callbackUrl=/admin");
 }
