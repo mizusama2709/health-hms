@@ -10,7 +10,6 @@ const DOCTOR_NAV_SECTIONS: NavSection[] = [
         children: [
           { label: "Calendar", href: "/doctor/schedule/calendar" },
           { label: "Appointments", href: "/doctor/schedule/appointments" },
-          { label: "Reminders", href: "/doctor/schedule/reminders" },
         ],
       },
     ],
