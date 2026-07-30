@@ -166,56 +166,144 @@ export async function listInvoices(
   });
 }
 
+export type LedgerSource = "CONSULTATION" | "PHARMACY" | "LAB" | "MANUAL";
+
+// An invoice not linked to any appointment is treated as "Manual" billing —
+// GST is not modeled in this schema yet, so CGST/SGST are always 0 until tax
+// rates are captured somewhere (Service, Invoice, or tenant settings).
 export async function getConsolidatedLedger(
   tenantId: string,
-  filters: { from?: Date; to?: Date; source?: AppointmentSource; serviceType?: ServiceType }
+  filters: { from?: Date; to?: Date; source?: LedgerSource }
 ) {
-  const invoiceWhere = {
-    tenantId,
-    ...(filters.source && { source: filters.source }),
-    ...(filters.serviceType && { serviceType: filters.serviceType }),
-  };
+  const invoices = await db.invoice.findMany({
+    where: {
+      tenantId,
+      status: { not: "VOID" },
+      ...(filters.from || filters.to ? { createdAt: { gte: filters.from, lte: filters.to } } : {}),
+      ...(filters.source === "MANUAL" && { appointmentId: null }),
+      ...(filters.source && filters.source !== "MANUAL" && { serviceType: filters.source, appointmentId: { not: null } }),
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
-  const [payments, refunds] = await Promise.all([
-    db.payment.findMany({
-      where: {
-        tenantId,
-        ...(filters.from || filters.to ? { paidAt: { gte: filters.from, lte: filters.to } } : {}),
-        invoice: invoiceWhere,
-      },
-      include: { invoice: { include: { patient: { include: { user: true } } } } },
+  const rows = invoices.map((inv) => ({
+    id: inv.id,
+    date: inv.createdAt,
+    source: (inv.appointmentId ? inv.serviceType : "MANUAL") as LedgerSource,
+    invoiceNumber: inv.invoiceNumber,
+    taxable: Number(inv.subtotal),
+    cgst: 0,
+    sgst: 0,
+    total: Number(inv.totalAmount),
+  }));
+
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.taxable += r.taxable;
+      acc.cgst += r.cgst;
+      acc.sgst += r.sgst;
+      acc.total += r.total;
+      return acc;
+    },
+    { taxable: 0, cgst: 0, sgst: 0, total: 0 }
+  );
+
+  const bySource = (["CONSULTATION", "PHARMACY", "LAB", "MANUAL"] as LedgerSource[]).reduce(
+    (acc, type) => {
+      const matching = rows.filter((r) => r.source === type);
+      acc[type] = { total: matching.reduce((s, r) => s + r.total, 0), count: matching.length };
+      return acc;
+    },
+    {} as Record<LedgerSource, { total: number; count: number }>
+  );
+
+  return {
+    rows,
+    totals: { ...totals, invoiceCount: rows.length },
+    bySource,
+  };
+}
+
+export type InvoiceQuickFilter =
+  | "UNPAID"
+  | "PARTIALLY_PAID"
+  | "PAID"
+  | "CONSULTATION"
+  | "PHARMACY"
+  | "LAB"
+  | "MANUAL";
+
+export async function listInvoicesDetailed(
+  tenantId: string,
+  filters?: { search?: string; from?: Date; to?: Date; filter?: InvoiceQuickFilter }
+) {
+  const statusFilters = new Set(["UNPAID", "PARTIALLY_PAID", "PAID"]);
+  const serviceTypeFilters = new Set(["CONSULTATION", "PHARMACY", "LAB"]);
+
+  return db.invoice.findMany({
+    where: {
+      tenantId,
+      ...(filters?.from || filters?.to ? { createdAt: { gte: filters?.from, lte: filters?.to } } : {}),
+      ...(filters?.filter && statusFilters.has(filters.filter) && { status: filters.filter as InvoiceStatus }),
+      ...(filters?.filter &&
+        serviceTypeFilters.has(filters.filter) && { serviceType: filters.filter as ServiceType }),
+      ...(filters?.filter === "MANUAL" && { source: "MANUAL" as AppointmentSource }),
+      ...(filters?.search && {
+        patient: {
+          user: {
+            OR: [
+              { name: { contains: filters.search, mode: "insensitive" } },
+              { phone: { contains: filters.search, mode: "insensitive" } },
+            ],
+          },
+        },
+      }),
+    },
+    include: {
+      patient: { include: { user: true } },
+      appointment: { include: { doctor: { include: { user: true } } } },
+      lineItems: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function updateInvoiceLineItem(
+  tenantId: string,
+  invoiceId: string,
+  description: string,
+  unitPrice: number
+) {
+  const invoice = await db.invoice.findFirstOrThrow({
+    where: { id: invoiceId, tenantId },
+    include: { lineItems: true },
+  });
+  const firstLine = invoice.lineItems[0];
+  if (!firstLine) throw new Error("Invoice has no line items to edit");
+
+  const quantity = firstLine.quantity;
+  const lineTotal = quantity * unitPrice;
+  const otherLinesTotal = invoice.lineItems.slice(1).reduce((sum, li) => sum + Number(li.lineTotal), 0);
+  const subtotal = lineTotal + otherLinesTotal;
+  const totalAmount = subtotal - Number(invoice.discountAmount);
+
+  await db.$transaction([
+    db.invoiceLineItem.update({
+      where: { id: firstLine.id },
+      data: { description, unitPrice, lineTotal },
     }),
-    db.refund.findMany({
-      where: {
-        tenantId,
-        ...(filters.from || filters.to
-          ? { refundedAt: { gte: filters.from, lte: filters.to } }
-          : {}),
-        invoice: invoiceWhere,
-      },
-      include: { invoice: { include: { patient: { include: { user: true } } } } },
+    db.invoice.update({
+      where: { id: invoiceId },
+      data: { subtotal, totalAmount },
     }),
   ]);
+}
 
-  const entries = [
-    ...payments.map((p) => ({
-      kind: "PAYMENT" as const,
-      id: p.id,
-      timestamp: p.paidAt,
-      amount: Number(p.amount),
-      invoice: p.invoice,
-    })),
-    ...refunds.map((r) => ({
-      kind: "REFUND" as const,
-      id: r.id,
-      timestamp: r.refundedAt,
-      amount: Number(r.amount),
-      invoice: r.invoice,
-    })),
-  ];
-
-  entries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  return entries;
+export async function markInvoicePaidInFull(tenantId: string, invoiceId: string, mode: PaymentMode = "CASH") {
+  const invoice = await db.invoice.findFirstOrThrow({ where: { id: invoiceId, tenantId } });
+  const balanceDue = Number(invoice.totalAmount) - Number(invoice.amountPaid);
+  if (balanceDue <= 0) return invoice;
+  return recordPayment({ tenantId, invoiceId, amount: balanceDue, mode });
 }
 
 export async function voidInvoice(tenantId: string, invoiceId: string) {

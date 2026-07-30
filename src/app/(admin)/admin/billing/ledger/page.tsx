@@ -1,27 +1,28 @@
 import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
-import { getConsolidatedLedger } from "@/lib/billing";
-import type { AppointmentSource, ServiceType } from "@prisma/client";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { getConsolidatedLedger, type LedgerSource } from "@/lib/billing";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+function formatINR(value: number) {
+  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export default async function LedgerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; source?: string; serviceType?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; source?: string }>;
 }) {
   const tenantId = await requireTenantId();
   const params = await searchParams;
 
-  const entries = await getConsolidatedLedger(tenantId, {
+  const ledger = await getConsolidatedLedger(tenantId, {
     from: params.from ? new Date(params.from) : undefined,
-    to: params.to ? new Date(params.to) : undefined,
-    source: params.source ? (params.source as AppointmentSource) : undefined,
-    serviceType: params.serviceType ? (params.serviceType as ServiceType) : undefined,
+    to: params.to ? new Date(`${params.to}T23:59:59`) : undefined,
+    source: params.source ? (params.source as LedgerSource) : undefined,
   });
 
   return (
@@ -31,59 +32,94 @@ export default async function LedgerPage({
           ← Back to Billing
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">Consolidated Ledger</h1>
+        <p className="text-sm text-muted-foreground">Consultation + pharmacy + lab + manual — one daybook.</p>
+      </div>
+
+      <form method="get" className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">From</span>
+          <Input name="from" type="date" defaultValue={params.from ?? ""} className="w-40" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">To</span>
+          <Input name="to" type="date" defaultValue={params.to ?? ""} className="w-40" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Source</span>
+          <NativeSelect name="source" defaultValue={params.source ?? ""} className="w-44">
+            <option value="">All sources</option>
+            <option value="CONSULTATION">Consultation</option>
+            <option value="PHARMACY">Pharmacy</option>
+            <option value="LAB">Lab</option>
+            <option value="MANUAL">Manual</option>
+          </NativeSelect>
+        </div>
+        <button type="submit" className="h-9 rounded-lg border px-4 text-sm font-medium hover:bg-muted">
+          Filter
+        </button>
+      </form>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="rounded-lg border p-4">
+          <p className="text-2xl font-semibold">{ledger.totals.invoiceCount}</p>
+          <p className="text-xs text-muted-foreground">Invoices</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-2xl font-semibold">{formatINR(ledger.totals.taxable)}</p>
+          <p className="text-xs text-muted-foreground">Taxable</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-2xl font-semibold">{formatINR(ledger.totals.cgst)}</p>
+          <p className="text-xs text-muted-foreground">CGST</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-2xl font-semibold">{formatINR(ledger.totals.sgst)}</p>
+          <p className="text-xs text-muted-foreground">SGST</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-2xl font-semibold">{formatINR(ledger.totals.total)}</p>
+          <p className="text-xs text-muted-foreground">Total</p>
+        </div>
+      </div>
+      <p className="-mt-4 text-xs text-muted-foreground">
+        GST isn&apos;t modeled yet, so CGST/SGST show as ₹0 until tax rates are captured somewhere in the system.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        {(["CONSULTATION", "PHARMACY", "LAB", "MANUAL"] as LedgerSource[]).map((s) => (
+          <Badge key={s} variant="outline" className="px-3 py-1.5 text-xs">
+            {s.charAt(0) + s.slice(1).toLowerCase()}: {formatINR(ledger.bySource[s].total)} ({ledger.bySource[s].count})
+          </Badge>
+        ))}
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Entries</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <form method="get" className="flex flex-wrap gap-2">
-            <Input name="from" type="date" defaultValue={params.from ?? ""} className="w-40" />
-            <Input name="to" type="date" defaultValue={params.to ?? ""} className="w-40" />
-            <NativeSelect name="source" defaultValue={params.source ?? ""} className="w-40">
-              <option value="">All sources</option>
-              <option value="MANUAL">Manual</option>
-              <option value="WHATSAPP">WhatsApp</option>
-            </NativeSelect>
-            <NativeSelect name="serviceType" defaultValue={params.serviceType ?? ""} className="w-44">
-              <option value="">All types</option>
-              <option value="CONSULTATION">Consultation</option>
-              <option value="LAB">Lab</option>
-              <option value="PHARMACY">Pharmacy</option>
-            </NativeSelect>
-            <Button type="submit" variant="outline">
-              Filter
-            </Button>
-          </form>
-
-          {entries.length === 0 ? (
+        <CardContent className="pt-6">
+          {ledger.rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">No ledger entries in this range.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Kind</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Service</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Source</TableHead>
-                  <TableHead>Patient</TableHead>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Taxable</TableHead>
+                  <TableHead>CGST</TableHead>
+                  <TableHead>SGST</TableHead>
+                  <TableHead>Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((e) => (
-                  <TableRow key={`${e.kind}-${e.id}`}>
-                    <TableCell>
-                      <Badge variant={e.kind === "PAYMENT" ? "default" : "destructive"}>{e.kind}</Badge>
-                    </TableCell>
-                    <TableCell>{e.timestamp.toLocaleString()}</TableCell>
-                    <TableCell>{e.amount.toFixed(2)}</TableCell>
-                    <TableCell className="font-medium">{e.invoice.invoiceNumber}</TableCell>
-                    <TableCell>{e.invoice.serviceType}</TableCell>
-                    <TableCell>{e.invoice.source}</TableCell>
-                    <TableCell>{e.invoice.patient.user.name}</TableCell>
+                {ledger.rows.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>{r.date.toLocaleDateString()}</TableCell>
+                    <TableCell>{r.source.charAt(0) + r.source.slice(1).toLowerCase()}</TableCell>
+                    <TableCell className="font-medium">{r.invoiceNumber}</TableCell>
+                    <TableCell>{formatINR(r.taxable)}</TableCell>
+                    <TableCell>{formatINR(r.cgst)}</TableCell>
+                    <TableCell>{formatINR(r.sgst)}</TableCell>
+                    <TableCell className="font-medium">{formatINR(r.total)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
