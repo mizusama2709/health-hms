@@ -10,6 +10,7 @@ import {
   createPrescription,
   dispensePrescription,
 } from "@/lib/pharmacy";
+import { createRxTemplate, getRxTemplateWithItems } from "@/lib/rxTemplates";
 import { recordPharmacyReturn } from "@/lib/hospitalSettings";
 import { db } from "@/lib/db";
 
@@ -131,4 +132,52 @@ export async function recordPharmacyReturnAction(formData: FormData) {
   });
 
   revalidatePath("/admin/pharmacy/store-credit");
+}
+
+export async function createRxTemplateAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const name = formData.get("name") as string;
+  const diseaseTag = formData.get("diseaseTag") as string;
+  const medicineIds = formData.getAll("medicineId") as string[];
+  const quantities = formData.getAll("quantity") as string[];
+  const dosages = formData.getAll("dosageInstructions") as string[];
+
+  const items = medicineIds.map((medicineId, i) => ({
+    medicineId,
+    quantity: Number(quantities[i]),
+    dosageInstructions: dosages[i] || undefined,
+  }));
+
+  await createRxTemplate({ tenantId, name, diseaseTag, items });
+
+  revalidatePath("/admin/pharmacy/rx-templates");
+}
+
+export async function loadRxTemplateAction(formData: FormData) {
+  const session = await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const templateId = formData.get("templateId") as string;
+  const patientEmail = formData.get("patientEmail") as string;
+
+  const template = await getRxTemplateWithItems(templateId, tenantId);
+  if (!template) throw new Error("Template not found");
+
+  const patient = await db.patient.findFirst({ where: { tenantId, user: { email: patientEmail } } });
+  if (!patient) throw new Error(`No patient found in this hospital with email ${patientEmail}`);
+
+  await createPrescription({
+    tenantId,
+    patientId: patient.id,
+    recordedById: session.user.id,
+    items: template.items.map((i) => ({
+      medicineId: i.medicineId,
+      quantity: i.quantity,
+      dosageInstructions: i.dosageInstructions ?? undefined,
+    })),
+  });
+
+  revalidatePath("/admin/pharmacy/dispense");
 }

@@ -155,6 +155,7 @@ model Tenant {
   suppliers           Supplier[]
   goodsReceipts       GoodsReceipt[]
   prescriptions       Prescription[]
+  rxTemplates         RxTemplate[]
   storeCredits        StoreCredit[]
   vitals              Vitals[]
   queueStageEntries   QueueStageEntry[]
@@ -703,6 +704,7 @@ model Medicine {
 
   goodsReceiptItems GoodsReceiptLineItem[]
   prescriptionItems PrescriptionItem[]
+  rxTemplateItems   RxTemplateItem[]
 
   @@index([tenantId])
   @@index([tenantId, stockQuantity])
@@ -747,4 +749,29 @@ model GoodsReceiptLineItem {
   unitCost         Decimal
 
   @@index([goodsReceiptId])
+}
+
+model RxTemplate {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String
+  diseaseTag String
+  createdAt  DateTime @default(now())
+
+  items RxTemplateItem[]
+
+  @@index([tenantId])
+}
+
+model RxTemplateItem {
+  id                 String     @id @default(cuid())
+  rxTemplateId       String
+  rxTemplate         RxTemplate @relation(fields: [rxTemplateId], references: [id])
+  medicineId         String
+  medicine           Medicine   @relation(fields: [medicineId], references: [id])
+  quantity           Int
+  dosageInstructions String?
+
+  @@index([rxTemplateId])
 }
