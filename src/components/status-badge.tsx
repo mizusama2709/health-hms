@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type StatusKind = "appointment" | "invoice" | "user" | "payment";
+type StatusKind = "appointment" | "invoice" | "user" | "payment" | "patient";
 
 const COLOR_MAP: Record<StatusKind, Record<string, string>> = {
   appointment: {
@@ -26,6 +26,13 @@ const COLOR_MAP: Record<StatusKind, Record<string, string>> = {
     REFUNDED: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
     PARTIALLY_REFUNDED: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
     FAILED: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+  },
+  patient: {
+    payment_pending: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    payment_collected: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+    appointment_booked: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    follow_up: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
+    new: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
   },
 };
 
