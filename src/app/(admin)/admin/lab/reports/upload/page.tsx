@@ -10,6 +10,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 export default async function UploadLabReportPage() {
   const tenantId = await requireTenantId();
   const orders = await listLabOrders(tenantId);
+  const approvedOrders = orders.filter((o) => o.approvedAt);
 
   return (
     <div className="flex flex-col gap-6">
@@ -20,13 +21,15 @@ export default async function UploadLabReportPage() {
           <CardTitle>Attach a report to an order</CardTitle>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No lab orders yet — create one first.</p>
+          {approvedOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No approved lab orders yet — an order must be marked Completed and approved on the Lab Orders page before its report can be attached.
+            </p>
           ) : (
             <form action={attachLabReportAction} className="flex flex-col gap-2">
               <Label htmlFor="labOrderId">Lab order</Label>
               <NativeSelect id="labOrderId" name="labOrderId" required>
-                {orders.map((o) => (
+                {approvedOrders.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.patient.user.name} — {o.items.map((i) => i.labTest.name).join(", ")} ({o.status})
                   </option>

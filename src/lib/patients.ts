@@ -1,4 +1,75 @@
 import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
+import type { Gender } from "@prisma/client";
+
+export function computeAge(dateOfBirth: Date | null): number | null {
+  if (!dateOfBirth) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dateOfBirth.getFullYear();
+  const hasHadBirthdayThisYear =
+    now.getMonth() > dateOfBirth.getMonth() ||
+    (now.getMonth() === dateOfBirth.getMonth() && now.getDate() >= dateOfBirth.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+export async function createPatient(params: {
+  tenantId: string;
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  dateOfBirth?: Date;
+  gender?: Gender;
+}) {
+  const existing = await db.user.findUnique({ where: { email: params.email } });
+  if (existing) throw new Error(`A user with email ${params.email} already exists`);
+
+  const passwordHash = await bcrypt.hash(params.password, 10);
+
+  return db.user.create({
+    data: {
+      email: params.email,
+      name: params.name,
+      phone: params.phone,
+      role: "PATIENT",
+      passwordHash,
+      tenantId: params.tenantId,
+      patient: {
+        create: {
+          tenantId: params.tenantId,
+          dateOfBirth: params.dateOfBirth,
+          gender: params.gender,
+        },
+      },
+    },
+    include: { patient: true },
+  });
+}
+
+export async function updatePatientProfile(
+  patientId: string,
+  tenantId: string,
+  params: { name?: string; phone?: string; dateOfBirth?: Date | null; gender?: Gender | null }
+) {
+  const patient = await db.patient.findFirst({ where: { id: patientId, tenantId } });
+  if (!patient) throw new Error("Patient not found");
+
+  await db.patient.update({
+    where: { id: patientId },
+    data: { dateOfBirth: params.dateOfBirth, gender: params.gender },
+  });
+
+  if (params.name !== undefined || params.phone !== undefined) {
+    await db.user.update({
+      where: { id: patient.userId },
+      data: {
+        ...(params.name !== undefined && { name: params.name }),
+        ...(params.phone !== undefined && { phone: params.phone }),
+      },
+    });
+  }
+}
 
 export type PatientStatus =
   | "payment_pending"

@@ -9,11 +9,13 @@ import {
   createLabTest,
   createLabOrder,
   updateLabOrderStatus,
+  approveLabOrder,
+  recordLabResult,
   attachLabReport,
   createLabReportTemplate,
 } from "@/lib/lab";
 import { sendLabReportViaWhatsApp } from "@/lib/whatsapp";
-import type { LabOrderStatus } from "@prisma/client";
+import type { LabOrderStatus, LabResultFlag } from "@prisma/client";
 
 const LAB_ROLES = ["LAB", "ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
 
@@ -60,6 +62,37 @@ export async function updateLabOrderStatusAction(formData: FormData) {
   const status = formData.get("status") as LabOrderStatus;
 
   await updateLabOrderStatus(tenantId, labOrderId, status, session?.user?.id);
+
+  revalidatePath("/admin/lab/orders");
+}
+
+export async function approveLabOrderAction(formData: FormData) {
+  const session = await requireRole(...LAB_ROLES);
+  const tenantId = await requireTenantId();
+
+  const labOrderId = formData.get("labOrderId") as string;
+
+  await approveLabOrder(tenantId, labOrderId, session.user.id);
+
+  revalidatePath("/admin/lab/orders");
+}
+
+export async function recordLabResultAction(formData: FormData) {
+  await requireRole(...LAB_ROLES);
+  const tenantId = await requireTenantId();
+
+  const labOrderItemId = formData.get("labOrderItemId") as string;
+  const resultValue = (formData.get("resultValue") as string) || undefined;
+  const resultUnit = (formData.get("resultUnit") as string) || undefined;
+  const referenceRange = (formData.get("referenceRange") as string) || undefined;
+  const flagRaw = formData.get("flag") as string;
+
+  await recordLabResult(tenantId, labOrderItemId, {
+    resultValue,
+    resultUnit,
+    referenceRange,
+    flag: (flagRaw || undefined) as LabResultFlag | undefined,
+  });
 
   revalidatePath("/admin/lab/orders");
 }

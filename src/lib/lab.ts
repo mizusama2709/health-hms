@@ -88,9 +88,21 @@ export async function recordLabResult(
   });
 }
 
+export async function approveLabOrder(tenantId: string, labOrderId: string, approvedById: string) {
+  const order = await db.labOrder.findFirst({ where: { id: labOrderId, tenantId } });
+  if (!order) throw new Error("Lab order not found");
+  if (order.status !== "COMPLETED") throw new Error("Results must be complete before an order can be approved");
+
+  return db.labOrder.update({
+    where: { id: labOrderId },
+    data: { approvedById, approvedAt: new Date() },
+  });
+}
+
 export async function attachLabReport(tenantId: string, labOrderId: string, params: { fileUrl: string; uploadedById: string }) {
   const order = await db.labOrder.findFirst({ where: { id: labOrderId, tenantId } });
   if (!order) throw new Error("Lab order not found");
+  if (!order.approvedAt) throw new Error("This lab order must be approved before its report can be sent");
 
   return db.labReport.create({
     data: { labOrderId, fileUrl: params.fileUrl, uploadedById: params.uploadedById },
