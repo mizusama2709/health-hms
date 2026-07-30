@@ -20,10 +20,13 @@ export async function scheduleReminder(params: {
   });
 }
 
-export async function listFollowUps(tenantId: string, filters?: { status?: string; dueBefore?: Date }) {
+export async function listFollowUps(
+  tenantId: string,
+  filters?: { status?: string; dueBefore?: Date; doctorId?: string }
+) {
   return db.followUp.findMany({
     where: {
-      appointment: { tenantId },
+      appointment: { tenantId, ...(filters?.doctorId && { doctorId: filters.doctorId }) },
       ...(filters?.status && { status: filters.status }),
       ...(filters?.dueBefore && { dueDate: { lte: filters.dueBefore } }),
     },
