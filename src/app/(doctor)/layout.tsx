@@ -6,7 +6,6 @@ const DOCTOR_NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/doctor" },
       { label: "Calendar", href: "/doctor/calendar" },
-      { label: "InZi Assistant", href: "/doctor/assistant" },
     ],
   },
 ];
