@@ -1,10 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
-import { getPatientWithHistory } from "@/lib/patients";
+import { getPatientWithHistory, computeAge } from "@/lib/patients";
+import { updatePatientProfileAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+
+function toDateInputValue(d: Date | null) {
+  if (!d) return "";
+  return new Date(d).toISOString().slice(0, 10);
+}
 
 export default async function PatientChartPage({ params }: { params: Promise<{ id: string }> }) {
   const tenantId = await requireTenantId();
@@ -12,6 +22,8 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
   const patient = await getPatientWithHistory(id, tenantId);
 
   if (!patient) notFound();
+
+  const age = computeAge(patient.dateOfBirth);
 
   return (
     <div className="flex flex-col gap-6">
@@ -22,8 +34,37 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
         <h1 className="mt-2 text-2xl font-semibold">{patient.user.name}</h1>
         <p className="text-sm text-muted-foreground">
           {patient.user.email} {patient.user.phone && `· ${patient.user.phone}`}
+          {age !== null && ` · ${age} yrs`}
+          {patient.gender && ` · ${patient.gender.charAt(0) + patient.gender.slice(1).toLowerCase()}`}
         </p>
       </div>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={updatePatientProfileAction} className="flex flex-col gap-2">
+            <input type="hidden" name="patientId" value={patient.id} />
+            <Label htmlFor="name">Full name</Label>
+            <Input id="name" name="name" defaultValue={patient.user.name} required />
+            <Label htmlFor="phone">Mobile number</Label>
+            <Input id="phone" name="phone" type="tel" defaultValue={patient.user.phone ?? ""} placeholder="+91…" />
+            <Label htmlFor="dateOfBirth">Date of birth</Label>
+            <Input id="dateOfBirth" name="dateOfBirth" type="date" defaultValue={toDateInputValue(patient.dateOfBirth)} />
+            <Label htmlFor="gender">Gender</Label>
+            <NativeSelect id="gender" name="gender" defaultValue={patient.gender ?? ""}>
+              <option value="">— not specified —</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="OTHER">Other</option>
+            </NativeSelect>
+            <Button type="submit" className="mt-2 self-start">
+              Save profile
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

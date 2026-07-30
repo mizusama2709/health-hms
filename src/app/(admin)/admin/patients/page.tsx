@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { listPatients, listDoctorsForFilter, type PatientStatus } from "@/lib/patients";
+import { createPatientAction } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -50,6 +52,36 @@ export default async function PatientsPage({
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Patients</h1>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Add patient</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={createPatientAction} className="flex flex-col gap-2">
+            <Label htmlFor="name">Full name</Label>
+            <Input id="name" name="name" required />
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" name="email" type="email" required />
+            <Label htmlFor="phone">Mobile number</Label>
+            <Input id="phone" name="phone" type="tel" placeholder="+91…" required />
+            <Label htmlFor="password">Temporary password</Label>
+            <Input id="password" name="password" type="password" required />
+            <Label htmlFor="dateOfBirth">Date of birth (optional)</Label>
+            <Input id="dateOfBirth" name="dateOfBirth" type="date" />
+            <Label htmlFor="gender">Gender (optional)</Label>
+            <NativeSelect id="gender" name="gender" defaultValue="">
+              <option value="">— not specified —</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="OTHER">Other</option>
+            </NativeSelect>
+            <Button type="submit" className="mt-2 self-start">
+              Add patient
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
