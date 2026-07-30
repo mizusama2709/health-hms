@@ -612,6 +612,7 @@ model WhatsAppMessage {
   relatedAppointmentId String?               @unique
   relatedAppointment   Appointment?          @relation(fields: [relatedAppointmentId], references: [id])
   relatedInvoiceId     String?
+  relatedLabReportId   String?
   errorMessage         String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt

@@ -12,6 +12,7 @@ import {
   attachLabReport,
   createLabReportTemplate,
 } from "@/lib/lab";
+import { sendLabReportViaWhatsApp } from "@/lib/whatsapp";
 import type { LabOrderStatus } from "@prisma/client";
 
 const LAB_ROLES = ["LAB", "ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
@@ -74,6 +75,19 @@ export async function attachLabReportAction(formData: FormData) {
 
   revalidatePath("/admin/lab/reports/upload");
   revalidatePath("/admin/lab/orders");
+}
+
+export async function sendLabReportWhatsAppAction(formData: FormData) {
+  await requireRole(...LAB_ROLES);
+  const tenantId = await requireTenantId();
+
+  const labReportId = formData.get("labReportId") as string;
+  const toPhone = formData.get("toPhone") as string;
+
+  await sendLabReportViaWhatsApp({ tenantId, labReportId, toPhone });
+
+  revalidatePath("/admin/lab/orders");
+  revalidatePath("/admin/lab/reports/upload");
 }
 
 export async function createLabReportTemplateAction(formData: FormData) {
