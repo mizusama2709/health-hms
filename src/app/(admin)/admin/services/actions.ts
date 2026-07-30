@@ -15,9 +15,10 @@ export async function createServiceAction(formData: FormData) {
   const name = formData.get("name") as string;
   const serviceType = formData.get("serviceType") as ServiceType;
   const defaultUnitPrice = Number(formData.get("defaultUnitPrice"));
+  const taxRatePercent = Number(formData.get("taxRatePercent") || 0);
   const description = (formData.get("description") as string) || undefined;
 
-  await createService({ tenantId, name, serviceType, defaultUnitPrice, description });
+  await createService({ tenantId, name, serviceType, defaultUnitPrice, taxRatePercent, description });
 
   revalidatePath("/admin/services");
 }

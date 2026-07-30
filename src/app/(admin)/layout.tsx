@@ -22,8 +22,9 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
       {
         label: "Billing",
         children: [
-          { label: "Bill Patient / Invoices", href: "/admin/billing" },
-          { label: "Ledger", href: "/admin/billing/ledger" },
+          { label: "Bill Patient", href: "/admin/billing" },
+          { label: "Invoices", href: "/admin/billing/invoices" },
+          { label: "Consolidated Ledger", href: "/admin/billing/ledger" },
         ],
       },
       {

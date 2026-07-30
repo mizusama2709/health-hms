@@ -290,6 +290,8 @@ model Invoice {
   source         AppointmentSource @default(MANUAL)
   subtotal       Decimal
   discountAmount Decimal           @default(0)
+  cgstAmount     Decimal           @default(0)
+  sgstAmount     Decimal           @default(0)
   totalAmount    Decimal
   amountPaid     Decimal           @default(0)
   status         InvoiceStatus     @default(UNPAID)
@@ -317,6 +319,7 @@ model InvoiceLineItem {
   quantity       Int         @default(1)
   unitPrice      Decimal
   discountAmount Decimal     @default(0)
+  taxRatePercent Decimal     @default(0)
   lineTotal      Decimal
   createdAt      DateTime    @default(now())
 
@@ -333,6 +336,7 @@ model Service {
   name             String
   serviceType      ServiceType
   defaultUnitPrice Decimal
+  taxRatePercent   Decimal     @default(0)
   description      String?
   isActive         Boolean     @default(true)
   createdAt        DateTime    @default(now())

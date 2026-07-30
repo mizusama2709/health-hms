@@ -28,7 +28,7 @@ export default async function DoctorHome() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Your schedule</h1>
-        <Link href="/doctor/calendar" className="text-sm font-medium text-primary hover:underline">
+        <Link href="/doctor/schedule/calendar" className="text-sm font-medium text-primary hover:underline">
           Calendar view
         </Link>
       </div>

@@ -17,6 +17,7 @@ export async function createService(params: {
   name: string;
   serviceType: ServiceType;
   defaultUnitPrice: number;
+  taxRatePercent?: number;
   description?: string;
 }) {
   return db.service.create({
@@ -25,6 +26,7 @@ export async function createService(params: {
       name: params.name,
       serviceType: params.serviceType,
       defaultUnitPrice: params.defaultUnitPrice,
+      taxRatePercent: params.taxRatePercent ?? 0,
       description: params.description,
     },
   });
@@ -33,7 +35,7 @@ export async function createService(params: {
 export async function updateService(
   tenantId: string,
   serviceId: string,
-  params: Partial<{ name: string; defaultUnitPrice: number; description: string; isActive: boolean }>
+  params: Partial<{ name: string; defaultUnitPrice: number; taxRatePercent: number; description: string; isActive: boolean }>
 ) {
   return db.service.updateMany({
     where: { id: serviceId, tenantId },
