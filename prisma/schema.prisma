@@ -643,6 +643,8 @@ model LabOrder {
   orderedById   String
   status        LabOrderStatus @default(ORDERED)
   orderedAt     DateTime       @default(now())
+  approvedById  String?
+  approvedAt    DateTime?
   updatedAt     DateTime       @updatedAt
 
   items   LabOrderItem[]

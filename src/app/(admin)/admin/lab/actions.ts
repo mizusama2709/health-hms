@@ -9,6 +9,7 @@ import {
   createLabTest,
   createLabOrder,
   updateLabOrderStatus,
+  approveLabOrder,
   attachLabReport,
   createLabReportTemplate,
 } from "@/lib/lab";
@@ -59,6 +60,17 @@ export async function updateLabOrderStatusAction(formData: FormData) {
   const status = formData.get("status") as LabOrderStatus;
 
   await updateLabOrderStatus(tenantId, labOrderId, status, session?.user?.id);
+
+  revalidatePath("/admin/lab/orders");
+}
+
+export async function approveLabOrderAction(formData: FormData) {
+  const session = await requireRole(...LAB_ROLES);
+  const tenantId = await requireTenantId();
+
+  const labOrderId = formData.get("labOrderId") as string;
+
+  await approveLabOrder(tenantId, labOrderId, session.user.id);
 
   revalidatePath("/admin/lab/orders");
 }
