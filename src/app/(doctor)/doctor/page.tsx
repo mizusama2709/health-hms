@@ -52,12 +52,6 @@ export default async function DoctorHome() {
                     <StatusBadge status={appt.status} type="appointment" />
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground">Type: {appt.type}</div>
-                  <Link
-                    href={`/doctor/${appt.id}/summary`}
-                    className="mt-1 inline-block text-sm font-medium text-primary hover:underline"
-                  >
-                    Co-Pilot summary →
-                  </Link>
                   {appt.status === "BOOKED" && (
                     <div className="mt-2 flex gap-2">
                       <form action={async () => { "use server"; await setAppointmentStatus(appt.id, "COMPLETED"); }}>
