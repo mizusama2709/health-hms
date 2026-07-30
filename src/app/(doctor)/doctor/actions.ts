@@ -6,6 +6,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { updateAppointmentStatus } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { createFollowUp } from "@/lib/followUps";
+import { createLabOrder } from "@/lib/lab";
 import { db } from "@/lib/db";
 import { AppointmentStatus, JourneyStep } from "@prisma/client";
 
@@ -39,6 +40,28 @@ export async function setAppointmentStatus(appointmentId: string, status: Appoin
     dueDate.setDate(dueDate.getDate() + 7);
     await createFollowUp({ appointmentId, dueDate });
   }
+
+  revalidatePath("/doctor");
+}
+
+export async function orderLabTests(formData: FormData) {
+  const session = await auth();
+  if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
+
+  const tenantId = await requireTenantId();
+  const appointmentId = formData.get("appointmentId") as string;
+  const patientId = formData.get("patientId") as string;
+  const testIds = formData.getAll("testIds") as string[];
+
+  if (testIds.length === 0) return;
+
+  await createLabOrder({
+    tenantId,
+    patientId,
+    appointmentId,
+    orderedById: session.user.id,
+    testIds,
+  });
 
   revalidatePath("/doctor");
 }
