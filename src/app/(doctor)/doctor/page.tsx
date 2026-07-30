@@ -2,7 +2,8 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listAppointmentsForDoctor } from "@/lib/appointments";
-import { setAppointmentStatus } from "./actions";
+import { listLabTests } from "@/lib/lab";
+import { setAppointmentStatus, orderLabTests } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
@@ -22,13 +23,16 @@ export default async function DoctorHome() {
     );
   }
 
-  const appointments = await listAppointmentsForDoctor(doctor.id, tenantId);
+  const [appointments, labTests] = await Promise.all([
+    listAppointmentsForDoctor(doctor.id, tenantId),
+    listLabTests(tenantId, { isActive: true }),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Your schedule</h1>
-        <Link href="/doctor/calendar" className="text-sm font-medium text-primary hover:underline">
+        <Link href="/doctor/schedule/calendar" className="text-sm font-medium text-primary hover:underline">
           Calendar view
         </Link>
       </div>
@@ -70,6 +74,26 @@ export default async function DoctorHome() {
                         </Button>
                       </form>
                     </div>
+                  )}
+                  {labTests.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm font-medium text-primary">Order lab tests</summary>
+                      <form action={orderLabTests} className="mt-2 flex flex-col gap-2 rounded-md border p-2">
+                        <input type="hidden" name="appointmentId" value={appt.id} />
+                        <input type="hidden" name="patientId" value={appt.patientId} />
+                        <div className="flex flex-col gap-1">
+                          {labTests.map((t) => (
+                            <label key={t.id} className="flex items-center gap-2 text-sm">
+                              <input type="checkbox" name="testIds" value={t.id} />
+                              {t.name}
+                            </label>
+                          ))}
+                        </div>
+                        <Button type="submit" size="sm" variant="outline" className="self-start">
+                          Order selected tests
+                        </Button>
+                      </form>
+                    </details>
                   )}
                 </li>
               ))}

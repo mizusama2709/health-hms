@@ -3,8 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
-import { createInvoice, recordPayment, issueRefund, voidInvoice } from "@/lib/billing";
-import { db } from "@/lib/db";
+import {
+  createInvoice,
+  recordPayment,
+  issueRefund,
+  voidInvoice,
+  markInvoicePaidInFull,
+  updateInvoiceLineItem,
+} from "@/lib/billing";
 import type { PaymentMode, ServiceType } from "@prisma/client";
 
 const BILLING_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "RECEPTIONIST"] as const;
@@ -13,23 +19,21 @@ export async function billPatient(formData: FormData) {
   await requireRole(...BILLING_ROLES);
   const tenantId = await requireTenantId();
 
-  const patientEmail = formData.get("patientEmail") as string;
+  const patientId = formData.get("patientId") as string;
   const serviceType = formData.get("serviceType") as ServiceType;
   const description = formData.get("description") as string;
   const unitPrice = Number(formData.get("unitPrice"));
   const quantity = Number(formData.get("quantity") || 1);
   const serviceId = (formData.get("serviceId") as string) || undefined;
-
-  const patient = await db.patient.findFirst({
-    where: { tenantId, user: { email: patientEmail } },
-  });
-  if (!patient) throw new Error(`No patient found in this hospital with email ${patientEmail}`);
+  const taxRatePercent = formData.get("taxRatePercent") ? Number(formData.get("taxRatePercent")) : undefined;
 
   await createInvoice({
     tenantId,
-    patientId: patient.id,
+    patientId,
     serviceType,
-    lineItems: [{ description, serviceType, quantity, unitPrice, serviceId }],
+    // If a catalog service is selected, its own GST rate applies — the manual
+    // tax field is only used for custom/one-off items with no catalog service.
+    lineItems: [{ description, serviceType, quantity, unitPrice, serviceId, taxRatePercent: serviceId ? undefined : taxRatePercent }],
   });
 
   revalidatePath("/admin/billing");
@@ -45,7 +49,14 @@ export async function recordInvoicePayment(formData: FormData) {
 
   await recordPayment({ tenantId, invoiceId, amount, mode });
 
-  revalidatePath("/admin/billing");
+  revalidatePath("/admin/billing/invoices");
+}
+
+export async function markInvoicePaidAction(invoiceId: string) {
+  await requireRole(...BILLING_ROLES);
+  const tenantId = await requireTenantId();
+  await markInvoicePaidInFull(tenantId, invoiceId);
+  revalidatePath("/admin/billing/invoices");
 }
 
 export async function refundInvoicePayment(formData: FormData) {
@@ -58,15 +69,27 @@ export async function refundInvoicePayment(formData: FormData) {
 
   await issueRefund({ tenantId, invoiceId, amount, reason });
 
-  revalidatePath("/admin/billing");
+  revalidatePath("/admin/billing/invoices");
 }
 
-export async function voidInvoiceAction(formData: FormData) {
+export async function voidInvoiceAction(invoiceId: string) {
+  await requireRole(...BILLING_ROLES);
+  const tenantId = await requireTenantId();
+
+  await voidInvoice(tenantId, invoiceId);
+
+  revalidatePath("/admin/billing/invoices");
+}
+
+export async function editInvoiceAction(formData: FormData) {
   await requireRole(...BILLING_ROLES);
   const tenantId = await requireTenantId();
 
   const invoiceId = formData.get("invoiceId") as string;
-  await voidInvoice(tenantId, invoiceId);
+  const description = formData.get("description") as string;
+  const unitPrice = Number(formData.get("unitPrice"));
 
-  revalidatePath("/admin/billing");
+  await updateInvoiceLineItem(tenantId, invoiceId, description, unitPrice);
+
+  revalidatePath("/admin/billing/invoices");
 }

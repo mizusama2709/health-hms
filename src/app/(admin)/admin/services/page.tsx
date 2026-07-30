@@ -33,6 +33,8 @@ export default async function ServicesPage() {
             </NativeSelect>
             <Label htmlFor="defaultUnitPrice">Default price</Label>
             <Input id="defaultUnitPrice" name="defaultUnitPrice" type="number" step="0.01" required />
+            <Label htmlFor="taxRatePercent">GST rate (%)</Label>
+            <Input id="taxRatePercent" name="taxRatePercent" type="number" step="0.01" defaultValue={0} placeholder="e.g. 18" />
             <Label htmlFor="description">Description (optional)</Label>
             <Input id="description" name="description" />
             <Button type="submit" className="mt-2">
@@ -56,6 +58,7 @@ export default async function ServicesPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Price</TableHead>
+                  <TableHead>GST</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -66,6 +69,7 @@ export default async function ServicesPage() {
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell>{s.serviceType}</TableCell>
                     <TableCell>{Number(s.defaultUnitPrice).toFixed(2)}</TableCell>
+                    <TableCell>{Number(s.taxRatePercent)}%</TableCell>
                     <TableCell>
                       <Badge variant={s.isActive ? "default" : "secondary"}>{s.isActive ? "Active" : "Inactive"}</Badge>
                     </TableCell>
