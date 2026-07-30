@@ -2,10 +2,14 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getAppointmentForCalendar } from "@/lib/appointments";
+import { StatusBadge } from "@/components/status-badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0..23
 const HOUR_HEIGHT = 64; // px per hour row
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+const VIEW_TABS = ["Day", "Week", "Month", "Year"] as const;
 
 function toDateParam(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -13,7 +17,7 @@ function toDateParam(d: Date) {
 
 function formatHourLabel(hour: number) {
   if (hour === 0) return "12 AM";
-  if (hour === 12) return "Noon";
+  if (hour === 12) return "12 PM";
   if (hour < 12) return `${hour} AM`;
   return `${hour - 12} PM`;
 }
@@ -64,7 +68,12 @@ export default async function DoctorCalendar({
 
   const today = new Date();
   const day = date ? new Date(date) : today;
+  const isToday = isSameDay(day, today);
 
+  const prev = new Date(day);
+  prev.setDate(prev.getDate() - 1);
+  const next = new Date(day);
+  next.setDate(next.getDate() + 1);
   const prevMonth = new Date(day.getFullYear(), day.getMonth() - 1, 1);
   const nextMonth = new Date(day.getFullYear(), day.getMonth() + 1, 1);
 
@@ -72,41 +81,70 @@ export default async function DoctorCalendar({
   const selected = appt ? appointments.find((a) => a.id === appt) : undefined;
   const weeks = buildMonthGrid(day);
 
+  const now = new Date();
+  const nowOffset = isToday ? ((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_HEIGHT : null;
+
   return (
-    <div className="-m-6 flex h-[calc(100vh-0px)] min-h-[720px] overflow-hidden bg-[#18161f] text-white">
+    <div className="-m-6 flex h-[calc(100vh-1px)] min-h-[720px] overflow-hidden bg-background">
       {/* Main day view */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-          <Link href="/doctor" className="text-sm font-medium text-white/60 hover:text-white">
+      <div className="flex flex-1 flex-col overflow-hidden border-r">
+        <div className="flex items-center justify-between border-b px-6 py-3">
+          <Link href="/doctor" className="text-sm font-medium text-muted-foreground hover:text-foreground">
             ← Back to schedule
           </Link>
-          <div className="flex items-center gap-1 rounded-full bg-white/10 p-1 text-sm">
-            <span className="rounded-full bg-white/20 px-3 py-1 font-medium">Day</span>
-            <span className="px-3 py-1 text-white/40">Week</span>
-            <span className="px-3 py-1 text-white/40">Month</span>
-            <span className="px-3 py-1 text-white/40">Year</span>
+          <div className="flex items-center gap-1 rounded-full bg-muted p-1 text-sm">
+            {VIEW_TABS.map((tab) =>
+              tab === "Day" ? (
+                <span key={tab} className="rounded-full bg-background px-3 py-1 font-medium shadow-sm">
+                  {tab}
+                </span>
+              ) : (
+                <span key={tab} className="px-3 py-1 text-muted-foreground/60">
+                  {tab}
+                </span>
+              )
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href={`/doctor/calendar?date=${toDateParam(prev)}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+              ‹
+            </Link>
+            <Link href={`/doctor/calendar?date=${toDateParam(today)}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              Today
+            </Link>
+            <Link href={`/doctor/calendar?date=${toDateParam(next)}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+              ›
+            </Link>
           </div>
         </div>
 
-        <div className="px-6 pt-6 pb-2">
-          <h1 className="text-4xl font-semibold">
-            {day.getDate()} {day.toLocaleDateString(undefined, { month: "long" })}{" "}
-            <span className="text-white/40">{day.getFullYear()}</span>
+        <div className="px-6 pt-5 pb-3">
+          <p className="text-sm font-medium text-muted-foreground">
+            {day.toLocaleDateString(undefined, { weekday: "long" })}
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {day.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+            <span className="ml-2 text-muted-foreground/50">{day.getFullYear()}</span>
           </h1>
-          <p className="mt-1 text-xl text-white/70">{day.toLocaleDateString(undefined, { weekday: "long" })}</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
-          <div className="border-t border-white/10 py-2 text-xs uppercase tracking-wide text-white/40">all-day</div>
+        <div className="flex-1 overflow-y-auto px-6 pb-10">
           <div className="relative">
             {HOURS.map((hour) => (
-              <div key={hour} className="relative flex border-t border-white/10" style={{ height: HOUR_HEIGHT }}>
-                <div className="w-16 shrink-0 -translate-y-2 pr-3 text-right text-xs text-white/40">
+              <div key={hour} className="relative flex" style={{ height: HOUR_HEIGHT }}>
+                <div className="w-14 shrink-0 -translate-y-2 pr-3 text-right text-[11px] text-muted-foreground/70">
                   {formatHourLabel(hour)}
                 </div>
-                <div className="flex-1" />
+                <div className="relative flex-1 border-t" />
               </div>
             ))}
+
+            {nowOffset !== null && (
+              <div className="pointer-events-none absolute left-14 right-0 flex items-center" style={{ top: nowOffset }}>
+                <div className="h-2 w-2 -translate-x-1 rounded-full bg-red-500" />
+                <div className="h-px flex-1 bg-red-500" />
+              </div>
+            )}
 
             {appointments.map((a) => {
               const apptDate = new Date(a.datetime);
@@ -117,13 +155,16 @@ export default async function DoctorCalendar({
                 <Link
                   key={a.id}
                   href={`/doctor/calendar?date=${toDateParam(day)}&appt=${a.id}`}
-                  className={`absolute left-16 right-2 flex flex-col justify-center rounded-md px-2 py-1 text-xs ${
-                    isSelected ? "bg-red-500/90" : "bg-blue-500/80 hover:bg-blue-500"
-                  }`}
-                  style={{ top, height: Math.max(HOUR_HEIGHT / 2, 28) }}
+                  className={cn(
+                    "absolute left-14 right-2 flex flex-col justify-center overflow-hidden rounded-lg border-l-4 px-3 py-1 text-xs shadow-sm transition-colors",
+                    isSelected
+                      ? "border-l-primary bg-primary text-primary-foreground"
+                      : "border-l-blue-500 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                  )}
+                  style={{ top, height: Math.max(HOUR_HEIGHT / 2, 30) }}
                 >
-                  <span className="font-medium">{a.patient.user.name}</span>
-                  <span className="text-white/80">
+                  <span className="truncate font-medium">{a.patient.user.name}</span>
+                  <span className={cn("truncate", isSelected ? "text-primary-foreground/80" : "text-blue-900/70")}>
                     {apptDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {a.type}
                   </span>
                 </Link>
@@ -134,51 +175,47 @@ export default async function DoctorCalendar({
       </div>
 
       {/* Right sidebar */}
-      <div className="flex w-[340px] shrink-0 flex-col border-l border-white/10 px-6 py-4">
-        <div className="mb-3 flex items-center justify-between">
+      <div className="flex w-[320px] shrink-0 flex-col bg-muted/30 px-5 py-4">
+        <div className="mb-3 flex items-center justify-between px-1">
           <Link
             href={`/doctor/calendar?date=${toDateParam(prevMonth)}`}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-white/10"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
           >
             ‹
           </Link>
-          <Link
-            href={`/doctor/calendar?date=${toDateParam(today)}`}
-            className="rounded-full bg-white/10 px-4 py-1 text-sm font-medium hover:bg-white/20"
-          >
-            Today
-          </Link>
+          <span className="text-sm font-semibold">{day.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
           <Link
             href={`/doctor/calendar?date=${toDateParam(nextMonth)}`}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-white/10"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
           >
             ›
           </Link>
         </div>
 
-        <div className="grid grid-cols-7 gap-y-2 text-center text-sm">
+        <div className="grid grid-cols-7 gap-y-1 text-center text-sm">
           {WEEKDAY_LABELS.map((w, i) => (
-            <div key={i} className="text-xs font-medium text-white/40">
+            <div key={i} className="pb-1 text-[11px] font-medium text-muted-foreground/60">
               {w}
             </div>
           ))}
           {weeks.map((week, wi) =>
             week.map((cell, di) => {
-              const isToday = isSameDay(cell.date, today);
+              const isTodayCell = isSameDay(cell.date, today);
               const isSelectedDay = isSameDay(cell.date, day);
               return (
                 <Link
                   key={`${wi}-${di}`}
                   href={`/doctor/calendar?date=${toDateParam(cell.date)}`}
-                  className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full ${
-                    isToday
+                  className={cn(
+                    "mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm",
+                    isTodayCell
                       ? "bg-red-500 font-semibold text-white"
                       : isSelectedDay
-                        ? "bg-white/20 font-semibold text-white"
+                        ? "border border-primary font-semibold text-foreground"
                         : cell.inMonth
-                          ? "text-white"
-                          : "text-white/30"
-                  }`}
+                          ? "text-foreground hover:bg-muted"
+                          : "text-muted-foreground/40"
+                  )}
                 >
                   {cell.date.getDate()}
                 </Link>
@@ -187,21 +224,20 @@ export default async function DoctorCalendar({
           )}
         </div>
 
-        <div className="mt-8 flex-1 border-t border-white/10 pt-6">
+        <div className="mt-6 flex-1 border-t pt-5">
           {selected ? (
-            <div className="flex flex-col gap-2">
-              <h2 className="text-lg font-semibold">{selected.patient.user.name}</h2>
-              <p className="text-sm text-white/60">
-                {new Date(selected.datetime).toLocaleString([], {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
+            <div className="flex flex-col gap-2 rounded-lg bg-background p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold">{selected.patient.user.name}</h2>
+                <StatusBadge status={selected.status} type="appointment" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {new Date(selected.datetime).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
               </p>
-              <p className="text-sm text-white/60">Type: {selected.type}</p>
-              <p className="text-sm text-white/60">Status: {selected.status}</p>
+              <p className="text-sm text-muted-foreground">Type: {selected.type}</p>
             </div>
           ) : (
-            <p className="text-center text-white/40">No Event Selected</p>
+            <p className="pt-8 text-center text-sm text-muted-foreground/60">No Event Selected</p>
           )}
         </div>
       </div>
