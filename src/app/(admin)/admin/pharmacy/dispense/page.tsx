@@ -1,6 +1,7 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listPrescriptions, listMedicines } from "@/lib/pharmacy";
-import { createPrescriptionAction, dispensePrescriptionAction } from "../actions";
+import { listRxTemplates } from "@/lib/rxTemplates";
+import { createPrescriptionAction, dispensePrescriptionAction, loadRxTemplateAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,14 +12,40 @@ import { Badge } from "@/components/ui/badge";
 
 export default async function DispensePage() {
   const tenantId = await requireTenantId();
-  const [prescriptions, medicines] = await Promise.all([
+  const [prescriptions, medicines, templates] = await Promise.all([
     listPrescriptions(tenantId),
     listMedicines(tenantId, { isActive: true }),
+    listRxTemplates(tenantId),
   ]);
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Dispense / Rx Queue</h1>
+
+      {templates.length > 0 && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle>Load from template</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form action={loadRxTemplateAction} className="flex flex-col gap-2">
+              <Label htmlFor="templateId">Template</Label>
+              <NativeSelect id="templateId" name="templateId" required>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.diseaseTag})
+                  </option>
+                ))}
+              </NativeSelect>
+              <Label htmlFor="loadPatientEmail">Patient email</Label>
+              <Input id="loadPatientEmail" name="patientEmail" type="email" required />
+              <Button type="submit" variant="outline" className="mt-2">
+                Load template &rarr; create prescription
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="max-w-xl">
         <CardHeader>
