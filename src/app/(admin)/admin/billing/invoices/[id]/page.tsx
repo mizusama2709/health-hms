@@ -49,7 +49,23 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               <span>{formatINR(Number(li.lineTotal))}</span>
             </div>
           ))}
-          <div className="mt-1 flex items-center justify-between border-t pt-2 font-medium">
+          <div className="mt-1 flex items-center justify-between border-t pt-2 text-muted-foreground">
+            <span>Subtotal</span>
+            <span>{formatINR(Number(invoice.subtotal))}</span>
+          </div>
+          {(Number(invoice.cgstAmount) > 0 || Number(invoice.sgstAmount) > 0) && (
+            <>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>CGST</span>
+                <span>{formatINR(Number(invoice.cgstAmount))}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>SGST</span>
+                <span>{formatINR(Number(invoice.sgstAmount))}</span>
+              </div>
+            </>
+          )}
+          <div className="flex items-center justify-between border-t pt-2 font-medium">
             <span>Total</span>
             <span>{formatINR(Number(invoice.totalAmount))}</span>
           </div>

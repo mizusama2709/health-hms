@@ -91,7 +91,7 @@ export default async function BillPatientPage({
                     <option value="">Custom / one-off item</option>
                     {services.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name} — {Number(s.defaultUnitPrice).toFixed(2)}
+                        {s.name} — {Number(s.defaultUnitPrice).toFixed(2)} ({Number(s.taxRatePercent)}% GST)
                       </option>
                     ))}
                   </NativeSelect>
@@ -108,7 +108,14 @@ export default async function BillPatientPage({
                   <Label htmlFor="quantity">Qty</Label>
                   <Input id="quantity" name="quantity" type="number" defaultValue={1} min={1} />
                 </div>
+                <div className="flex w-28 flex-col gap-2">
+                  <Label htmlFor="taxRatePercent">GST %</Label>
+                  <Input id="taxRatePercent" name="taxRatePercent" type="number" step="0.01" placeholder="0" />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                GST % is ignored when a catalog service is selected — that service&apos;s own rate applies.
+              </p>
               <Button type="submit" className="mt-2">
                 Create invoice
               </Button>

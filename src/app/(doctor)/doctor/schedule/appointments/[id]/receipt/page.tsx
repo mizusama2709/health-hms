@@ -67,6 +67,18 @@ export default async function AppointmentReceiptPage({ params }: { params: Promi
                     <span>{formatINR(Number(li.lineTotal))}</span>
                   </div>
                 ))}
+                {(Number(invoice.cgstAmount) > 0 || Number(invoice.sgstAmount) > 0) && (
+                  <>
+                    <div className="mt-1 flex items-center justify-between border-t pt-2 text-muted-foreground">
+                      <span>CGST</span>
+                      <span>{formatINR(Number(invoice.cgstAmount))}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>SGST</span>
+                      <span>{formatINR(Number(invoice.sgstAmount))}</span>
+                    </div>
+                  </>
+                )}
                 <div className="mt-1 flex items-center justify-between border-t pt-2 font-medium">
                   <span>Total</span>
                   <span>{formatINR(Number(invoice.totalAmount))}</span>

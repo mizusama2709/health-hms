@@ -11,12 +11,34 @@ export async function createInvoice(params: {
   appointmentId?: string;
   serviceType: ServiceType;
   source?: AppointmentSource;
-  lineItems: { description: string; serviceType: ServiceType; quantity: number; unitPrice: number; serviceId?: string }[];
+  lineItems: {
+    description: string;
+    serviceType: ServiceType;
+    quantity: number;
+    unitPrice: number;
+    serviceId?: string;
+    taxRatePercent?: number;
+  }[];
   discountAmount?: number;
 }) {
-  const subtotal = params.lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
+  const serviceIds = params.lineItems.map((li) => li.serviceId).filter((id): id is string => !!id);
+  const services = serviceIds.length
+    ? await db.service.findMany({ where: { id: { in: serviceIds }, tenantId: params.tenantId } })
+    : [];
+  const taxRateByServiceId = new Map(services.map((s) => [s.id, Number(s.taxRatePercent)]));
+
+  const lines = params.lineItems.map((li) => {
+    const taxRatePercent = li.taxRatePercent ?? (li.serviceId ? taxRateByServiceId.get(li.serviceId) ?? 0 : 0);
+    const lineTotal = li.quantity * li.unitPrice;
+    const gst = (lineTotal * taxRatePercent) / 100;
+    return { ...li, taxRatePercent, lineTotal, cgst: gst / 2, sgst: gst / 2 };
+  });
+
+  const subtotal = lines.reduce((sum, li) => sum + li.lineTotal, 0);
+  const cgstAmount = lines.reduce((sum, li) => sum + li.cgst, 0);
+  const sgstAmount = lines.reduce((sum, li) => sum + li.sgst, 0);
   const discountAmount = params.discountAmount ?? 0;
-  const totalAmount = subtotal - discountAmount;
+  const totalAmount = subtotal - discountAmount + cgstAmount + sgstAmount;
 
   return db.invoice.create({
     data: {
@@ -28,14 +50,17 @@ export async function createInvoice(params: {
       source: params.source ?? "MANUAL",
       subtotal,
       discountAmount,
+      cgstAmount,
+      sgstAmount,
       totalAmount,
       lineItems: {
-        create: params.lineItems.map((li) => ({
+        create: lines.map((li) => ({
           description: li.description,
           serviceType: li.serviceType,
           quantity: li.quantity,
           unitPrice: li.unitPrice,
-          lineTotal: li.quantity * li.unitPrice,
+          taxRatePercent: li.taxRatePercent,
+          lineTotal: li.lineTotal,
           serviceId: li.serviceId,
         })),
       },
@@ -168,9 +193,7 @@ export async function listInvoices(
 
 export type LedgerSource = "CONSULTATION" | "PHARMACY" | "LAB" | "MANUAL";
 
-// An invoice not linked to any appointment is treated as "Manual" billing —
-// GST is not modeled in this schema yet, so CGST/SGST are always 0 until tax
-// rates are captured somewhere (Service, Invoice, or tenant settings).
+// An invoice not linked to any appointment is treated as "Manual" billing.
 export async function getConsolidatedLedger(
   tenantId: string,
   filters: { from?: Date; to?: Date; source?: LedgerSource }
@@ -192,8 +215,8 @@ export async function getConsolidatedLedger(
     source: (inv.appointmentId ? inv.serviceType : "MANUAL") as LedgerSource,
     invoiceNumber: inv.invoiceNumber,
     taxable: Number(inv.subtotal),
-    cgst: 0,
-    sgst: 0,
+    cgst: Number(inv.cgstAmount),
+    sgst: Number(inv.sgstAmount),
     total: Number(inv.totalAmount),
   }));
 
@@ -281,11 +304,17 @@ export async function updateInvoiceLineItem(
   const firstLine = invoice.lineItems[0];
   if (!firstLine) throw new Error("Invoice has no line items to edit");
 
-  const quantity = firstLine.quantity;
-  const lineTotal = quantity * unitPrice;
-  const otherLinesTotal = invoice.lineItems.slice(1).reduce((sum, li) => sum + Number(li.lineTotal), 0);
-  const subtotal = lineTotal + otherLinesTotal;
-  const totalAmount = subtotal - Number(invoice.discountAmount);
+  const lineTotal = firstLine.quantity * unitPrice;
+  const otherLines = invoice.lineItems.slice(1);
+  const subtotal = lineTotal + otherLines.reduce((sum, li) => sum + Number(li.lineTotal), 0);
+
+  const gstFor = (amount: number, ratePercent: number) => (amount * ratePercent) / 100;
+  const totalGst =
+    gstFor(lineTotal, Number(firstLine.taxRatePercent)) +
+    otherLines.reduce((sum, li) => sum + gstFor(Number(li.lineTotal), Number(li.taxRatePercent)), 0);
+  const cgstAmount = totalGst / 2;
+  const sgstAmount = totalGst / 2;
+  const totalAmount = subtotal - Number(invoice.discountAmount) + cgstAmount + sgstAmount;
 
   await db.$transaction([
     db.invoiceLineItem.update({
@@ -294,7 +323,7 @@ export async function updateInvoiceLineItem(
     }),
     db.invoice.update({
       where: { id: invoiceId },
-      data: { subtotal, totalAmount },
+      data: { subtotal, cgstAmount, sgstAmount, totalAmount },
     }),
   ]);
 }

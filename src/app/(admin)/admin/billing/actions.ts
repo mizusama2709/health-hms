@@ -25,12 +25,15 @@ export async function billPatient(formData: FormData) {
   const unitPrice = Number(formData.get("unitPrice"));
   const quantity = Number(formData.get("quantity") || 1);
   const serviceId = (formData.get("serviceId") as string) || undefined;
+  const taxRatePercent = formData.get("taxRatePercent") ? Number(formData.get("taxRatePercent")) : undefined;
 
   await createInvoice({
     tenantId,
     patientId,
     serviceType,
-    lineItems: [{ description, serviceType, quantity, unitPrice, serviceId }],
+    // If a catalog service is selected, its own GST rate applies — the manual
+    // tax field is only used for custom/one-off items with no catalog service.
+    lineItems: [{ description, serviceType, quantity, unitPrice, serviceId, taxRatePercent: serviceId ? undefined : taxRatePercent }],
   });
 
   revalidatePath("/admin/billing");

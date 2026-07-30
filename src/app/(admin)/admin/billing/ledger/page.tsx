@@ -81,9 +81,6 @@ export default async function LedgerPage({
           <p className="text-xs text-muted-foreground">Total</p>
         </div>
       </div>
-      <p className="-mt-4 text-xs text-muted-foreground">
-        GST isn&apos;t modeled yet, so CGST/SGST show as ₹0 until tax rates are captured somewhere in the system.
-      </p>
 
       <div className="flex flex-wrap gap-2">
         {(["CONSULTATION", "PHARMACY", "LAB", "MANUAL"] as LedgerSource[]).map((s) => (
