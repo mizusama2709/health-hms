@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { requireTenantId } from "@/lib/tenant";
 import { listLabOrders, listLabTests } from "@/lib/lab";
-import { createLabOrderAction, updateLabOrderStatusAction, recordLabResultAction } from "../actions";
+import { createLabOrderAction, updateLabOrderStatusAction, approveLabOrderAction, recordLabResultAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +56,7 @@ export default async function LabOrdersPage() {
                   <TableHead>Tests</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Ordered</TableHead>
+                  <TableHead>Approval</TableHead>
                   <TableHead>Reports</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -70,6 +71,20 @@ export default async function LabOrdersPage() {
                         <Badge variant={o.status === "COMPLETED" ? "default" : "outline"}>{o.status}</Badge>
                       </TableCell>
                       <TableCell>{o.orderedAt.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {o.approvedAt ? (
+                          <Badge variant="default">Approved {o.approvedAt.toLocaleDateString()}</Badge>
+                        ) : o.status === "COMPLETED" ? (
+                          <form action={approveLabOrderAction}>
+                            <input type="hidden" name="labOrderId" value={o.id} />
+                            <Button type="submit" size="sm" variant="outline">
+                              Approve &amp; finalize
+                            </Button>
+                          </form>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>{o.reports.length}</TableCell>
                       <TableCell>
                         <form action={updateLabOrderStatusAction} className="flex items-center gap-1">
@@ -87,7 +102,7 @@ export default async function LabOrdersPage() {
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell colSpan={6} className="bg-muted/40">
+                      <TableCell colSpan={7} className="bg-muted/40">
                         <details>
                           <summary className="cursor-pointer text-sm font-medium text-primary">
                             Enter results ({o.items.length} test{o.items.length === 1 ? "" : "s"})
