@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
+import { createInvoice } from "@/lib/billing";
 import type { PrescriptionStatus } from "@prisma/client";
 
 export async function listMedicines(tenantId: string, filters?: { isActive?: boolean; lowStock?: boolean }) {
@@ -94,11 +95,19 @@ export async function listGoodsReceipts(tenantId: string) {
 }
 
 export async function listPrescriptions(tenantId: string, filters?: { status?: PrescriptionStatus }) {
-  return db.prescription.findMany({
+  const prescriptions = await db.prescription.findMany({
     where: { tenantId, ...(filters?.status && { status: filters.status }) },
     include: { patient: { include: { user: true } }, items: { include: { medicine: true } } },
     orderBy: { createdAt: "desc" },
   });
+
+  const invoiceIds = prescriptions.map((p) => p.invoiceId).filter((id): id is string => !!id);
+  const invoices = invoiceIds.length
+    ? await db.invoice.findMany({ where: { id: { in: invoiceIds }, tenantId } })
+    : [];
+  const invoiceById = new Map(invoices.map((inv) => [inv.id, inv]));
+
+  return prescriptions.map((p) => ({ ...p, invoice: p.invoiceId ? invoiceById.get(p.invoiceId) ?? null : null }));
 }
 
 export async function createPrescription(params: {
@@ -137,6 +146,32 @@ export async function createPrescription(params: {
   }
 
   return prescription;
+}
+
+export async function createPharmacyInvoiceForPrescription(tenantId: string, prescriptionId: string) {
+  const prescription = await db.prescription.findFirst({
+    where: { id: prescriptionId, tenantId },
+    include: { items: { include: { medicine: true } } },
+  });
+  if (!prescription) throw new Error("Prescription not found");
+  if (prescription.invoiceId) throw new Error("This prescription already has an invoice");
+
+  const invoice = await createInvoice({
+    tenantId,
+    patientId: prescription.patientId,
+    appointmentId: prescription.appointmentId ?? undefined,
+    serviceType: "PHARMACY",
+    lineItems: prescription.items.map((item) => ({
+      description: item.medicine.name,
+      serviceType: "PHARMACY",
+      quantity: item.quantity,
+      unitPrice: Number(item.medicine.unitPrice),
+    })),
+  });
+
+  await db.prescription.update({ where: { id: prescriptionId }, data: { invoiceId: invoice.id } });
+
+  return invoice;
 }
 
 export async function dispensePrescription(tenantId: string, prescriptionId: string, dispensedById?: string) {
