@@ -274,6 +274,129 @@ export async function getDoctorAppointmentStats(doctorId: string, tenantId: stri
   };
 }
 
+export async function getAppointmentForCalendarTenant(tenantId: string, day: Date, doctorId?: string) {
+  const start = new Date(day);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(day);
+  end.setHours(23, 59, 59, 999);
+
+  return db.appointment.findMany({
+    where: { tenantId, ...(doctorId && { doctorId }), datetime: { gte: start, lte: end } },
+    include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
+    orderBy: { datetime: "asc" },
+  });
+}
+
+export async function getAppointmentsForRangeTenant(tenantId: string, start: Date, end: Date, doctorId?: string) {
+  return db.appointment.findMany({
+    where: { tenantId, ...(doctorId && { doctorId }), datetime: { gte: start, lte: end } },
+    include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
+    orderBy: { datetime: "asc" },
+  });
+}
+
+export async function getTenantScheduleStats(tenantId: string, doctorId?: string) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const todaysAppointments = await db.appointment.findMany({
+    where: { tenantId, ...(doctorId && { doctorId }), datetime: { gte: todayStart, lte: todayEnd } },
+    select: { datetime: true, status: true },
+  });
+
+  return getScheduleStats(todaysAppointments);
+}
+
+export async function listAppointmentsForTenantDetailed(
+  tenantId: string,
+  filters?: { search?: string; date?: AppointmentDateFilter; payment?: AppointmentPaymentFilter; doctorId?: string }
+) {
+  const appointments = await db.appointment.findMany({
+    where: {
+      tenantId,
+      ...(filters?.doctorId && { doctorId: filters.doctorId }),
+      ...(filters?.date && { datetime: dateRangeFor(filters.date) }),
+      ...(filters?.search && {
+        patient: {
+          user: {
+            OR: [
+              { name: { contains: filters.search, mode: "insensitive" } },
+              { phone: { contains: filters.search, mode: "insensitive" } },
+            ],
+          },
+        },
+      }),
+    },
+    include: {
+      patient: { include: { user: true } },
+      doctor: { include: { user: true } },
+      invoices: { orderBy: { createdAt: "desc" }, take: 1, include: { payments: true } },
+    },
+    orderBy: { datetime: "desc" },
+  });
+
+  const withPaymentInfo = appointments.map((a) => {
+    const invoice = a.invoices[0] ?? null;
+    let paymentStatus: "PAID" | "PARTIALLY_PAID" | "UNPAID" | "NONE" = "NONE";
+    if (invoice) paymentStatus = invoice.status === "VOID" ? "NONE" : invoice.status;
+    return { ...a, invoice, paymentStatus };
+  });
+
+  if (!filters?.payment) return withPaymentInfo;
+
+  return withPaymentInfo.filter((a) => {
+    switch (filters.payment) {
+      case "PENDING_PAYMENT":
+        return a.paymentStatus === "UNPAID" || a.paymentStatus === "NONE";
+      case "PARTIAL":
+        return a.paymentStatus === "PARTIALLY_PAID";
+      case "CONFIRMED":
+        return a.status === "BOOKED";
+      case "COMPLETED":
+        return a.status === "COMPLETED";
+      case "CANCELLED":
+        return a.status === "CANCELLED" || a.status === "NO_SHOW";
+      default:
+        return true;
+    }
+  });
+}
+
+export async function getTenantAppointmentStats(tenantId: string, doctorId?: string) {
+  const appointments = await db.appointment.findMany({
+    where: { tenantId, ...(doctorId && { doctorId }) },
+    include: { invoices: { orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+
+  const total = appointments.length;
+  const confirmed = appointments.filter((a) => a.status === "BOOKED").length;
+  const completed = appointments.filter((a) => a.status === "COMPLETED").length;
+  const pendingPayment = appointments.filter((a) => {
+    if (a.status === "CANCELLED" || a.status === "NO_SHOW") return false;
+    const invoice = a.invoices[0];
+    return !invoice || invoice.status === "UNPAID" || invoice.status === "PARTIALLY_PAID";
+  }).length;
+
+  const revenueResult = await db.payment.aggregate({
+    where: {
+      tenantId,
+      status: "SUCCESS",
+      ...(doctorId && { invoice: { appointment: { doctorId } } }),
+    },
+    _sum: { amount: true },
+  });
+
+  return {
+    total,
+    confirmed,
+    completed,
+    pendingPayment,
+    revenue: Number(revenueResult._sum.amount ?? 0),
+  };
+}
+
 export async function listDoctorsForTenant(tenantId: string) {
   return db.doctor.findMany({
     where: { tenantId },

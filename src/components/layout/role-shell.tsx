@@ -22,7 +22,7 @@ function NavLinks({ sections }: { sections: NavSection[] }) {
       {sections.map((section, i) => (
         <div key={section.title ?? i} className="flex flex-col gap-1">
           {section.title && (
-            <div className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            <div className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-white/40 uppercase">
               {section.title}
             </div>
           )}
@@ -33,7 +33,7 @@ function NavLinks({ sections }: { sections: NavSection[] }) {
               <Link
                 key={item.href}
                 href={item.href!}
-                className="rounded-md px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+                className="rounded-md px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white"
               >
                 {item.label}
               </Link>
@@ -58,10 +58,10 @@ export function RoleShell({
 }) {
   return (
     <div className="flex min-h-screen w-full">
-      <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r bg-muted/30 p-4 md:flex">
+      <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#0d0e1a] p-4 md:flex">
         <div className="mb-4 px-2">
-          <div className="text-sm font-semibold">Health HMS</div>
-          <div className="text-xs text-muted-foreground">{roleLabel}</div>
+          <div className="text-sm font-semibold text-white">Health HMS</div>
+          <div className="text-xs text-white/50">{roleLabel}</div>
         </div>
         <NavLinks sections={navSections} />
       </aside>
@@ -75,11 +75,11 @@ export function RoleShell({
               >
                 <Menu className="size-4" />
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 overflow-y-auto p-4">
+              <SheetContent side="left" className="w-64 overflow-y-auto bg-[#0d0e1a] p-4">
                 <SheetHeader>
-                  <SheetTitle>{roleLabel}</SheetTitle>
+                  <SheetTitle className="text-white">{roleLabel}</SheetTitle>
                 </SheetHeader>
-                <Separator className="my-3" />
+                <Separator className="my-3 bg-white/10" />
                 <NavLinks sections={navSections} />
               </SheetContent>
             </Sheet>
