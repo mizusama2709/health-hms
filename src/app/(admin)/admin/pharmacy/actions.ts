@@ -8,11 +8,14 @@ import {
   createSupplier,
   createGoodsReceipt,
   createPrescription,
+  createPharmacyInvoiceForPrescription,
   dispensePrescription,
 } from "@/lib/pharmacy";
+import { recordPayment } from "@/lib/billing";
 import { createRxTemplate, getRxTemplateWithItems } from "@/lib/rxTemplates";
 import { recordPharmacyReturn } from "@/lib/hospitalSettings";
 import { db } from "@/lib/db";
+import type { PaymentMode } from "@prisma/client";
 
 const PHARMACY_ROLES = ["PHARMACIST", "ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
 
@@ -84,6 +87,30 @@ export async function createPrescriptionAction(formData: FormData) {
     recordedById: session.user.id,
     items: [{ medicineId, quantity, dosageInstructions }],
   });
+
+  revalidatePath("/admin/pharmacy/dispense");
+}
+
+export async function createPharmacyInvoiceAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const prescriptionId = formData.get("prescriptionId") as string;
+  await createPharmacyInvoiceForPrescription(tenantId, prescriptionId);
+
+  revalidatePath("/admin/pharmacy/dispense");
+}
+
+export async function recordPharmacyPaymentAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const invoiceId = formData.get("invoiceId") as string;
+  const amount = Number(formData.get("amount"));
+  const mode = formData.get("mode") as PaymentMode;
+  const reference = (formData.get("reference") as string) || undefined;
+
+  await recordPayment({ tenantId, invoiceId, amount, mode, reference });
 
   revalidatePath("/admin/pharmacy/dispense");
 }

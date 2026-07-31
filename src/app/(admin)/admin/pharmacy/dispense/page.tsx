@@ -1,7 +1,13 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listPrescriptions, listMedicines } from "@/lib/pharmacy";
 import { listRxTemplates } from "@/lib/rxTemplates";
-import { createPrescriptionAction, dispensePrescriptionAction, loadRxTemplateAction } from "../actions";
+import {
+  createPrescriptionAction,
+  dispensePrescriptionAction,
+  loadRxTemplateAction,
+  createPharmacyInvoiceAction,
+  recordPharmacyPaymentAction,
+} from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,6 +95,7 @@ export default async function DispensePage() {
                   <TableHead>Items</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Billing</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -103,6 +110,38 @@ export default async function DispensePage() {
                       <Badge variant={p.status === "DISPENSED" ? "default" : "outline"}>{p.status}</Badge>
                     </TableCell>
                     <TableCell>{p.createdAt.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {!p.invoice ? (
+                        <form action={createPharmacyInvoiceAction}>
+                          <input type="hidden" name="prescriptionId" value={p.id} />
+                          <Button type="submit" size="sm" variant="outline">
+                            Prepare &amp; bill
+                          </Button>
+                        </form>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            {Number(p.invoice.amountPaid).toFixed(2)} / {Number(p.invoice.totalAmount).toFixed(2)} —{" "}
+                            {p.invoice.status}
+                          </span>
+                          {p.invoice.status !== "PAID" && (
+                            <form action={recordPharmacyPaymentAction} className="flex items-center gap-1">
+                              <input type="hidden" name="invoiceId" value={p.invoice.id} />
+                              <Input name="amount" type="number" step="0.01" min={0} className="w-20" placeholder="Amount" />
+                              <NativeSelect name="mode" className="w-24">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CARD">Card</option>
+                                <option value="OTHER">Other</option>
+                              </NativeSelect>
+                              <Button type="submit" size="sm" variant="outline">
+                                Collect
+                              </Button>
+                            </form>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {p.status === "PENDING" && (
                         <form action={dispensePrescriptionAction}>
