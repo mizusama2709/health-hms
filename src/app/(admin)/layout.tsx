@@ -10,7 +10,11 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
       { label: "Inbox", href: "/admin/inbox" },
       {
         label: "Schedule",
-        children: [{ label: "Reminders", href: "/admin/schedule/reminders" }],
+        children: [
+          { label: "Calendar", href: "/admin/schedule/calendar" },
+          { label: "Appointments", href: "/admin/schedule/appointments" },
+          { label: "Reminders", href: "/admin/schedule/reminders" },
+        ],
       },
       { label: "Queue", href: "/admin/queue" },
     ],
