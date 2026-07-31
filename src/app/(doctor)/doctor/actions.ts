@@ -8,6 +8,7 @@ import { recordJourneyEvent } from "@/lib/journey";
 import { createFollowUp } from "@/lib/followUps";
 import { createLabOrder } from "@/lib/lab";
 import { createPrescription } from "@/lib/pharmacy";
+import { sendPrescriptionViaWhatsApp } from "@/lib/whatsapp";
 import { db } from "@/lib/db";
 import { AppointmentStatus, JourneyStep, DoseTime, DurationUnit } from "@prisma/client";
 
@@ -78,13 +79,15 @@ export async function prescribeMedicines(formData: FormData) {
 
   if (items.length === 0) return;
 
-  await createPrescription({
+  const prescription = await createPrescription({
     tenantId,
     patientId,
     appointmentId,
     recordedById: session.user.id,
     items,
   });
+
+  await sendPrescriptionViaWhatsApp({ tenantId, prescriptionId: prescription.id });
 
   revalidatePath("/doctor");
 }
