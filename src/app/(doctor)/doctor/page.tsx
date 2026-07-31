@@ -3,10 +3,22 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listAppointmentsForDoctor } from "@/lib/appointments";
 import { listLabTests } from "@/lib/lab";
-import { setAppointmentStatus, orderLabTests } from "./actions";
+import { listMedicines } from "@/lib/pharmacy";
+import { setAppointmentStatus, orderLabTests, prescribeMedicines } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
+
+const PRESCRIPTION_ROW_COUNT = 5;
+
+const DOSE_TIMES = [
+  { value: "MORNING", label: "Morning" },
+  { value: "AFTERNOON", label: "Afternoon" },
+  { value: "EVENING", label: "Evening" },
+  { value: "NIGHT", label: "Night" },
+] as const;
 
 export default async function DoctorHome() {
   const session = await auth();
@@ -23,9 +35,10 @@ export default async function DoctorHome() {
     );
   }
 
-  const [appointments, labTests] = await Promise.all([
+  const [appointments, labTests, medicines] = await Promise.all([
     listAppointmentsForDoctor(doctor.id, tenantId),
     listLabTests(tenantId, { isActive: true }),
+    listMedicines(tenantId, { isActive: true }),
   ]);
 
   return (
@@ -91,6 +104,64 @@ export default async function DoctorHome() {
                         </div>
                         <Button type="submit" size="sm" variant="outline" className="self-start">
                           Order selected tests
+                        </Button>
+                      </form>
+                    </details>
+                  )}
+                  {medicines.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm font-medium text-primary">Prescribe medicines</summary>
+                      <form action={prescribeMedicines} className="mt-2 flex flex-col gap-3 rounded-md border p-2">
+                        <input type="hidden" name="appointmentId" value={appt.id} />
+                        <input type="hidden" name="patientId" value={appt.patientId} />
+                        {Array.from({ length: PRESCRIPTION_ROW_COUNT }).map((_, i) => (
+                          <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-muted/30 p-2">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Medicine</span>
+                              <NativeSelect name={`medicineId_${i}`} defaultValue="" className="w-48">
+                                <option value="">— none —</option>
+                                {medicines.map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.name}
+                                  </option>
+                                ))}
+                              </NativeSelect>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Quantity</span>
+                              <Input name={`quantity_${i}`} type="number" min={1} className="w-20" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Dose times</span>
+                              <div className="flex gap-2">
+                                {DOSE_TIMES.map((dt) => (
+                                  <label key={dt.value} className="flex items-center gap-1 text-xs">
+                                    <input type="checkbox" name={`doseTimes_${i}`} value={dt.value} />
+                                    {dt.label}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Duration</span>
+                              <div className="flex gap-1">
+                                <Input name={`durationValue_${i}`} type="number" min={1} className="w-16" />
+                                <NativeSelect name={`durationUnit_${i}`} defaultValue="" className="w-28">
+                                  <option value="">—</option>
+                                  <option value="DAYS">Days</option>
+                                  <option value="WEEKS">Weeks</option>
+                                  <option value="MONTHS">Months</option>
+                                </NativeSelect>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Note (optional)</span>
+                              <Input name={`dosageInstructions_${i}`} className="w-36" placeholder="e.g. after food" />
+                            </div>
+                          </div>
+                        ))}
+                        <Button type="submit" size="sm" variant="outline" className="self-start">
+                          Send prescription
                         </Button>
                       </form>
                     </details>
