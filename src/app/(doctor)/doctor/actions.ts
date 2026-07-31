@@ -23,7 +23,7 @@ export async function setAppointmentStatus(appointmentId: string, status: Appoin
   if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
 
   const tenantId = await requireTenantId();
-  await updateAppointmentStatus(appointmentId, tenantId, status);
+  await updateAppointmentStatus(appointmentId, tenantId, status, status === "CANCELLED" ? "DOCTOR" : undefined);
 
   const journeyStep = STATUS_TO_JOURNEY_STEP[status];
   if (journeyStep) {
