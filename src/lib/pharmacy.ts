@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
 import { createInvoice } from "@/lib/billing";
-import type { PrescriptionStatus } from "@prisma/client";
+import type { PrescriptionStatus, DoseTime, DurationUnit } from "@prisma/client";
 
 export async function listMedicines(tenantId: string, filters?: { isActive?: boolean; lowStock?: boolean }) {
   const medicines = await db.medicine.findMany({
@@ -116,7 +116,14 @@ export async function createPrescription(params: {
   visitRecordId?: string;
   appointmentId?: string;
   recordedById?: string;
-  items: { medicineId: string; quantity: number; dosageInstructions?: string }[];
+  items: {
+    medicineId: string;
+    quantity: number;
+    doseTimes?: DoseTime[];
+    durationValue?: number;
+    durationUnit?: DurationUnit;
+    dosageInstructions?: string;
+  }[];
 }) {
   const prescription = await db.prescription.create({
     data: {
@@ -128,11 +135,14 @@ export async function createPrescription(params: {
         create: params.items.map((i) => ({
           medicineId: i.medicineId,
           quantity: i.quantity,
+          doseTimes: i.doseTimes ?? [],
+          durationValue: i.durationValue,
+          durationUnit: i.durationUnit,
           dosageInstructions: i.dosageInstructions,
         })),
       },
     },
-    include: { items: true },
+    include: { items: { include: { medicine: true } } },
   });
 
   if (params.appointmentId) {

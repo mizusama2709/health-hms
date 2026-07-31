@@ -100,6 +100,55 @@ export async function sendInvoiceViaWhatsApp(params: {
   });
 }
 
+function titleCase(value: string) {
+  return value.charAt(0) + value.slice(1).toLowerCase();
+}
+
+export async function sendPrescriptionViaWhatsApp(params: { tenantId: string; prescriptionId: string }) {
+  const prescription = await db.prescription.findFirst({
+    where: { id: params.prescriptionId, tenantId: params.tenantId },
+    include: { patient: { include: { user: true } }, items: { include: { medicine: true } } },
+  });
+  if (!prescription) throw new Error("Prescription not found");
+
+  const toPhone = prescription.patient.user.phone;
+  if (!toPhone) {
+    return db.whatsAppMessage.create({
+      data: {
+        tenantId: params.tenantId,
+        direction: "OUTBOUND",
+        status: "FAILED",
+        rawPayload: {},
+        relatedPrescriptionId: params.prescriptionId,
+        errorMessage: `Patient ${prescription.patient.user.name} has no phone on file`,
+      },
+    });
+  }
+
+  const lines = prescription.items.map((item) => {
+    const doseTimes = item.doseTimes.map(titleCase).join(", ") || "as needed";
+    const duration =
+      item.durationValue && item.durationUnit ? ` for ${item.durationValue} ${titleCase(item.durationUnit)}` : "";
+    const note = item.dosageInstructions ? ` (${item.dosageInstructions})` : "";
+    return `${item.medicine.name} x${item.quantity} — ${doseTimes}${duration}${note}`;
+  });
+  const body = `Dr. has prescribed the following for ${prescription.patient.user.name}:\n${lines.join("\n")}\n\nPlease show this message at the pharmacy to collect your medicines.`;
+
+  const result = await provider.sendMessage(toPhone, body);
+
+  return db.whatsAppMessage.create({
+    data: {
+      tenantId: params.tenantId,
+      direction: "OUTBOUND",
+      status: result.status === "SENT" ? "SENT" : result.status === "SIMULATED" ? "SIMULATED" : "FAILED",
+      toPhone,
+      rawPayload: { body },
+      relatedPrescriptionId: params.prescriptionId,
+      errorMessage: result.errorMessage,
+    },
+  });
+}
+
 export async function sendLabReportViaWhatsApp(params: {
   tenantId: string;
   labReportId: string;

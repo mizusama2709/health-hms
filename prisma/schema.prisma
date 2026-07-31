@@ -112,6 +112,19 @@ enum PrescriptionStatus {
   DISPENSED
 }
 
+enum DoseTime {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+}
+
+enum DurationUnit {
+  DAYS
+  WEEKS
+  MONTHS
+}
+
 enum VitalsSource {
   IN_CLINIC
   WHATSAPP
@@ -243,14 +256,14 @@ model Appointment {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  visitRecord     VisitRecord?
-  followUp        FollowUp?
-  invoices        Invoice[]
-  journeyEvents   PatientJourneyEvent[]
-  whatsAppMessage WhatsAppMessage?
-  labOrders       LabOrder[]
-  prescriptions   Prescription[]
-  vitals          Vitals[]
+  visitRecord       VisitRecord?
+  followUp          FollowUp?
+  invoices          Invoice[]
+  journeyEvents     PatientJourneyEvent[]
+  whatsAppMessage   WhatsAppMessage?
+  labOrders         LabOrder[]
+  prescriptions     Prescription[]
+  vitals            Vitals[]
   queueStageEntries QueueStageEntry[]
 
   @@index([tenantId, datetime])
@@ -484,8 +497,8 @@ model HospitalSettings {
   tenantId String @unique
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  registrationNumber String?
-  addressLine1       String?
+  registrationNumber  String?
+  addressLine1        String?
   addressLine2        String?
   city                String?
   state               String?
@@ -569,12 +582,15 @@ model Prescription {
 }
 
 model PrescriptionItem {
-  id                 String       @id @default(cuid())
+  id                 String        @id @default(cuid())
   prescriptionId     String
-  prescription       Prescription @relation(fields: [prescriptionId], references: [id])
+  prescription       Prescription  @relation(fields: [prescriptionId], references: [id])
   medicineId         String
-  medicine           Medicine     @relation(fields: [medicineId], references: [id])
+  medicine           Medicine      @relation(fields: [medicineId], references: [id])
   quantity           Int
+  doseTimes          DoseTime[]
+  durationValue      Int?
+  durationUnit       DurationUnit?
   dosageInstructions String?
 
   @@index([prescriptionId])
@@ -609,22 +625,23 @@ model KnowledgeBaseDocument {
 }
 
 model WhatsAppMessage {
-  id                   String                @id @default(cuid())
-  tenantId             String
-  tenant               Tenant                @relation(fields: [tenantId], references: [id])
-  direction            WhatsAppDirection
-  status               WhatsAppMessageStatus @default(RECEIVED)
-  fromPhone            String?
-  toPhone              String?
-  rawPayload           Json
-  parsedIntent         String?
-  relatedAppointmentId String?               @unique
-  relatedAppointment   Appointment?          @relation(fields: [relatedAppointmentId], references: [id])
-  relatedInvoiceId     String?
-  relatedLabReportId   String?
-  errorMessage         String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                    String                @id @default(cuid())
+  tenantId              String
+  tenant                Tenant                @relation(fields: [tenantId], references: [id])
+  direction             WhatsAppDirection
+  status                WhatsAppMessageStatus @default(RECEIVED)
+  fromPhone             String?
+  toPhone               String?
+  rawPayload            Json
+  parsedIntent          String?
+  relatedAppointmentId  String?               @unique
+  relatedAppointment    Appointment?          @relation(fields: [relatedAppointmentId], references: [id])
+  relatedInvoiceId      String?
+  relatedLabReportId    String?
+  relatedPrescriptionId String?
+  errorMessage          String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 
   @@index([tenantId, direction, status])
   @@index([tenantId, createdAt])
@@ -669,16 +686,16 @@ model LabOrder {
 }
 
 model LabOrderItem {
-  id             String          @id @default(cuid())
+  id             String         @id @default(cuid())
   labOrderId     String
-  labOrder       LabOrder        @relation(fields: [labOrderId], references: [id])
+  labOrder       LabOrder       @relation(fields: [labOrderId], references: [id])
   labTestId      String
-  labTest        LabTestCatalog  @relation(fields: [labTestId], references: [id])
+  labTest        LabTestCatalog @relation(fields: [labTestId], references: [id])
   resultValue    String?
   resultUnit     String?
   referenceRange String?
   flag           LabResultFlag?
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime       @default(now())
 
   @@index([labOrderId])
 }
