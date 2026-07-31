@@ -112,6 +112,19 @@ enum PrescriptionStatus {
   DISPENSED
 }
 
+enum DoseTime {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+}
+
+enum DurationUnit {
+  DAYS
+  WEEKS
+  MONTHS
+}
+
 enum VitalsSource {
   IN_CLINIC
   WHATSAPP
@@ -568,12 +581,15 @@ model Prescription {
 }
 
 model PrescriptionItem {
-  id                 String       @id @default(cuid())
+  id                 String        @id @default(cuid())
   prescriptionId     String
-  prescription       Prescription @relation(fields: [prescriptionId], references: [id])
+  prescription       Prescription  @relation(fields: [prescriptionId], references: [id])
   medicineId         String
-  medicine           Medicine     @relation(fields: [medicineId], references: [id])
+  medicine           Medicine      @relation(fields: [medicineId], references: [id])
   quantity           Int
+  doseTimes          DoseTime[]
+  durationValue      Int?
+  durationUnit       DurationUnit?
   dosageInstructions String?
 
   @@index([prescriptionId])
