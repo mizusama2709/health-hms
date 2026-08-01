@@ -18,6 +18,13 @@ function endOfToday() {
   return d;
 }
 
+function startOfMonth() {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export async function getOpdToday(tenantId: string) {
   const start = startOfToday();
   const end = endOfToday();
@@ -162,4 +169,69 @@ export async function getPharmacyStats(tenantId: string, days = 30) {
     skuCount: medicines.length,
     topMoving,
   };
+}
+
+export async function getDashboardSummary(tenantId: string) {
+  const todayStart = startOfToday();
+  const todayEnd = endOfToday();
+  const monthStart = startOfMonth();
+
+  const [
+    totalPatients,
+    appointmentsToday,
+    confirmedToday,
+    completedToday,
+    monthInvoices,
+    consultationsThisMonth,
+  ] = await Promise.all([
+    db.patient.count({ where: { tenantId } }),
+    db.appointment.count({ where: { tenantId, datetime: { gte: todayStart, lte: todayEnd } } }),
+    db.appointment.count({
+      where: { tenantId, datetime: { gte: todayStart, lte: todayEnd }, status: "BOOKED" },
+    }),
+    db.appointment.count({
+      where: { tenantId, datetime: { gte: todayStart, lte: todayEnd }, status: "COMPLETED" },
+    }),
+    db.invoice.findMany({
+      where: { tenantId, createdAt: { gte: monthStart } },
+      select: { totalAmount: true, amountPaid: true, status: true },
+    }),
+    db.appointment.count({
+      where: {
+        tenantId,
+        serviceType: "CONSULTATION",
+        status: "COMPLETED",
+        datetime: { gte: monthStart },
+      },
+    }),
+  ]);
+
+  const revenueThisMonth = monthInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid), 0);
+  const pendingThisMonth = monthInvoices
+    .filter((inv) => inv.status === "UNPAID" || inv.status === "PARTIALLY_PAID")
+    .reduce((sum, inv) => sum + (Number(inv.totalAmount) - Number(inv.amountPaid)), 0);
+
+  return {
+    totalPatients,
+    appointmentsToday: { completed: completedToday, total: appointmentsToday, confirmed: confirmedToday },
+    revenueThisMonth,
+    pendingThisMonth,
+    consultationsThisMonth,
+  };
+}
+
+export async function listUpcomingAppointments(tenantId: string, limit = 5) {
+  const now = new Date();
+
+  const [upcoming, totalUpcoming] = await Promise.all([
+    db.appointment.findMany({
+      where: { tenantId, status: "BOOKED", datetime: { gte: now } },
+      include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
+      orderBy: { datetime: "asc" },
+      take: limit,
+    }),
+    db.appointment.count({ where: { tenantId, status: "BOOKED", datetime: { gte: now } } }),
+  ]);
+
+  return { upcoming, totalUpcoming };
 }
