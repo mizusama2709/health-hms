@@ -63,6 +63,40 @@ export async function getMasterReport(
   };
 }
 
+export async function getCollectionByPaymentMode(
+  tenantId: string,
+  filters: { from?: Date; to?: Date }
+) {
+  const dateRange =
+    filters.from || filters.to ? { gte: filters.from, lte: filters.to } : undefined;
+
+  const grouped = await db.payment.groupBy({
+    by: ["mode"],
+    where: {
+      tenantId,
+      status: "SUCCESS",
+      ...(dateRange && { paidAt: dateRange }),
+    },
+    _sum: { amount: true },
+  });
+
+  const total = grouped.reduce((sum, g) => sum + Number(g._sum.amount ?? 0), 0);
+
+  return {
+    total,
+    byMode: grouped
+      .map((g) => {
+        const amount = Number(g._sum.amount ?? 0);
+        return {
+          mode: g.mode,
+          amount,
+          percent: total > 0 ? Math.round((amount / total) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.amount - a.amount),
+  };
+}
+
 export async function listTransactions(
   tenantId: string,
   filters?: { from?: Date; to?: Date; status?: string }

@@ -1,5 +1,5 @@
 import { requireTenantId } from "@/lib/tenant";
-import { getMasterReport, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
+import { getMasterReport, getCollectionByPaymentMode, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
 import { listDoctorsForTenant } from "@/lib/appointments";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,12 +32,19 @@ export default async function ReportsPage({
     doctorId: params.doctorId || undefined,
   };
 
-  const [master, transactions, selfEfficacy, doctors] = await Promise.all([
+  const [master, collection, transactions, selfEfficacy, doctors] = await Promise.all([
     getMasterReport(tenantId, filters),
+    getCollectionByPaymentMode(tenantId, filters),
     listTransactions(tenantId, { from: filters.from, to: filters.to }),
     getSelfEfficacyReport(tenantId, filters),
     listDoctorsForTenant(tenantId),
   ]);
+
+  const exportQuery = new URLSearchParams();
+  if (params.from) exportQuery.set("from", params.from);
+  if (params.to) exportQuery.set("to", params.to);
+  if (params.doctorId) exportQuery.set("doctorId", params.doctorId);
+  const exportQs = exportQuery.toString() ? `?${exportQuery.toString()}` : "";
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,7 +77,16 @@ export default async function ReportsPage({
           <TabsTrigger value="self-efficacy">Self-Efficacy</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="master" className="mt-4">
+        <TabsContent value="master" className="mt-4 flex flex-col gap-4">
+          <div className="flex justify-end">
+            <a
+              href={`/admin/reports/export/master${exportQs}`}
+              className="h-9 rounded-lg border px-4 text-sm font-medium leading-9 hover:bg-muted"
+            >
+              Export CSV
+            </a>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
             {Object.entries(master).map(([key, value]) => (
               <Card key={key}>
@@ -81,9 +97,44 @@ export default async function ReportsPage({
               </Card>
             ))}
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Collection by payment mode</CardTitle>
+              <p className="text-xs text-muted-foreground">Total ₹{collection.total.toLocaleString("en-IN")}</p>
+            </CardHeader>
+            <CardContent>
+              {collection.byMode.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No successful payments in this range.</p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                  {collection.byMode.map((m) => (
+                    <div key={m.mode} className="rounded-lg border p-3">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{m.mode}</span>
+                        <span>{m.percent}%</span>
+                      </div>
+                      <div className="mt-1 text-lg font-semibold">₹{m.amount.toLocaleString("en-IN")}</div>
+                      <div className="mt-2 h-1.5 rounded-full bg-muted">
+                        <div className="h-1.5 rounded-full bg-primary" style={{ width: `${m.percent}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="transactions" className="mt-4">
+          <div className="mb-4 flex justify-end">
+            <a
+              href={`/admin/reports/export/transactions${exportQs}`}
+              className="h-9 rounded-lg border px-4 text-sm font-medium leading-9 hover:bg-muted"
+            >
+              Export CSV
+            </a>
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>Transactions</CardTitle>
@@ -122,6 +173,14 @@ export default async function ReportsPage({
         </TabsContent>
 
         <TabsContent value="self-efficacy" className="mt-4">
+          <div className="mb-4 flex justify-end">
+            <a
+              href={`/admin/reports/export/self-efficacy${exportQs}`}
+              className="h-9 rounded-lg border px-4 text-sm font-medium leading-9 hover:bg-muted"
+            >
+              Export CSV
+            </a>
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>Self-Efficacy (Patient Journey)</CardTitle>
