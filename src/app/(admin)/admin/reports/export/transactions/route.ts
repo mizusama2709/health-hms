@@ -15,12 +15,18 @@ export async function GET(req: NextRequest) {
   const rows = transactions.map((t) => [
     t.paidAt.toISOString(),
     Number(t.amount).toFixed(2),
+    Number(t.invoice.subtotal).toFixed(2),
+    (Number(t.invoice.cgstAmount) + Number(t.invoice.sgstAmount)).toFixed(2),
+    Number(t.invoice.discountAmount).toFixed(2),
     t.mode,
     t.status,
     t.invoice.invoiceNumber,
     t.invoice.patient.user.name,
   ]);
 
-  const csv = toCsv(["Date", "Amount", "Mode", "Status", "Invoice", "Patient"], rows);
+  const csv = toCsv(
+    ["Date", "Amount", "Taxable", "GST", "Discount", "Mode", "Status", "Invoice", "Patient"],
+    rows
+  );
   return csvResponse("transactions.csv", csv);
 }

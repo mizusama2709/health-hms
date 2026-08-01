@@ -8,6 +8,10 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
+export const metadata = {
+  title: "Reports",
+};
+
 const MASTER_REPORT_LABELS: Record<string, string> = {
   totalAppointments: "Total appointments",
   consultations: "Consultations",
@@ -148,6 +152,9 @@ export default async function ReportsPage({
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Amount</TableHead>
+                      <TableHead>Taxable</TableHead>
+                      <TableHead>GST</TableHead>
+                      <TableHead>Discount</TableHead>
                       <TableHead>Mode</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Invoice</TableHead>
@@ -159,6 +166,11 @@ export default async function ReportsPage({
                       <TableRow key={t.id}>
                         <TableCell>{t.paidAt.toLocaleString()}</TableCell>
                         <TableCell>{Number(t.amount).toFixed(2)}</TableCell>
+                        <TableCell>{Number(t.invoice.subtotal).toFixed(2)}</TableCell>
+                        <TableCell>
+                          {(Number(t.invoice.cgstAmount) + Number(t.invoice.sgstAmount)).toFixed(2)}
+                        </TableCell>
+                        <TableCell>{Number(t.invoice.discountAmount).toFixed(2)}</TableCell>
                         <TableCell>{t.mode}</TableCell>
                         <TableCell>{t.status}</TableCell>
                         <TableCell className="font-medium">{t.invoice.invoiceNumber}</TableCell>

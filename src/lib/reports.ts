@@ -109,7 +109,13 @@ export async function listTransactions(
         ? { paidAt: { gte: filters?.from, lte: filters?.to } }
         : {}),
     },
-    include: { invoice: { include: { patient: { include: { user: true } } } } },
+    include: {
+      invoice: {
+        include: {
+          patient: { include: { user: true } },
+        },
+      },
+    },
     orderBy: { paidAt: "desc" },
   });
 }
@@ -165,4 +171,60 @@ export async function getSelfEfficacyReport(
   });
 
   return { appointmentsConsidered: appointments.length, transitions };
+}
+
+export async function getPatientEfficacyReport(tenantId: string, patientId: string) {
+  const appointments = await db.appointment.findMany({
+    where: { tenantId, patientId },
+    select: {
+      id: true,
+      datetime: true,
+      status: true,
+      journeyEvents: { orderBy: { occurredAt: "asc" } },
+    },
+    orderBy: { datetime: "desc" },
+  });
+
+  const transitionDurations = new Map<string, number[]>();
+
+  const perAppointment = appointments.map((appt) => {
+    const byStep = new Map<JourneyStep, Date>();
+    for (const event of appt.journeyEvents) {
+      if (!byStep.has(event.step)) byStep.set(event.step, event.occurredAt);
+    }
+
+    const stepTimes = STEP_TRANSITIONS.flatMap(([from, to]) => [from, to])
+      .filter((step, i, arr) => arr.indexOf(step) === i)
+      .map((step) => ({ step, occurredAt: byStep.get(step) ?? null }));
+
+    const transitions = STEP_TRANSITIONS.map(([from, to]) => {
+      const fromTime = byStep.get(from);
+      const toTime = byStep.get(to);
+      let minutes: number | null = null;
+      if (fromTime && toTime && toTime >= fromTime) {
+        minutes = (toTime.getTime() - fromTime.getTime()) / 60000;
+        const key = `${from}→${to}`;
+        transitionDurations.set(key, [...(transitionDurations.get(key) ?? []), minutes]);
+      }
+      return { from, to, minutes };
+    });
+
+    return {
+      appointmentId: appt.id,
+      datetime: appt.datetime,
+      status: appt.status,
+      stepTimes,
+      transitions,
+    };
+  });
+
+  const transitionAverages = STEP_TRANSITIONS.map(([from, to]) => {
+    const key = `${from}→${to}`;
+    const durations = transitionDurations.get(key) ?? [];
+    const avgMinutes =
+      durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
+    return { from, to, sampleSize: durations.length, avgMinutes };
+  });
+
+  return { appointmentsConsidered: appointments.length, transitionAverages, perAppointment };
 }
