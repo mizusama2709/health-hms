@@ -10,6 +10,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+export const metadata = {
+  title: "Calendar",
+};
+
 type View = "day" | "week" | "month";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);

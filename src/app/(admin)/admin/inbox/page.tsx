@@ -3,6 +3,10 @@ import { requireTenantId } from "@/lib/tenant";
 import { listConversations, getConversationThread } from "@/lib/whatsappInbox";
 import { cn } from "@/lib/utils";
 
+export const metadata = {
+  title: "Inbox",
+};
+
 function timeLabel(d: Date) {
   return new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }

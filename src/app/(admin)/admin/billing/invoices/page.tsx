@@ -8,6 +8,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+export const metadata = {
+  title: "Invoices",
+};
+
 const FILTERS: { value: InvoiceQuickFilter | ""; label: string }[] = [
   { value: "UNPAID", label: "Unpaid" },
   { value: "PARTIALLY_PAID", label: "Partial" },

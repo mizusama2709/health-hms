@@ -10,6 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
+export const metadata = {
+  title: "Record Vitals",
+};
+
 export default async function RecordVitalsPage({ params }: { params: Promise<{ appointmentId: string }> }) {
   const tenantId = await requireTenantId();
   const { appointmentId } = await params;

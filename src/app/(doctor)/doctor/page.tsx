@@ -11,6 +11,10 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
 
+export const metadata = {
+  title: "Doctor Dashboard",
+};
+
 const PRESCRIPTION_ROW_COUNT = 5;
 
 const DOSE_TIMES = [

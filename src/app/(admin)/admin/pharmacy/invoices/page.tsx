@@ -4,6 +4,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 
+export const metadata = {
+  title: "Pharmacy Invoices",
+};
+
 export default async function PharmacyInvoicesPage() {
   const tenantId = await requireTenantId();
   const invoices = await listInvoices(tenantId, { serviceType: "PHARMACY" });

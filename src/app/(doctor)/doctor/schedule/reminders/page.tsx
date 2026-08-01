@@ -5,6 +5,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+export const metadata = {
+  title: "Reminders",
+};
+
 export default async function DoctorRemindersPage() {
   const session = await auth();
   const userId = session!.user.id;

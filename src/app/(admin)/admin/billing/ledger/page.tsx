@@ -7,6 +7,10 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+export const metadata = {
+  title: "Consolidated Ledger",
+};
+
 function formatINR(value: number) {
   return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

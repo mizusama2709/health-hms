@@ -18,6 +18,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { StatusBadge } from "@/components/status-badge";
 import type { LeadStatus } from "@prisma/client";
 
+export const metadata = {
+  title: "Patients",
+};
+
 const STATUS_FILTERS: { value: PatientStatus | ""; label: string }[] = [
   { value: "", label: "All" },
   { value: "appointment_booked", label: "Appointment Booked" },

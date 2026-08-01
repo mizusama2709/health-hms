@@ -13,6 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+export const metadata = {
+  title: "Settings",
+};
+
 export default async function HospitalSettingsPage() {
   const tenantId = await requireTenantId();
   const settings = await getHospitalSettings(tenantId);

@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+export const metadata = {
+  title: "Edit Appointment",
+};
+
 function toDateTimeLocal(d: Date) {
   const dt = new Date(d);
   dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());

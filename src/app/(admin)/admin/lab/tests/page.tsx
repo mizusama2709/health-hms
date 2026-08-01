@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+export const metadata = {
+  title: "Lab Tests",
+};
+
 export default async function LabTestsPage() {
   const tenantId = await requireTenantId();
   const tests = await listLabTests(tenantId);

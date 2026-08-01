@@ -14,6 +14,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 
+export const metadata = {
+  title: "Appointments",
+};
+
 const DATE_FILTERS: { value: AppointmentDateFilter | ""; label: string }[] = [
   { value: "", label: "All dates" },
   { value: "today", label: "Today" },

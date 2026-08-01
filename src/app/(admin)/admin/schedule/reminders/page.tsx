@@ -8,6 +8,10 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+export const metadata = {
+  title: "Reminders",
+};
+
 export default async function RemindersPage() {
   const tenantId = await requireTenantId();
   const followUps = await listFollowUps(tenantId);

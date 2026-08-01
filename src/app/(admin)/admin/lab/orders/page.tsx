@@ -10,6 +10,10 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+export const metadata = {
+  title: "Lab Orders",
+};
+
 export default async function LabOrdersPage() {
   const tenantId = await requireTenantId();
   const [orders, tests] = await Promise.all([listLabOrders(tenantId), listLabTests(tenantId, { isActive: true })]);

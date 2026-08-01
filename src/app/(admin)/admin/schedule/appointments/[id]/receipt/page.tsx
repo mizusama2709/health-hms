@@ -6,6 +6,10 @@ import { PrintButton } from "@/components/print-button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 
+export const metadata = {
+  title: "Appointment Receipt",
+};
+
 function formatINR(value: number) {
   return `₹${value.toLocaleString("en-IN")}`;
 }

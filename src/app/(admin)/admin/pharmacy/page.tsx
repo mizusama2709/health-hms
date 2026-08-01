@@ -4,6 +4,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+export const metadata = {
+  title: "Pharmacy Dashboard",
+};
+
 export default async function PharmacyDashboardPage() {
   const tenantId = await requireTenantId();
   const [allMedicines, lowStock] = await Promise.all([

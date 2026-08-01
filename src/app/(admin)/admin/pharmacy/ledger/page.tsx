@@ -3,6 +3,10 @@ import { getConsolidatedLedger } from "@/lib/billing";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
+export const metadata = {
+  title: "Pharmacy Sales Ledger",
+};
+
 function formatINR(value: number) {
   return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
