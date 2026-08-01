@@ -6,6 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+
+export const metadata = {
+  title: "Goods Receipt",
+};
 
 export default async function GoodsReceiptPage() {
   const tenantId = await requireTenantId();
@@ -39,13 +44,16 @@ export default async function GoodsReceiptPage() {
                 ))}
               </NativeSelect>
               <Label htmlFor="medicineId">Medicine</Label>
-              <NativeSelect id="medicineId" name="medicineId" required>
-                {medicines.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} (current stock: {m.stockQuantity})
-                  </option>
-                ))}
-              </NativeSelect>
+              <SearchableSelect
+                id="medicineId"
+                name="medicineId"
+                required
+                placeholder="Search medicines by name…"
+                options={medicines.map((m) => ({
+                  value: m.id,
+                  label: `${m.name} (current stock: ${m.stockQuantity})`,
+                }))}
+              />
               <div className="flex gap-2">
                 <div className="flex flex-1 flex-col gap-2">
                   <Label htmlFor="quantityReceived">Quantity received</Label>

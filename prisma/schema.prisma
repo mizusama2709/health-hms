@@ -195,6 +195,8 @@ model Tenant {
   labOrders           LabOrder[]
   labReportTemplates  LabReportTemplate[]
   medicines           Medicine[]
+  medicineBatches     MedicineBatch[]
+  invoiceCounter      InvoiceCounter?
   suppliers           Supplier[]
   goodsReceipts       GoodsReceipt[]
   prescriptions       Prescription[]
@@ -338,6 +340,13 @@ model VisitRecord {
   updatedAt     DateTime    @updatedAt
 
   prescriptions Prescription[]
+}
+
+model InvoiceCounter {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  value    Int    @default(0)
 }
 
 model Invoice {
@@ -781,9 +790,31 @@ model Medicine {
   goodsReceiptItems GoodsReceiptLineItem[]
   prescriptionItems PrescriptionItem[]
   rxTemplateItems   RxTemplateItem[]
+  batches           MedicineBatch[]
 
   @@index([tenantId])
   @@index([tenantId, stockQuantity])
+}
+
+model MedicineBatch {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  medicineId     String
+  medicine       Medicine  @relation(fields: [medicineId], references: [id])
+  batchNo        String?
+  manufacturer   String?
+  genericName    String?
+  receivedDate   DateTime?
+  expiryDate     DateTime?
+  openingStock   Int       @default(0)
+  billedQty      Int       @default(0)
+  availableQty   Int       @default(0)
+  packSize       String?
+  createdAt      DateTime  @default(now())
+
+  @@index([tenantId, medicineId])
+  @@index([tenantId, expiryDate])
 }
 
 model Supplier {

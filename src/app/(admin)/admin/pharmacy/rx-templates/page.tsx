@@ -6,8 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/ui/native-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+
+export const metadata = {
+  title: "Rx Templates",
+};
 
 export default async function RxTemplatesPage() {
   const tenantId = await requireTenantId();
@@ -32,13 +36,13 @@ export default async function RxTemplatesPage() {
             <Input id="diseaseTag" name="diseaseTag" placeholder="e.g. Malaria" required />
             <p className="text-sm font-medium mt-2">Medicine (1st item)</p>
             <Label htmlFor="medicineId0">Medicine</Label>
-            <NativeSelect id="medicineId0" name="medicineId" required>
-              {medicines.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </NativeSelect>
+            <SearchableSelect
+              id="medicineId0"
+              name="medicineId"
+              required
+              placeholder="Search medicines by name…"
+              options={medicines.map((m) => ({ value: m.id, label: m.name }))}
+            />
             <div className="flex gap-2">
               <div className="flex flex-1 flex-col gap-2">
                 <Label htmlFor="quantity0">Quantity</Label>
@@ -51,14 +55,12 @@ export default async function RxTemplatesPage() {
             </div>
             <p className="text-sm font-medium mt-2">Medicine (2nd item — optional)</p>
             <Label htmlFor="medicineId1">Medicine</Label>
-            <NativeSelect id="medicineId1" name="medicineId">
-              <option value="">— none —</option>
-              {medicines.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </NativeSelect>
+            <SearchableSelect
+              id="medicineId1"
+              name="medicineId"
+              placeholder="Search medicines by name… (optional)"
+              options={medicines.map((m) => ({ value: m.id, label: m.name }))}
+            />
             <div className="flex gap-2">
               <div className="flex flex-1 flex-col gap-2">
                 <Label htmlFor="quantity1">Quantity</Label>

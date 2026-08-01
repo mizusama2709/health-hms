@@ -105,24 +105,37 @@ export async function getDoctorPerformance(tenantId: string, days = 30) {
 
 export async function getPharmacyStats(tenantId: string, days = 30) {
   const since = daysAgo(days);
+  const expiryHorizon = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-  const [pharmacyInvoices, medicines, goodsReceiptLines, dispensedItems] = await Promise.all([
-    db.invoice.findMany({
-      where: { tenantId, serviceType: "PHARMACY", createdAt: { gte: since } },
-      select: { totalAmount: true },
-    }),
-    db.medicine.findMany({ where: { tenantId }, select: { id: true, name: true, unitPrice: true, stockQuantity: true } }),
-    db.goodsReceiptLineItem.findMany({
-      where: { goodsReceipt: { tenantId } },
-      select: { medicineId: true, unitCost: true, quantityReceived: true },
-    }),
-    db.prescriptionItem.findMany({
-      where: {
-        prescription: { tenantId, status: "DISPENSED", updatedAt: { gte: since } },
-      },
-      select: { medicineId: true, quantity: true, medicine: { select: { name: true, unitPrice: true } } },
-    }),
-  ]);
+  const [pharmacyInvoices, medicines, goodsReceiptLines, dispensedItems, unpricedCount, expiringBatches] =
+    await Promise.all([
+      db.invoice.findMany({
+        where: { tenantId, serviceType: "PHARMACY", createdAt: { gte: since } },
+        select: { totalAmount: true },
+      }),
+      db.medicine.findMany({ where: { tenantId }, select: { id: true, name: true, unitPrice: true, stockQuantity: true } }),
+      db.goodsReceiptLineItem.findMany({
+        where: { goodsReceipt: { tenantId } },
+        select: { medicineId: true, unitCost: true, quantityReceived: true },
+      }),
+      db.prescriptionItem.findMany({
+        where: {
+          prescription: { tenantId, status: "DISPENSED", updatedAt: { gte: since } },
+        },
+        select: { medicineId: true, quantity: true, medicine: { select: { name: true, unitPrice: true } } },
+      }),
+      db.medicine.count({ where: { tenantId, unitPrice: 0 } }),
+      db.medicineBatch.findMany({
+        where: { tenantId, expiryDate: { lte: expiryHorizon }, availableQty: { gt: 0 } },
+        select: { availableQty: true, medicine: { select: { unitPrice: true } } },
+      }),
+    ]);
+
+  const expiringSoonCount = expiringBatches.reduce((sum, b) => sum + b.availableQty, 0);
+  const expiringSoonValueAtMrp = expiringBatches.reduce(
+    (sum, b) => sum + b.availableQty * Number(b.medicine.unitPrice),
+    0
+  );
 
   const revenue = pharmacyInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
 
@@ -168,6 +181,9 @@ export async function getPharmacyStats(tenantId: string, days = 30) {
     deadStockAtCost,
     skuCount: medicines.length,
     topMoving,
+    unpricedCount,
+    expiringSoonCount,
+    expiringSoonValueAtMrp,
   };
 }
 

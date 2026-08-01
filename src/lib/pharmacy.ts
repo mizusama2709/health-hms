@@ -15,6 +15,83 @@ export async function listMedicines(tenantId: string, filters?: { isActive?: boo
   return medicines;
 }
 
+export async function listMedicinesPaged(
+  tenantId: string,
+  filters: { search?: string; unpriced?: boolean; page?: number; pageSize?: number } = {}
+) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = filters.pageSize ?? 50;
+
+  const where = {
+    tenantId,
+    ...(filters.search && { name: { contains: filters.search, mode: "insensitive" as const } }),
+    ...(filters.unpriced && { unitPrice: 0 }),
+  };
+
+  const [total, medicines] = await Promise.all([
+    db.medicine.count({ where }),
+    db.medicine.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { medicines, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+}
+
+export async function updateMedicinePrice(tenantId: string, medicineId: string, unitPrice: number) {
+  return db.medicine.updateMany({ where: { id: medicineId, tenantId }, data: { unitPrice } });
+}
+
+export type BatchExpiryFilter = "all" | "expired" | "30d" | "90d";
+
+export async function listMedicineBatches(
+  tenantId: string,
+  filters: { search?: string; expiry?: BatchExpiryFilter; page?: number; pageSize?: number } = {}
+) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = filters.pageSize ?? 50;
+  const now = new Date();
+
+  const expiryWhere =
+    filters.expiry === "expired"
+      ? { lte: now }
+      : filters.expiry === "30d"
+      ? { lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) }
+      : filters.expiry === "90d"
+      ? { lte: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000) }
+      : undefined;
+
+  const where = {
+    tenantId,
+    availableQty: { gt: 0 },
+    ...(expiryWhere && { expiryDate: expiryWhere }),
+    ...(filters.search && { medicine: { name: { contains: filters.search, mode: "insensitive" as const } } }),
+  };
+
+  const [total, rawBatches] = await Promise.all([
+    db.medicineBatch.count({ where }),
+    db.medicineBatch.findMany({
+      where,
+      orderBy: { expiryDate: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: { medicine: { select: { name: true, unitPrice: true } } },
+    }),
+  ]);
+
+  const batches = rawBatches.map((b) => ({
+    ...b,
+    daysUntilExpiry: b.expiryDate
+      ? Math.floor((b.expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+      : null,
+  }));
+
+  return { batches, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+}
+
 export async function createMedicine(params: {
   tenantId: string;
   name: string;
@@ -191,13 +268,31 @@ export async function dispensePrescription(tenantId: string, prescriptionId: str
       include: { items: true },
     });
 
-    await tx.prescription.update({ where: { id: prescriptionId }, data: { status: "DISPENSED" } });
+    // Conditional claim: the WHERE clause only matches while still PENDING,
+    // so two concurrent dispense calls for the same prescription can't both
+    // pass — Postgres serializes the UPDATE and the loser's count is 0.
+    const claimed = await tx.prescription.updateMany({
+      where: { id: prescriptionId, tenantId, status: { not: "DISPENSED" } },
+      data: { status: "DISPENSED" },
+    });
+    if (claimed.count === 0) {
+      throw new Error("This prescription has already been dispensed");
+    }
 
     for (const item of prescription.items) {
-      await tx.medicine.updateMany({
-        where: { id: item.medicineId, tenantId },
+      // Conditional decrement: the WHERE clause only matches if enough stock
+      // remains, so concurrent dispenses of the same medicine can't both
+      // succeed and drive stock negative — the loser's count is 0.
+      const result = await tx.medicine.updateMany({
+        where: { id: item.medicineId, tenantId, stockQuantity: { gte: item.quantity } },
         data: { stockQuantity: { decrement: item.quantity } },
       });
+      if (result.count === 0) {
+        const medicine = await tx.medicine.findFirst({ where: { id: item.medicineId, tenantId } });
+        throw new Error(
+          `Insufficient stock for ${medicine?.name ?? item.medicineId}: requested ${item.quantity}, available ${medicine?.stockQuantity ?? 0}`
+        );
+      }
     }
 
     if (prescription.appointmentId) {

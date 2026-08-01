@@ -10,6 +10,7 @@ import {
   createPrescription,
   createPharmacyInvoiceForPrescription,
   dispensePrescription,
+  updateMedicinePrice,
 } from "@/lib/pharmacy";
 import { recordPayment } from "@/lib/billing";
 import { createRxTemplate, getRxTemplateWithItems } from "@/lib/rxTemplates";
@@ -30,6 +31,18 @@ export async function createMedicineAction(formData: FormData) {
   const reorderLevel = formData.get("reorderLevel") ? Number(formData.get("reorderLevel")) : undefined;
 
   await createMedicine({ tenantId, name, sku, unitPrice, stockQuantity, reorderLevel });
+
+  revalidatePath("/admin/pharmacy/medicines");
+}
+
+export async function updateMedicinePriceAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const medicineId = formData.get("medicineId") as string;
+  const unitPrice = Number(formData.get("unitPrice"));
+
+  await updateMedicinePrice(tenantId, medicineId, unitPrice);
 
   revalidatePath("/admin/pharmacy/medicines");
 }
@@ -171,11 +184,13 @@ export async function createRxTemplateAction(formData: FormData) {
   const quantities = formData.getAll("quantity") as string[];
   const dosages = formData.getAll("dosageInstructions") as string[];
 
-  const items = medicineIds.map((medicineId, i) => ({
-    medicineId,
-    quantity: Number(quantities[i]),
-    dosageInstructions: dosages[i] || undefined,
-  }));
+  const items = medicineIds
+    .map((medicineId, i) => ({
+      medicineId,
+      quantity: Number(quantities[i]),
+      dosageInstructions: dosages[i] || undefined,
+    }))
+    .filter((item) => item.medicineId);
 
   await createRxTemplate({ tenantId, name, diseaseTag, items });
 

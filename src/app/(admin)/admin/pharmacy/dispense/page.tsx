@@ -13,8 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+
+export const metadata = {
+  title: "Dispense / Rx Queue",
+};
 
 export default async function DispensePage() {
   const tenantId = await requireTenantId();
@@ -62,13 +67,16 @@ export default async function DispensePage() {
             <Label htmlFor="patientEmail">Patient email</Label>
             <Input id="patientEmail" name="patientEmail" type="email" required />
             <Label htmlFor="medicineId">Medicine</Label>
-            <NativeSelect id="medicineId" name="medicineId" required>
-              {medicines.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} (stock: {m.stockQuantity})
-                </option>
-              ))}
-            </NativeSelect>
+            <SearchableSelect
+              id="medicineId"
+              name="medicineId"
+              required
+              placeholder="Search medicines by name…"
+              options={medicines.map((m) => ({
+                value: m.id,
+                label: `${m.name} (stock: ${m.stockQuantity})${Number(m.unitPrice) === 0 ? " — ⚠ no price set" : ""}`,
+              }))}
+            />
             <Label htmlFor="quantity">Quantity</Label>
             <Input id="quantity" name="quantity" type="number" min={1} required />
             <Label htmlFor="dosageInstructions">Dosage instructions (optional)</Label>
