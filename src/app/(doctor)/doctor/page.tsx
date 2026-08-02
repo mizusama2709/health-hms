@@ -2,29 +2,27 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listAppointmentsForDoctor } from "@/lib/appointments";
-import { listLabTests, listLatestCompletedLabOrdersForPatients } from "@/lib/lab";
-import { listMedicines } from "@/lib/pharmacy";
-import { setAppointmentStatus, completeVisitAction, orderLabTests, prescribeMedicines } from "./actions";
+import { listLabTests, listLatestCompletedLabOrdersForPatients, listAppointmentIdsWithUnlinkedLabOrders } from "@/lib/lab";
+import { countMedicines } from "@/lib/pharmacy";
+import {
+  setAppointmentStatus,
+  completeVisitActionResult,
+  orderLabTestsActionResult,
+  prescribeMedicinesActionResult,
+  searchMedicinesAction,
+} from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
+import { ActionForm } from "@/components/action-form";
+import { PrescriptionRows } from "@/components/prescription-rows";
 
 export const metadata = {
   title: "Doctor Dashboard",
 };
-
-const PRESCRIPTION_ROW_COUNT = 5;
-
-const DOSE_TIMES = [
-  { value: "MORNING", label: "Morning" },
-  { value: "AFTERNOON", label: "Afternoon" },
-  { value: "EVENING", label: "Evening" },
-  { value: "NIGHT", label: "Night" },
-] as const;
 
 export default async function DoctorHome() {
   const session = await auth();
@@ -41,16 +39,16 @@ export default async function DoctorHome() {
     );
   }
 
-  const [appointments, labTests, medicines] = await Promise.all([
+  const [appointments, labTests, medicineCount] = await Promise.all([
     listAppointmentsForDoctor(doctor.id, tenantId),
     listLabTests(tenantId, { isActive: true }),
-    listMedicines(tenantId, { isActive: true }),
+    countMedicines(tenantId, { isActive: true }),
   ]);
 
-  const recentLabsByPatient = await listLatestCompletedLabOrdersForPatients(
-    tenantId,
-    [...new Set(appointments.map((a) => a.patientId))]
-  );
+  const [recentLabsByPatient, appointmentIdsWithPendingLabOrders] = await Promise.all([
+    listLatestCompletedLabOrdersForPatients(tenantId, [...new Set(appointments.map((a) => a.patientId))]),
+    listAppointmentIdsWithUnlinkedLabOrders(tenantId, appointments.map((a) => a.id)),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -72,6 +70,7 @@ export default async function DoctorHome() {
             <ul className="flex flex-col gap-3">
               {appointments.map((appt) => {
                 const recentLabs = recentLabsByPatient.get(appt.patientId);
+                const testsOrderedThisVisit = appointmentIdsWithPendingLabOrders.has(appt.id);
                 return (
                 <li key={appt.id} className="rounded-lg border p-3">
                   <div className="flex items-center justify-between">
@@ -92,7 +91,7 @@ export default async function DoctorHome() {
                     <div className="mt-2 flex flex-col gap-2">
                       <details>
                         <summary className="cursor-pointer text-sm font-medium text-primary">Complete visit</summary>
-                        <form action={completeVisitAction} className="mt-2 flex flex-col gap-2 rounded-md border p-2">
+                        <ActionForm action={completeVisitActionResult} className="mt-2 flex flex-col gap-2 rounded-md border p-2">
                           <input type="hidden" name="appointmentId" value={appt.id} />
                           <Label htmlFor={`notes-${appt.id}`}>Visit notes</Label>
                           <Textarea id={`notes-${appt.id}`} name="notes" required placeholder="What happened during the visit" />
@@ -101,8 +100,19 @@ export default async function DoctorHome() {
                           <Label htmlFor={`treatmentPlan-${appt.id}`}>Treatment plan (optional)</Label>
                           <Textarea id={`treatmentPlan-${appt.id}`} name="treatmentPlan" placeholder="What the patient should do going forward" />
                           <label className="flex items-center gap-2 pt-1 text-sm font-normal">
-                            <input type="checkbox" name="followUpNeeded" value="true" className="size-4" />
+                            <input
+                              type="checkbox"
+                              name="followUpNeeded"
+                              value="true"
+                              defaultChecked={testsOrderedThisVisit}
+                              className="size-4"
+                            />
                             Schedule a follow-up call
+                            {testsOrderedThisVisit && (
+                              <span className="text-xs text-muted-foreground">
+                                (pre-checked — tests were ordered for this visit)
+                              </span>
+                            )}
                           </label>
                           <div className="flex flex-col gap-1">
                             <Label htmlFor={`followUpDueDate-${appt.id}`}>Follow-up due date</Label>
@@ -117,7 +127,7 @@ export default async function DoctorHome() {
                           <Button type="submit" size="sm" className="mt-1 self-start">
                             Complete visit
                           </Button>
-                        </form>
+                        </ActionForm>
                       </details>
                       <div className="flex gap-2">
                         <form action={async () => { "use server"; await setAppointmentStatus(appt.id, "NO_SHOW"); }}>
@@ -136,7 +146,7 @@ export default async function DoctorHome() {
                   {labTests.length > 0 && (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-sm font-medium text-primary">Order lab tests</summary>
-                      <form action={orderLabTests} className="mt-2 flex flex-col gap-2 rounded-md border p-2">
+                      <ActionForm action={orderLabTestsActionResult} className="mt-2 flex flex-col gap-2 rounded-md border p-2">
                         <input type="hidden" name="appointmentId" value={appt.id} />
                         <input type="hidden" name="patientId" value={appt.patientId} />
                         <div className="flex flex-col gap-1">
@@ -154,65 +164,20 @@ export default async function DoctorHome() {
                         <Button type="submit" size="sm" variant="outline" className="self-start">
                           Order selected tests
                         </Button>
-                      </form>
+                      </ActionForm>
                     </details>
                   )}
-                  {medicines.length > 0 && (
+                  {medicineCount > 0 && (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-sm font-medium text-primary">Prescribe medicines</summary>
-                      <form action={prescribeMedicines} className="mt-2 flex flex-col gap-3 rounded-md border p-2">
+                      <ActionForm action={prescribeMedicinesActionResult} className="mt-2 flex flex-col gap-3 rounded-md border p-2">
                         <input type="hidden" name="appointmentId" value={appt.id} />
                         <input type="hidden" name="patientId" value={appt.patientId} />
-                        {Array.from({ length: PRESCRIPTION_ROW_COUNT }).map((_, i) => (
-                          <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-muted/30 p-2">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Medicine</span>
-                              <NativeSelect name={`medicineId_${i}`} defaultValue="" className="w-48">
-                                <option value="">— none —</option>
-                                {medicines.map((m) => (
-                                  <option key={m.id} value={m.id}>
-                                    {m.name}
-                                  </option>
-                                ))}
-                              </NativeSelect>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Quantity</span>
-                              <Input name={`quantity_${i}`} type="number" min={1} className="w-20" />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Dose times</span>
-                              <div className="flex gap-2">
-                                {DOSE_TIMES.map((dt) => (
-                                  <label key={dt.value} className="flex items-center gap-1 text-xs">
-                                    <input type="checkbox" name={`doseTimes_${i}`} value={dt.value} />
-                                    {dt.label}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Duration</span>
-                              <div className="flex gap-1">
-                                <Input name={`durationValue_${i}`} type="number" min={1} className="w-16" />
-                                <NativeSelect name={`durationUnit_${i}`} defaultValue="" className="w-28">
-                                  <option value="">—</option>
-                                  <option value="DAYS">Days</option>
-                                  <option value="WEEKS">Weeks</option>
-                                  <option value="MONTHS">Months</option>
-                                </NativeSelect>
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">Note (optional)</span>
-                              <Input name={`dosageInstructions_${i}`} className="w-36" placeholder="e.g. after food" />
-                            </div>
-                          </div>
-                        ))}
+                        <PrescriptionRows search={searchMedicinesAction} />
                         <Button type="submit" size="sm" variant="outline" className="self-start">
                           Send prescription
                         </Button>
-                      </form>
+                      </ActionForm>
                     </details>
                   )}
                 </li>

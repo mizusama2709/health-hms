@@ -59,6 +59,27 @@ export async function listFollowUps(tenantId: string, filters?: { status?: Follo
   return followUps.map((f) => ({ ...f, isOverdue: f.status === "PENDING" && f.dueDate.getTime() < now.getTime() }));
 }
 
+export async function listFollowUpsDueToday(tenantId: string, limit = 5) {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
+  const [dueToday, totalDueToday] = await Promise.all([
+    db.followUp.findMany({
+      where: { tenantId, status: "PENDING", dueDate: { lte: endOfToday } },
+      include: { appointment: { include: { patient: { include: { user: true } } } } },
+      orderBy: { dueDate: "asc" },
+      take: limit,
+    }),
+    db.followUp.count({ where: { tenantId, status: "PENDING", dueDate: { lte: endOfToday } } }),
+  ]);
+
+  const now = new Date();
+  return {
+    dueToday: dueToday.map((f) => ({ ...f, isOverdue: f.dueDate.getTime() < now.getTime() })),
+    totalDueToday,
+  };
+}
+
 export async function logFollowUpCall(params: {
   tenantId: string;
   followUpId: string;

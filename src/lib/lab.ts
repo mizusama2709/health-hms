@@ -218,6 +218,34 @@ export async function listLatestCompletedLabOrdersForPatients(tenantId: string, 
   return byPatient;
 }
 
+// Latest WhatsApp send attempt per report, so staff can see at a glance
+// whether the automatic send at approval actually reached the patient
+// (SENT/SIMULATED) or failed (e.g. no phone on file) without digging into
+// WhatsApp message logs.
+export async function listLatestWhatsAppStatusForLabReports(tenantId: string, labReportIds: string[]) {
+  const messages = await db.whatsAppMessage.findMany({
+    where: { tenantId, relatedLabReportId: { in: labReportIds } },
+    orderBy: { createdAt: "desc" },
+    select: { relatedLabReportId: true, status: true, errorMessage: true, createdAt: true },
+  });
+
+  const byReportId = new Map<string, (typeof messages)[number]>();
+  for (const message of messages) {
+    if (message.relatedLabReportId && !byReportId.has(message.relatedLabReportId)) {
+      byReportId.set(message.relatedLabReportId, message);
+    }
+  }
+  return byReportId;
+}
+
+export async function listAppointmentIdsWithUnlinkedLabOrders(tenantId: string, appointmentIds: string[]) {
+  const orders = await db.labOrder.findMany({
+    where: { tenantId, appointmentId: { in: appointmentIds }, followUpId: null },
+    select: { appointmentId: true },
+  });
+  return new Set(orders.map((o) => o.appointmentId).filter((id): id is string => id !== null));
+}
+
 export async function listLabReportTemplates(tenantId: string) {
   return db.labReportTemplate.findMany({ where: { tenantId }, orderBy: { name: "asc" } });
 }

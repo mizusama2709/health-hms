@@ -9,6 +9,7 @@ import {
   getDashboardSummary,
   listUpcomingAppointments,
 } from "@/lib/dashboardStats";
+import { listFollowUpsDueToday } from "@/lib/followUps";
 import { bookWalkIn, addDoctor, sendInvoiceWhatsApp, searchPatientsAction } from "./actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ export default async function AdminHome() {
     pharmacyStats,
     summary,
     { upcoming, totalUpcoming },
+    { dueToday, totalDueToday },
   ] = await Promise.all([
     listAppointmentsForTenant(tenantId),
     listDoctorsForTenant(tenantId),
@@ -47,6 +49,7 @@ export default async function AdminHome() {
     getPharmacyStats(tenantId),
     getDashboardSummary(tenantId),
     listUpcomingAppointments(tenantId, 5),
+    listFollowUpsDueToday(tenantId, 5),
   ]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -121,6 +124,37 @@ export default async function AdminHome() {
                     <span className="text-muted-foreground"> — Dr. {appt.doctor.user.name}</span>
                   </div>
                   <span className="text-muted-foreground">{new Date(appt.datetime).toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Follow-up calls due today</CardTitle>
+            <CardDescription>
+              {totalDueToday === 0 ? "Nothing due" : `${dueToday.length} of ${totalDueToday} due or overdue`}
+            </CardDescription>
+          </div>
+          <Link href="/admin/schedule/reminders" className="text-sm font-medium text-primary hover:underline">
+            View all →
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {dueToday.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No follow-up calls due today.</p>
+          ) : (
+            <ul className="flex flex-col divide-y rounded-lg border">
+              {dueToday.map((f) => (
+                <li key={f.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                  <span className="font-medium">{f.appointment.patient.user.name}</span>
+                  <span className={f.isOverdue ? "font-medium text-destructive" : "text-muted-foreground"}>
+                    {f.isOverdue ? "Overdue — " : "Due "}
+                    {f.dueDate.toLocaleDateString()}
+                  </span>
                 </li>
               ))}
             </ul>

@@ -7,12 +7,13 @@ import { updateAppointmentStatus } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { createFollowUp } from "@/lib/followUps";
 import { createLabOrder, linkLabOrdersToFollowUp } from "@/lib/lab";
-import { createPrescription } from "@/lib/pharmacy";
+import { createPrescription, searchMedicines } from "@/lib/pharmacy";
 import { sendPrescriptionViaWhatsApp } from "@/lib/whatsapp";
+import { withActionResult } from "@/lib/actionResult";
 import { db } from "@/lib/db";
 import { AppointmentStatus, JourneyStep, DoseTime, DurationUnit } from "@prisma/client";
 
-const PRESCRIPTION_ROW_COUNT = 5;
+const MAX_PRESCRIPTION_ROWS = 50;
 
 const STATUS_TO_JOURNEY_STEP: Partial<Record<AppointmentStatus, JourneyStep>> = {
   COMPLETED: "OPD_COMPLETED",
@@ -93,6 +94,8 @@ export async function completeVisitAction(formData: FormData) {
   revalidatePath("/admin/schedule/reminders");
 }
 
+export const completeVisitActionResult = withActionResult(completeVisitAction, "Visit completed");
+
 export async function prescribeMedicines(formData: FormData) {
   const session = await auth();
   if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
@@ -101,8 +104,9 @@ export async function prescribeMedicines(formData: FormData) {
   const appointmentId = formData.get("appointmentId") as string;
   const patientId = formData.get("patientId") as string;
 
+  const rowCount = Math.min(Number(formData.get("rowCount")) || 0, MAX_PRESCRIPTION_ROWS);
   const items = [];
-  for (let i = 0; i < PRESCRIPTION_ROW_COUNT; i++) {
+  for (let i = 0; i < rowCount; i++) {
     const medicineId = formData.get(`medicineId_${i}`) as string;
     if (!medicineId) continue;
 
@@ -122,7 +126,7 @@ export async function prescribeMedicines(formData: FormData) {
     });
   }
 
-  if (items.length === 0) return;
+  if (items.length === 0) throw new Error("Select at least one medicine to prescribe");
 
   const prescription = await createPrescription({
     tenantId,
@@ -137,6 +141,8 @@ export async function prescribeMedicines(formData: FormData) {
   revalidatePath("/doctor");
 }
 
+export const prescribeMedicinesActionResult = withActionResult(prescribeMedicines, "Prescription sent");
+
 export async function orderLabTests(formData: FormData) {
   const session = await auth();
   if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
@@ -147,7 +153,7 @@ export async function orderLabTests(formData: FormData) {
   const testIds = formData.getAll("testIds") as string[];
   const patientConsented = formData.get("patientConsented") === "true";
 
-  if (testIds.length === 0) return;
+  if (testIds.length === 0) throw new Error("Select at least one test to order");
   if (!patientConsented) throw new Error("Patient consent is required before ordering a lab test");
 
   await createLabOrder({
@@ -160,4 +166,13 @@ export async function orderLabTests(formData: FormData) {
   });
 
   revalidatePath("/doctor");
+}
+
+export const orderLabTestsActionResult = withActionResult(orderLabTests, "Lab tests ordered");
+
+export async function searchMedicinesAction(query: string) {
+  const session = await auth();
+  if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
+  const tenantId = await requireTenantId();
+  return searchMedicines(tenantId, query);
 }

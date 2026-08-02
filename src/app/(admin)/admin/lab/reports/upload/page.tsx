@@ -1,17 +1,26 @@
 import { requireTenantId } from "@/lib/tenant";
-import { listLabOrders } from "@/lib/lab";
+import { listLabOrders, listLatestWhatsAppStatusForLabReports } from "@/lib/lab";
 import { sendLabReportWhatsAppAction } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata = {
   title: "Lab Reports",
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  SENT: "Sent",
+  SIMULATED: "Sent (simulated)",
+  FAILED: "Delivery failed",
+};
+
 export default async function LabReportsPage() {
   const tenantId = await requireTenantId();
   const orders = await listLabOrders(tenantId);
+  const reportIds = orders.flatMap((o) => o.reports.map((r) => r.id));
+  const whatsAppStatusByReportId = await listLatestWhatsAppStatusForLabReports(tenantId, reportIds);
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,13 +40,23 @@ export default async function LabReportsPage() {
               .flatMap((o) =>
                 o.reports.map((r) => ({ ...r, patientName: o.patient.user.name, patientPhone: o.patient.user.phone }))
               )
-              .map((r) => (
+              .map((r) => {
+                const whatsAppStatus = whatsAppStatusByReportId.get(r.id);
+                return (
                 <div key={r.id} className="flex flex-col gap-2 rounded-md border p-2 text-sm">
-                  <div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <a href={r.fileUrl} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
                       {r.patientName}
-                    </a>{" "}
-                    — {r.uploadedAt.toLocaleString()}
+                    </a>
+                    <span>— {r.uploadedAt.toLocaleString()}</span>
+                    {whatsAppStatus && (
+                      <Badge
+                        variant={whatsAppStatus.status === "FAILED" ? "destructive" : "default"}
+                        title={whatsAppStatus.errorMessage ?? undefined}
+                      >
+                        {STATUS_LABEL[whatsAppStatus.status] ?? whatsAppStatus.status}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-end gap-2">
                     <form action={sendLabReportWhatsAppAction} className="flex items-end gap-2">
@@ -56,7 +75,8 @@ export default async function LabReportsPage() {
                     </form>
                   </div>
                 </div>
-              ))}
+                );
+              })}
           </CardContent>
         </Card>
       ) : (
