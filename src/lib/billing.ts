@@ -314,42 +314,71 @@ export async function updateInvoiceLineItem(
   description: string,
   unitPrice: number
 ) {
-  const invoice = await db.invoice.findFirstOrThrow({
-    where: { id: invoiceId, tenantId },
-    include: { lineItems: true },
-  });
-  const firstLine = invoice.lineItems[0];
-  if (!firstLine) throw new Error("Invoice has no line items to edit");
+  return db.$transaction(async (tx) => {
+    // Row lock — two concurrent edits to the same invoice's line item must
+    // not both read the same discountAmount/lineItems and overwrite each
+    // other's recomputed subtotal/GST/total.
+    await tx.$queryRaw`
+      SELECT id FROM "Invoice" WHERE id = ${invoiceId} AND "tenantId" = ${tenantId} FOR UPDATE
+    `;
 
-  const lineTotal = firstLine.quantity * unitPrice;
-  const otherLines = invoice.lineItems.slice(1);
-  const subtotal = lineTotal + otherLines.reduce((sum, li) => sum + Number(li.lineTotal), 0);
+    const invoice = await tx.invoice.findFirstOrThrow({
+      where: { id: invoiceId, tenantId },
+      include: { lineItems: true },
+    });
+    const firstLine = invoice.lineItems[0];
+    if (!firstLine) throw new Error("Invoice has no line items to edit");
 
-  const gstFor = (amount: number, ratePercent: number) => (amount * ratePercent) / 100;
-  const totalGst =
-    gstFor(lineTotal, Number(firstLine.taxRatePercent)) +
-    otherLines.reduce((sum, li) => sum + gstFor(Number(li.lineTotal), Number(li.taxRatePercent)), 0);
-  const cgstAmount = totalGst / 2;
-  const sgstAmount = totalGst / 2;
-  const totalAmount = subtotal - Number(invoice.discountAmount) + cgstAmount + sgstAmount;
+    const lineTotal = firstLine.quantity * unitPrice;
+    const otherLines = invoice.lineItems.slice(1);
+    const subtotal = lineTotal + otherLines.reduce((sum, li) => sum + Number(li.lineTotal), 0);
 
-  await db.$transaction([
-    db.invoiceLineItem.update({
+    const gstFor = (amount: number, ratePercent: number) => (amount * ratePercent) / 100;
+    const totalGst =
+      gstFor(lineTotal, Number(firstLine.taxRatePercent)) +
+      otherLines.reduce((sum, li) => sum + gstFor(Number(li.lineTotal), Number(li.taxRatePercent)), 0);
+    const cgstAmount = totalGst / 2;
+    const sgstAmount = totalGst / 2;
+    const totalAmount = subtotal - Number(invoice.discountAmount) + cgstAmount + sgstAmount;
+
+    await tx.invoiceLineItem.update({
       where: { id: firstLine.id },
       data: { description, unitPrice, lineTotal },
-    }),
-    db.invoice.update({
+    });
+    await tx.invoice.update({
       where: { id: invoiceId },
       data: { subtotal, cgstAmount, sgstAmount, totalAmount },
-    }),
-  ]);
+    });
+  });
 }
 
 export async function markInvoicePaidInFull(tenantId: string, invoiceId: string, mode: PaymentMode = "CASH") {
-  const invoice = await db.invoice.findFirstOrThrow({ where: { id: invoiceId, tenantId } });
-  const balanceDue = Number(invoice.totalAmount) - Number(invoice.amountPaid);
-  if (balanceDue <= 0) return invoice;
-  return recordPayment({ tenantId, invoiceId, amount: balanceDue, mode });
+  // Computes balanceDue and pays it inside a single locked transaction rather
+  // than delegating to recordPayment with a pre-computed amount — otherwise
+  // two concurrent calls (e.g. a double-click) would both read the same
+  // stale balance and each pay it in full, overpaying the invoice.
+  return db.$transaction(async (tx) => {
+    const [invoice] = await tx.$queryRaw<{ amountPaid: unknown; totalAmount: unknown }[]>`
+      SELECT "amountPaid", "totalAmount" FROM "Invoice"
+      WHERE id = ${invoiceId} AND "tenantId" = ${tenantId}
+      FOR UPDATE
+    `;
+    if (!invoice) throw new Error("Invoice not found");
+
+    const balanceDue = Number(invoice.totalAmount) - Number(invoice.amountPaid);
+    if (balanceDue <= 0) return null;
+
+    const payment = await tx.payment.create({
+      data: { tenantId, invoiceId, amount: balanceDue, mode },
+    });
+
+    await tx.invoice.update({
+      where: { id: invoiceId },
+      data: { amountPaid: Number(invoice.amountPaid) + balanceDue, status: "PAID" },
+    });
+
+    return payment;
+  });
 }
 
 export async function voidInvoice(tenantId: string, invoiceId: string) {
