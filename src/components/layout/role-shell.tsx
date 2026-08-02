@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export type NavItem = { label: string; href?: string; children?: NavItem[] };
 export type NavSection = { title?: string; items: NavItem[] };
@@ -30,7 +31,7 @@ export function RoleShell({
     <div className="flex min-h-screen w-full">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-black focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-lg"
       >
         Skip to main content
       </a>
@@ -65,6 +66,7 @@ export function RoleShell({
 
           <div className="flex items-center gap-3">
             {userName && <span className="hidden text-sm text-muted-foreground sm:inline">{userName}</span>}
+            <ThemeToggle />
             <SignOutButton />
           </div>
         </header>
