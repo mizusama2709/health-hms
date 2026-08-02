@@ -13,7 +13,7 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
         children: [
           { label: "Calendar", href: "/admin/schedule/calendar" },
           { label: "Appointments", href: "/admin/schedule/appointments" },
-          { label: "Reminders", href: "/admin/schedule/reminders" },
+          { label: "Follow-ups", href: "/admin/schedule/reminders" },
         ],
       },
       { label: "Queue", href: "/admin/queue" },
@@ -36,7 +36,7 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
         children: [
           { label: "Lab Tests", href: "/admin/lab/tests" },
           { label: "Lab Orders", href: "/admin/lab/orders" },
-          { label: "Upload Report", href: "/admin/lab/reports/upload" },
+          { label: "Lab Reports", href: "/admin/lab/reports/upload" },
           { label: "Report Templates", href: "/admin/lab/templates" },
         ],
       },

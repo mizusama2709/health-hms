@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { LabOrderStatus, LabResultFlag } from "@prisma/client";
 
 export async function listLabTests(tenantId: string, filters?: { isActive?: boolean }) {
@@ -33,6 +34,7 @@ export async function createLabOrder(params: {
   appointmentId?: string;
   orderedById: string;
   testIds: string[];
+  patientConsentedAt: Date;
 }) {
   const order = await db.labOrder.create({
     data: {
@@ -40,6 +42,7 @@ export async function createLabOrder(params: {
       patientId: params.patientId,
       appointmentId: params.appointmentId,
       orderedById: params.orderedById,
+      patientConsentedAt: params.patientConsentedAt,
       items: { create: params.testIds.map((labTestId) => ({ labTestId })) },
     },
     include: { items: true },
@@ -56,6 +59,16 @@ export async function createLabOrder(params: {
   }
 
   return order;
+}
+
+// Any lab test ordered during a given appointment is expected back by the
+// time of a follow-up prescribed at that same visit — called from
+// completeVisitAction right after the FollowUp is created.
+export async function linkLabOrdersToFollowUp(tenantId: string, appointmentId: string, followUpId: string) {
+  return db.labOrder.updateMany({
+    where: { tenantId, appointmentId, followUpId: null },
+    data: { followUpId },
+  });
 }
 
 export async function updateLabOrderStatus(tenantId: string, labOrderId: string, status: LabOrderStatus, recordedById?: string) {
@@ -99,13 +112,76 @@ export async function approveLabOrder(tenantId: string, labOrderId: string, appr
   });
 }
 
-export async function attachLabReport(tenantId: string, labOrderId: string, params: { fileUrl: string; uploadedById: string }) {
-  const order = await db.labOrder.findFirst({ where: { id: labOrderId, tenantId } });
-  if (!order) throw new Error("Lab order not found");
-  if (!order.approvedAt) throw new Error("This lab order must be approved before its report can be sent");
+type LabOrderForReport = Awaited<ReturnType<typeof loadLabOrderForReport>>;
 
-  return db.labReport.create({
-    data: { labOrderId, fileUrl: params.fileUrl, uploadedById: params.uploadedById },
+async function loadLabOrderForReport(tenantId: string, labOrderId: string) {
+  return db.labOrder.findFirst({
+    where: { id: labOrderId, tenantId },
+    include: {
+      patient: { include: { user: true } },
+      items: { include: { labTest: true } },
+    },
+  });
+}
+
+// Renders the order's already-entered structured results (value/unit/range/
+// flag) as a simple tabular PDF — no PDF-parsing is needed anywhere in this
+// app because the visualization on the patient's chart reads that same
+// structured data directly, not this rendered document.
+export async function generateLabReportPdf(order: NonNullable<LabOrderForReport>): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([595, 842]); // A4
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  let y = 800;
+  const left = 50;
+  const draw = (text: string, opts: { size?: number; f?: typeof font; color?: ReturnType<typeof rgb> } = {}) => {
+    page.drawText(text, { x: left, y, size: opts.size ?? 11, font: opts.f ?? font, color: opts.color ?? rgb(0, 0, 0) });
+    y -= (opts.size ?? 11) + 8;
+  };
+
+  draw("Lab Report", { size: 20, f: bold });
+  y -= 6;
+  draw(`Patient: ${order.patient.user.name}`, { f: bold });
+  draw(`Ordered: ${order.orderedAt.toLocaleDateString()}`);
+  if (order.approvedAt) draw(`Approved: ${order.approvedAt.toLocaleDateString()}`);
+  y -= 10;
+
+  draw("Test", { f: bold });
+  for (const item of order.items) {
+    const flagLabel = item.flag ? ` [${item.flag}]` : "";
+    const color = item.flag === "CRITICAL" ? rgb(0.7, 0.1, 0.1) : item.flag === "ABNORMAL" ? rgb(0.75, 0.45, 0) : rgb(0, 0, 0);
+    draw(
+      `${item.labTest.name}: ${item.resultValue ?? "—"} ${item.resultUnit ?? ""}  (ref: ${item.referenceRange ?? "n/a"})${flagLabel}`,
+      { color }
+    );
+  }
+
+  return doc.save();
+}
+
+// Generates the PDF from the order's own data, stores it, and points fileUrl
+// at the internal route that serves it back — no manual URL entry anymore.
+export async function generateAndAttachLabReport(
+  tenantId: string,
+  labOrderId: string,
+  uploadedById: string,
+  baseUrl: string
+) {
+  const order = await loadLabOrderForReport(tenantId, labOrderId);
+  if (!order) throw new Error("Lab order not found");
+  if (!order.approvedAt) throw new Error("This lab order must be approved before its report can be generated");
+
+  const pdfBytes = await generateLabReportPdf(order);
+
+  const report = await db.labReport.create({
+    data: { labOrderId, fileUrl: "", pdfData: Buffer.from(pdfBytes), uploadedById },
+  });
+
+  return db.labReport.update({
+    where: { id: report.id },
+    data: { fileUrl: `${baseUrl}/api/lab-reports/${report.id}/pdf` },
   });
 }
 
@@ -123,6 +199,23 @@ export async function listLabOrders(tenantId: string, filters?: { status?: LabOr
     },
     orderBy: { orderedAt: "desc" },
   });
+}
+
+// Most recent COMPLETED lab order per patient, for a compact inline summary
+// (e.g. on the doctor's dashboard ahead of a follow-up visit) without an
+// N+1 query per appointment row.
+export async function listLatestCompletedLabOrdersForPatients(tenantId: string, patientIds: string[]) {
+  const orders = await db.labOrder.findMany({
+    where: { tenantId, patientId: { in: patientIds }, status: "COMPLETED" },
+    include: { items: { include: { labTest: true } } },
+    orderBy: { orderedAt: "desc" },
+  });
+
+  const byPatient = new Map<string, (typeof orders)[number]>();
+  for (const order of orders) {
+    if (!byPatient.has(order.patientId)) byPatient.set(order.patientId, order);
+  }
+  return byPatient;
 }
 
 export async function listLabReportTemplates(tenantId: string) {

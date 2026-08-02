@@ -37,13 +37,14 @@ export default async function DoctorRemindersPage() {
         <CardContent>
           {followUps.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No follow-ups yet — one is created automatically when you mark an appointment Completed.
+              No follow-ups yet — prescribe one when completing a visit if you&apos;d like a nurse to check in with the patient.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Patient</TableHead>
+                  <TableHead>What to check</TableHead>
                   <TableHead>Due date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Reminder</TableHead>
@@ -53,9 +54,10 @@ export default async function DoctorRemindersPage() {
                 {followUps.map((f) => (
                   <TableRow key={f.id}>
                     <TableCell className="font-medium">{f.appointment.patient.user.name}</TableCell>
+                    <TableCell className="max-w-xs text-sm text-muted-foreground">{f.focusInstructions}</TableCell>
                     <TableCell>{f.dueDate.toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Badge variant={f.status === "pending" ? "outline" : "secondary"}>{f.status}</Badge>
+                      <Badge variant={f.status === "PENDING" ? "outline" : "secondary"}>{f.status}</Badge>
                     </TableCell>
                     <TableCell>
                       {f.reminderScheduled ? (

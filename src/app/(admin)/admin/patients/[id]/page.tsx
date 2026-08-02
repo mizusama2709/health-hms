@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getPatientWithHistory, computeAge } from "@/lib/patients";
 import { getPatientEfficacyReport } from "@/lib/reports";
+import { listLabOrders } from "@/lib/lab";
 import { updatePatientProfileAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { Badge } from "@/components/ui/badge";
+import { LabResultGauge } from "@/components/lab-result-gauge";
+import { LabTrendChart, type LabTrendPoint } from "@/components/lab-trend-chart";
 
 export const metadata = {
   title: "Patient Details",
@@ -30,6 +34,21 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
 
   const age = computeAge(patient.dateOfBirth);
   const efficacy = await getPatientEfficacyReport(tenantId, patient.id);
+  const labOrders = await listLabOrders(tenantId, { patientId: patient.id });
+
+  // Group results by test across all orders — any test with 2+ numeric
+  // values across visits gets a trend chart below the per-order results.
+  const byTest = new Map<string, { testName: string; unit: string | null; points: LabTrendPoint[] }>();
+  for (const order of labOrders) {
+    for (const item of order.items) {
+      const value = item.resultValue !== null ? Number(item.resultValue) : NaN;
+      if (!Number.isFinite(value)) continue;
+      const entry = byTest.get(item.labTestId) ?? { testName: item.labTest.name, unit: item.resultUnit, points: [] };
+      entry.points.push({ date: order.orderedAt, value, flag: item.flag });
+      byTest.set(item.labTestId, entry);
+    }
+  }
+  const trends = [...byTest.values()].filter((t) => t.points.length >= 2);
 
   const STEP_LABELS: Record<string, string> = {
     APPOINTMENT_BOOKED: "Booked",
@@ -166,6 +185,68 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lab reports &amp; trends</CardTitle>
+          <CardDescription>{labOrders.length} order(s) on file</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {labOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No lab orders yet.</p>
+          ) : (
+            <>
+              {trends.length > 0 && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {trends.map((t) => (
+                    <div key={t.testName} className="rounded-lg border p-3">
+                      <LabTrendChart testName={t.testName} unit={t.unit} points={t.points} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3">
+                {labOrders.map((order) => (
+                  <div key={order.id} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{new Date(order.orderedAt).toLocaleString()}</span>
+                      <Badge variant={order.status === "COMPLETED" ? "default" : "outline"}>{order.status}</Badge>
+                    </div>
+                    <div className="mt-2 flex flex-col gap-2">
+                      {order.items.map((item) => (
+                        <LabResultGauge
+                          key={item.id}
+                          testName={item.labTest.name}
+                          resultValue={item.resultValue}
+                          resultUnit={item.resultUnit}
+                          referenceRange={item.referenceRange}
+                          flag={item.flag}
+                        />
+                      ))}
+                    </div>
+                    {order.reports.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                        {order.reports.map((r) => (
+                          <a
+                            key={r.id}
+                            href={r.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-medium text-primary hover:underline"
+                          >
+                            View report ({new Date(r.uploadedAt).toLocaleDateString()})
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

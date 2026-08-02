@@ -6,7 +6,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { updateAppointmentStatus } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { createFollowUp } from "@/lib/followUps";
-import { createLabOrder } from "@/lib/lab";
+import { createLabOrder, linkLabOrdersToFollowUp } from "@/lib/lab";
 import { createPrescription } from "@/lib/pharmacy";
 import { sendPrescriptionViaWhatsApp } from "@/lib/whatsapp";
 import { db } from "@/lib/db";
@@ -39,13 +39,58 @@ export async function setAppointmentStatus(appointmentId: string, status: Appoin
     }
   }
 
-  if (status === "COMPLETED") {
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 7);
-    await createFollowUp({ appointmentId, dueDate });
+  revalidatePath("/doctor");
+}
+
+export async function completeVisitAction(formData: FormData) {
+  const session = await auth();
+  if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
+
+  const tenantId = await requireTenantId();
+  const appointmentId = formData.get("appointmentId") as string;
+  const notes = formData.get("notes") as string;
+  const diagnosis = (formData.get("diagnosis") as string) || undefined;
+  const treatmentPlan = (formData.get("treatmentPlan") as string) || undefined;
+  const followUpNeeded = formData.get("followUpNeeded") === "true";
+  const followUpDueDate = formData.get("followUpDueDate") as string;
+  const followUpInstructions = (formData.get("followUpInstructions") as string) || "";
+
+  if (!notes) throw new Error("Visit notes are required to complete the visit");
+
+  const appointment = await db.appointment.findFirstOrThrow({ where: { id: appointmentId, tenantId } });
+
+  await db.visitRecord.upsert({
+    where: { appointmentId },
+    update: { notes, diagnosis, prescription: treatmentPlan },
+    create: { appointmentId, notes, diagnosis, prescription: treatmentPlan },
+  });
+
+  await updateAppointmentStatus(appointmentId, tenantId, "COMPLETED");
+  await recordJourneyEvent({
+    tenantId,
+    appointmentId,
+    patientId: appointment.patientId,
+    step: "OPD_COMPLETED",
+    recordedById: session.user.id,
+  });
+
+  if (followUpNeeded) {
+    if (!followUpDueDate) throw new Error("Choose a due date for the follow-up call");
+    if (!followUpInstructions.trim()) throw new Error("Write what the nurse should check on the follow-up call");
+
+    const followUp = await createFollowUp({
+      tenantId,
+      appointmentId,
+      dueDate: new Date(followUpDueDate),
+      focusInstructions: followUpInstructions,
+      prescribedById: session.user.id,
+    });
+
+    await linkLabOrdersToFollowUp(tenantId, appointmentId, followUp.id);
   }
 
   revalidatePath("/doctor");
+  revalidatePath("/admin/schedule/reminders");
 }
 
 export async function prescribeMedicines(formData: FormData) {
@@ -100,8 +145,10 @@ export async function orderLabTests(formData: FormData) {
   const appointmentId = formData.get("appointmentId") as string;
   const patientId = formData.get("patientId") as string;
   const testIds = formData.getAll("testIds") as string[];
+  const patientConsented = formData.get("patientConsented") === "true";
 
   if (testIds.length === 0) return;
+  if (!patientConsented) throw new Error("Patient consent is required before ordering a lab test");
 
   await createLabOrder({
     tenantId,
@@ -109,6 +156,7 @@ export async function orderLabTests(formData: FormData) {
     appointmentId,
     orderedById: session.user.id,
     testIds,
+    patientConsentedAt: new Date(),
   });
 
   revalidatePath("/doctor");

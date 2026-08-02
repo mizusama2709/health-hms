@@ -49,7 +49,7 @@ export async function getOpdPipeline(tenantId: string, days = 30) {
     db.appointment.count({ where: { tenantId, status: "BOOKED", createdAt: { gte: since } } }),
     db.invoice.count({ where: { tenantId, status: { in: ["UNPAID", "PARTIALLY_PAID"] }, createdAt: { gte: since } } }),
     db.invoice.count({ where: { tenantId, status: "PAID", createdAt: { gte: since } } }),
-    db.followUp.count({ where: { appointment: { tenantId }, status: "pending" } }),
+    db.followUp.count({ where: { tenantId, status: "PENDING" } }),
     db.whatsAppMessage.count({
       where: { tenantId, direction: "INBOUND", parsedIntent: "UNKNOWN", createdAt: { gte: since } },
     }),
@@ -127,15 +127,9 @@ export async function getPharmacyStats(tenantId: string, days = 30) {
       db.medicine.count({ where: { tenantId, unitPrice: 0 } }),
       db.medicineBatch.findMany({
         where: { tenantId, expiryDate: { lte: expiryHorizon }, availableQty: { gt: 0 } },
-        select: { availableQty: true, medicine: { select: { unitPrice: true } } },
+        select: { medicineId: true, availableQty: true, medicine: { select: { unitPrice: true } } },
       }),
     ]);
-
-  const expiringSoonCount = expiringBatches.reduce((sum, b) => sum + b.availableQty, 0);
-  const expiringSoonValueAtMrp = expiringBatches.reduce(
-    (sum, b) => sum + b.availableQty * Number(b.medicine.unitPrice),
-    0
-  );
 
   const revenue = pharmacyInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
 
@@ -147,6 +141,20 @@ export async function getPharmacyStats(tenantId: string, days = 30) {
     entry.totalQty += line.quantityReceived;
     costTotals.set(line.medicineId, entry);
   }
+
+  const expiringSoonCount = expiringBatches.reduce((sum, b) => sum + b.availableQty, 0);
+  const expiringSoonValueAtMrp = expiringBatches.reduce(
+    (sum, b) => sum + b.availableQty * Number(b.medicine.unitPrice),
+    0
+  );
+  // Same weighted-average cost fallback as inventoryAtCost below — falls
+  // back to MRP when no goods-receipt cost record exists for a medicine
+  // (e.g. imported stock with no cost data), so this can overstate cost.
+  const expiringSoonValueAtCost = expiringBatches.reduce((sum, b) => {
+    const costEntry = costTotals.get(b.medicineId);
+    const avgCost = costEntry && costEntry.totalQty > 0 ? costEntry.totalCost / costEntry.totalQty : Number(b.medicine.unitPrice);
+    return sum + b.availableQty * avgCost;
+  }, 0);
 
   let inventoryAtCost = 0;
   let inventoryAtMrp = 0;
@@ -184,6 +192,7 @@ export async function getPharmacyStats(tenantId: string, days = 30) {
     unpricedCount,
     expiringSoonCount,
     expiringSoonValueAtMrp,
+    expiringSoonValueAtCost,
   };
 }
 

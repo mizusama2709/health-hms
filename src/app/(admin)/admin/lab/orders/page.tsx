@@ -1,12 +1,19 @@
 import { Fragment } from "react";
 import { requireTenantId } from "@/lib/tenant";
 import { listLabOrders, listLabTests } from "@/lib/lab";
-import { createLabOrderAction, updateLabOrderStatusAction, approveLabOrderAction, recordLabResultAction } from "../actions";
+import {
+  createLabOrderAction,
+  updateLabOrderStatusAction,
+  approveLabOrderAction,
+  recordLabResultAction,
+  searchPatientsAction,
+} from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -28,8 +35,14 @@ export default async function LabOrdersPage() {
         </CardHeader>
         <CardContent>
           <form action={createLabOrderAction} className="flex flex-col gap-2">
-            <Label htmlFor="patientEmail">Patient email</Label>
-            <Input id="patientEmail" name="patientEmail" type="email" required />
+            <Label htmlFor="patientId">Patient</Label>
+            <SearchableSelect
+              id="patientId"
+              name="patientId"
+              required
+              placeholder="Search patients by name, phone, or email…"
+              search={searchPatientsAction}
+            />
             <Label htmlFor="testId">Test</Label>
             <NativeSelect id="testId" name="testId" required>
               {tests.map((t) => (
@@ -38,6 +51,10 @@ export default async function LabOrdersPage() {
                 </option>
               ))}
             </NativeSelect>
+            <label className="flex items-center gap-2 text-sm font-normal">
+              <input type="checkbox" name="patientConsented" value="true" required className="size-4" />
+              Patient has consented to this test
+            </label>
             <Button type="submit" className="mt-2">
               Create order
             </Button>

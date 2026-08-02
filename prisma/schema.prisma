@@ -88,6 +88,29 @@ enum JourneyStep {
   MEDICINES_DISPENSED
 }
 
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  ESCALATED
+  CANCELLED
+}
+
+enum FollowUpOutcome {
+  IMPROVING
+  NO_CHANGE
+  WORSENING
+  ADVERSE_REACTION
+  RESOLVED
+  UNREACHABLE
+}
+
+enum FollowUpNextAction {
+  NONE
+  ANOTHER_CALL_SCHEDULED
+  BOOK_APPOINTMENT
+  ESCALATE_TO_DOCTOR
+}
+
 enum WhatsAppDirection {
   INBOUND
   OUTBOUND
@@ -207,6 +230,8 @@ model Tenant {
   vitals              Vitals[]
   queueStageEntries   QueueStageEntry[]
   queueStageConfigs   QueueStageConfig[]
+  followUps           FollowUp[]
+  followUpCallLogs    FollowUpCallLog[]
 }
 
 model User {
@@ -319,16 +344,44 @@ model Appointment {
 }
 
 model FollowUp {
-  id                String      @id @default(cuid())
-  appointmentId     String      @unique
-  appointment       Appointment @relation(fields: [appointmentId], references: [id])
+  id                String         @id @default(cuid())
+  tenantId          String
+  tenant            Tenant         @relation(fields: [tenantId], references: [id])
+  appointmentId     String         @unique
+  appointment       Appointment    @relation(fields: [appointmentId], references: [id])
+  focusInstructions String
+  prescribedById    String?
   dueDate           DateTime
-  status            String      @default("pending")
-  reminderScheduled Boolean     @default(false)
+  status            FollowUpStatus @default(PENDING)
+  reminderScheduled Boolean        @default(false)
   reminderAt        DateTime?
   reminderMessage   String?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  callLogs        FollowUpCallLog[]
+  linkedLabOrders LabOrder[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
+}
+
+model FollowUpCallLog {
+  id             String             @id @default(cuid())
+  tenantId       String
+  tenant         Tenant             @relation(fields: [tenantId], references: [id])
+  followUpId     String
+  followUp       FollowUp           @relation(fields: [followUpId], references: [id])
+  calledById     String
+  calledAt       DateTime           @default(now())
+  outcome        FollowUpOutcome
+  notes          String
+  nextAction     FollowUpNextAction @default(NONE)
+  nextFollowUpAt DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@index([tenantId, outcome])
+  @@index([tenantId, calledAt])
 }
 
 model VisitRecord {
@@ -724,18 +777,22 @@ model LabOrder {
   patient       Patient        @relation(fields: [patientId], references: [id])
   appointmentId String?
   appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
-  orderedById   String
-  status        LabOrderStatus @default(ORDERED)
-  orderedAt     DateTime       @default(now())
-  approvedById  String?
-  approvedAt    DateTime?
-  updatedAt     DateTime       @updatedAt
+  followUpId    String?
+  followUp      FollowUp?      @relation(fields: [followUpId], references: [id])
+  orderedById        String
+  status             LabOrderStatus @default(ORDERED)
+  orderedAt          DateTime       @default(now())
+  patientConsentedAt DateTime
+  approvedById       String?
+  approvedAt         DateTime?
+  updatedAt          DateTime       @updatedAt
 
   items   LabOrderItem[]
   reports LabReport[]
 
   @@index([tenantId, status])
   @@index([tenantId, patientId])
+  @@index([followUpId])
 }
 
 model LabOrderItem {
@@ -758,6 +815,7 @@ model LabReport {
   labOrderId   String
   labOrder     LabOrder @relation(fields: [labOrderId], references: [id])
   fileUrl      String
+  pdfData      Bytes? // null for the one legacy manually-pasted-URL report that predates auto-generation
   uploadedById String
   uploadedAt   DateTime @default(now())
 
