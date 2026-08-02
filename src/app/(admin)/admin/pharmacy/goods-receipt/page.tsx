@@ -1,6 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
-import { listGoodsReceipts, listSuppliers, listMedicines } from "@/lib/pharmacy";
-import { createGoodsReceiptAction } from "../actions";
+import { listGoodsReceipts, listSuppliers, countMedicines } from "@/lib/pharmacy";
+import { createGoodsReceiptAction, searchMedicinesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,10 +14,10 @@ export const metadata = {
 
 export default async function GoodsReceiptPage() {
   const tenantId = await requireTenantId();
-  const [receipts, suppliers, medicines] = await Promise.all([
+  const [receipts, suppliers, medicineCount] = await Promise.all([
     listGoodsReceipts(tenantId),
     listSuppliers(tenantId),
-    listMedicines(tenantId, { isActive: true }),
+    countMedicines(tenantId, { isActive: true }),
   ]);
 
   return (
@@ -29,7 +29,7 @@ export default async function GoodsReceiptPage() {
           <CardTitle>Record a receipt</CardTitle>
         </CardHeader>
         <CardContent>
-          {suppliers.length === 0 || medicines.length === 0 ? (
+          {suppliers.length === 0 || medicineCount === 0 ? (
             <p className="text-sm text-muted-foreground">
               Add at least one supplier and one medicine before recording a goods receipt.
             </p>
@@ -49,10 +49,7 @@ export default async function GoodsReceiptPage() {
                 name="medicineId"
                 required
                 placeholder="Search medicines by name…"
-                options={medicines.map((m) => ({
-                  value: m.id,
-                  label: `${m.name} (current stock: ${m.stockQuantity})`,
-                }))}
+                search={searchMedicinesAction}
               />
               <div className="flex gap-2">
                 <div className="flex flex-1 flex-col gap-2">

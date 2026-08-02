@@ -1,12 +1,13 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoices } from "@/lib/billing";
 import { listStoreCredits } from "@/lib/pharmacy";
-import { recordPharmacyReturnAction } from "../actions";
+import { recordPharmacyReturnAction, searchPatientsAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export const metadata = {
@@ -51,8 +52,13 @@ export default async function StoreCreditPage() {
               <Input id="refundAmount" name="refundAmount" type="number" step="0.01" required />
               <Label htmlFor="reason">Reason</Label>
               <Input id="reason" name="reason" />
-              <Label htmlFor="patientEmail">Patient email (required if issuing as store credit)</Label>
-              <Input id="patientEmail" name="patientEmail" type="email" />
+              <Label htmlFor="patientId">Patient (required if issuing as store credit)</Label>
+              <SearchableSelect
+                id="patientId"
+                name="patientId"
+                placeholder="Search patients by name, phone, or email…"
+                search={searchPatientsAction}
+              />
               <Label className="flex items-center gap-2 text-sm font-normal">
                 <input type="checkbox" name="asStoreCredit" value="true" className="size-4" />
                 Issue as store credit instead of cash refund

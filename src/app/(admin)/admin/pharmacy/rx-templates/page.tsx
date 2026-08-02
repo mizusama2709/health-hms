@@ -1,7 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
-import { listMedicines } from "@/lib/pharmacy";
 import { listRxTemplates } from "@/lib/rxTemplates";
-import { createRxTemplateAction } from "../actions";
+import { createRxTemplateAction, searchMedicinesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,10 +14,7 @@ export const metadata = {
 
 export default async function RxTemplatesPage() {
   const tenantId = await requireTenantId();
-  const [medicines, templates] = await Promise.all([
-    listMedicines(tenantId, { isActive: true }),
-    listRxTemplates(tenantId),
-  ]);
+  const templates = await listRxTemplates(tenantId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,7 +37,7 @@ export default async function RxTemplatesPage() {
               name="medicineId"
               required
               placeholder="Search medicines by name…"
-              options={medicines.map((m) => ({ value: m.id, label: m.name }))}
+              search={searchMedicinesAction}
             />
             <div className="flex gap-2">
               <div className="flex flex-1 flex-col gap-2">
@@ -59,7 +55,7 @@ export default async function RxTemplatesPage() {
               id="medicineId1"
               name="medicineId"
               placeholder="Search medicines by name… (optional)"
-              options={medicines.map((m) => ({ value: m.id, label: m.name }))}
+              search={searchMedicinesAction}
             />
             <div className="flex gap-2">
               <div className="flex flex-1 flex-col gap-2">

@@ -7,6 +7,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { createAppointment } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
+import { searchPatients } from "@/lib/patients";
 import { db } from "@/lib/db";
 
 async function requireAdmin() {
@@ -16,17 +17,21 @@ async function requireAdmin() {
   return session!;
 }
 
+export async function searchPatientsAction(query: string) {
+  await requireAdmin();
+  const tenantId = await requireTenantId();
+  return searchPatients(tenantId, query);
+}
+
 export async function bookWalkIn(formData: FormData) {
   const session = await requireAdmin();
   const tenantId = await requireTenantId();
   const doctorId = formData.get("doctorId") as string;
-  const patientEmail = formData.get("patientEmail") as string;
+  const patientId = formData.get("patientId") as string;
   const datetime = formData.get("datetime") as string;
 
-  const patient = await db.patient.findFirst({
-    where: { tenantId, user: { email: patientEmail } },
-  });
-  if (!patient) throw new Error(`No patient found in this hospital with email ${patientEmail}`);
+  const patient = await db.patient.findFirst({ where: { id: patientId, tenantId } });
+  if (!patient) throw new Error("Select a patient before booking");
 
   const appointment = await createAppointment({
     tenantId,

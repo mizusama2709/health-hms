@@ -7,7 +7,7 @@ import {
   getScheduleStats,
 } from "@/lib/appointments";
 import { StatusBadge } from "@/components/status-badge";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
 export const metadata = {

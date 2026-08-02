@@ -1,12 +1,15 @@
 import { requireTenantId } from "@/lib/tenant";
-import { listPrescriptions, listMedicines } from "@/lib/pharmacy";
+import { listPrescriptions } from "@/lib/pharmacy";
 import { listRxTemplates } from "@/lib/rxTemplates";
 import {
-  createPrescriptionAction,
-  dispensePrescriptionAction,
-  loadRxTemplateAction,
-  createPharmacyInvoiceAction,
-  recordPharmacyPaymentAction,
+  createPrescriptionActionResult,
+  dispensePrescriptionActionResult,
+  loadRxTemplateActionResult,
+  createPharmacyInvoiceActionResult,
+  billCollectAndDispenseActionResult,
+  recordPharmacyPaymentActionResult,
+  searchMedicinesAction,
+  searchPatientsAction,
 } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ActionForm } from "@/components/action-form";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -23,11 +27,7 @@ export const metadata = {
 
 export default async function DispensePage() {
   const tenantId = await requireTenantId();
-  const [prescriptions, medicines, templates] = await Promise.all([
-    listPrescriptions(tenantId),
-    listMedicines(tenantId, { isActive: true }),
-    listRxTemplates(tenantId),
-  ]);
+  const [prescriptions, templates] = await Promise.all([listPrescriptions(tenantId), listRxTemplates(tenantId)]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +39,7 @@ export default async function DispensePage() {
             <CardTitle>Load from template</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={loadRxTemplateAction} className="flex flex-col gap-2">
+            <ActionForm action={loadRxTemplateActionResult} className="flex flex-col gap-2">
               <Label htmlFor="templateId">Template</Label>
               <NativeSelect id="templateId" name="templateId" required>
                 {templates.map((t) => (
@@ -48,12 +48,18 @@ export default async function DispensePage() {
                   </option>
                 ))}
               </NativeSelect>
-              <Label htmlFor="loadPatientEmail">Patient email</Label>
-              <Input id="loadPatientEmail" name="patientEmail" type="email" required />
+              <Label htmlFor="loadPatientId">Patient</Label>
+              <SearchableSelect
+                id="loadPatientId"
+                name="patientId"
+                required
+                placeholder="Search patients by name, phone, or email…"
+                search={searchPatientsAction}
+              />
               <Button type="submit" variant="outline" className="mt-2">
                 Load template &rarr; create prescription
               </Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
       )}
@@ -63,19 +69,22 @@ export default async function DispensePage() {
           <CardTitle>Create prescription</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createPrescriptionAction} className="flex flex-col gap-2">
-            <Label htmlFor="patientEmail">Patient email</Label>
-            <Input id="patientEmail" name="patientEmail" type="email" required />
+          <ActionForm action={createPrescriptionActionResult} className="flex flex-col gap-2">
+            <Label htmlFor="patientId">Patient</Label>
+            <SearchableSelect
+              id="patientId"
+              name="patientId"
+              required
+              placeholder="Search patients by name, phone, or email…"
+              search={searchPatientsAction}
+            />
             <Label htmlFor="medicineId">Medicine</Label>
             <SearchableSelect
               id="medicineId"
               name="medicineId"
               required
               placeholder="Search medicines by name…"
-              options={medicines.map((m) => ({
-                value: m.id,
-                label: `${m.name} (stock: ${m.stockQuantity})${Number(m.unitPrice) === 0 ? " — ⚠ no price set" : ""}`,
-              }))}
+              search={searchMedicinesAction}
             />
             <Label htmlFor="quantity">Quantity</Label>
             <Input id="quantity" name="quantity" type="number" min={1} required />
@@ -84,7 +93,7 @@ export default async function DispensePage() {
             <Button type="submit" className="mt-2">
               Create prescription
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
@@ -120,12 +129,26 @@ export default async function DispensePage() {
                     <TableCell>{p.createdAt.toLocaleString()}</TableCell>
                     <TableCell>
                       {!p.invoice ? (
-                        <form action={createPharmacyInvoiceAction}>
-                          <input type="hidden" name="prescriptionId" value={p.id} />
-                          <Button type="submit" size="sm" variant="outline">
-                            Prepare &amp; bill
-                          </Button>
-                        </form>
+                        <div className="flex flex-col gap-1">
+                          <ActionForm action={billCollectAndDispenseActionResult} className="flex items-center gap-1">
+                            <input type="hidden" name="prescriptionId" value={p.id} />
+                            <NativeSelect name="mode" className="w-24">
+                              <option value="CASH">Cash</option>
+                              <option value="UPI">UPI</option>
+                              <option value="CARD">Card</option>
+                              <option value="OTHER">Other</option>
+                            </NativeSelect>
+                            <Button type="submit" size="sm">
+                              Bill, collect &amp; dispense
+                            </Button>
+                          </ActionForm>
+                          <ActionForm action={createPharmacyInvoiceActionResult}>
+                            <input type="hidden" name="prescriptionId" value={p.id} />
+                            <Button type="submit" size="sm" variant="outline">
+                              Just bill (pay later)
+                            </Button>
+                          </ActionForm>
+                        </div>
                       ) : (
                         <div className="flex flex-col gap-1">
                           <span className="text-xs text-muted-foreground">
@@ -133,7 +156,7 @@ export default async function DispensePage() {
                             {p.invoice.status}
                           </span>
                           {p.invoice.status !== "PAID" && (
-                            <form action={recordPharmacyPaymentAction} className="flex items-center gap-1">
+                            <ActionForm action={recordPharmacyPaymentActionResult} className="flex items-center gap-1">
                               <input type="hidden" name="invoiceId" value={p.invoice.id} />
                               <Input name="amount" type="number" step="0.01" min={0} className="w-20" placeholder="Amount" />
                               <NativeSelect name="mode" className="w-24">
@@ -145,19 +168,19 @@ export default async function DispensePage() {
                               <Button type="submit" size="sm" variant="outline">
                                 Collect
                               </Button>
-                            </form>
+                            </ActionForm>
                           )}
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
                       {p.status === "PENDING" && (
-                        <form action={dispensePrescriptionAction}>
+                        <ActionForm action={dispensePrescriptionActionResult}>
                           <input type="hidden" name="prescriptionId" value={p.id} />
                           <Button type="submit" size="sm" variant="outline">
                             Dispense
                           </Button>
-                        </form>
+                        </ActionForm>
                       )}
                     </TableCell>
                   </TableRow>

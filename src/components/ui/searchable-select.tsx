@@ -3,18 +3,21 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+type Option = { value: string; label: string };
+
 /**
  * A type-to-filter picker over a plain hidden <input>, so it participates in
  * native <form action={serverAction}> + FormData submission exactly like
- * NativeSelect does. Built for option lists too large for a usable <select>
- * (thousands of medicines) — see native-select.tsx for why Base UI's Select
- * isn't used here.
+ * NativeSelect does. Options are fetched server-side (debounced) via
+ * `search` rather than shipped up front — built for catalogs too large to
+ * hand the client in full (thousands of medicines) — see native-select.tsx
+ * for why Base UI's Select isn't used here.
  */
 function SearchableSelect({
   id,
   name,
-  options,
-  defaultValue,
+  search,
+  defaultOption,
   placeholder = "Type to search…",
   required,
   className,
@@ -22,30 +25,23 @@ function SearchableSelect({
 }: {
   id?: string;
   name: string;
-  options: { value: string; label: string }[];
-  defaultValue?: string;
+  search: (query: string) => Promise<Option[]>;
+  defaultOption?: Option;
   placeholder?: string;
   required?: boolean;
   className?: string;
   onValueChange?: (value: string) => void;
 }) {
-  const initial = React.useMemo(
-    () => options.find((o) => o.value === defaultValue) ?? null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-  const [selectedValue, setSelectedValue] = React.useState(initial?.value ?? "");
-  const [query, setQuery] = React.useState(initial?.label ?? "");
+  const [selectedValue, setSelectedValue] = React.useState(defaultOption?.value ?? "");
+  const [query, setQuery] = React.useState(defaultOption?.label ?? "");
+  const [results, setResults] = React.useState<Option[]>(defaultOption ? [defaultOption] : []);
   const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
   const [highlighted, setHighlighted] = React.useState(0);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const listboxId = React.useId();
-
-  const filtered = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return options.slice(0, 50);
-    return options.filter((o) => o.label.toLowerCase().includes(q)).slice(0, 50);
-  }, [query, options]);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = React.useRef(0);
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -57,7 +53,27 @@ function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function selectOption(option: { value: string; label: string }) {
+  React.useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  function runSearch(q: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const requestId = ++requestIdRef.current;
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      const found = await search(q);
+      if (requestId === requestIdRef.current) {
+        setResults(found);
+        setLoading(false);
+        setHighlighted(0);
+      }
+    }, 250);
+  }
+
+  function selectOption(option: Option) {
     setSelectedValue(option.value);
     setQuery(option.label);
     setOpen(false);
@@ -81,38 +97,47 @@ function SearchableSelect({
           className
         )}
         value={query}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setOpen(true);
+          if (results.length === 0) runSearch(query);
+        }}
         onChange={(e) => {
-          setQuery(e.target.value);
+          const value = e.target.value;
+          setQuery(value);
           setSelectedValue("");
           setOpen(true);
-          setHighlighted(0);
+          runSearch(value);
         }}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
             e.preventDefault();
             setOpen(true);
-            setHighlighted((h) => Math.min(h + 1, filtered.length - 1));
+            setHighlighted((h) => Math.min(h + 1, results.length - 1));
           } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setHighlighted((h) => Math.max(h - 1, 0));
           } else if (e.key === "Enter") {
-            if (open && filtered[highlighted]) {
+            if (open && results[highlighted]) {
               e.preventDefault();
-              selectOption(filtered[highlighted]);
+              selectOption(results[highlighted]);
             }
           } else if (e.key === "Escape") {
             setOpen(false);
           }
         }}
       />
-      {open && filtered.length > 0 && (
+      {open && loading && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-input bg-popover px-2.5 py-1.5 text-sm text-muted-foreground shadow-md">
+          Searching…
+        </div>
+      )}
+      {open && !loading && results.length > 0 && (
         <ul
           id={listboxId}
           role="listbox"
           className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-input bg-popover text-popover-foreground shadow-md"
         >
-          {filtered.map((option, i) => (
+          {results.map((option, i) => (
             <li key={option.value} role="option" aria-selected={option.value === selectedValue}>
               <button
                 type="button"
@@ -132,7 +157,7 @@ function SearchableSelect({
           ))}
         </ul>
       )}
-      {open && filtered.length === 0 && (
+      {open && !loading && results.length === 0 && (
         <div className="absolute z-50 mt-1 w-full rounded-lg border border-input bg-popover px-2.5 py-1.5 text-sm text-muted-foreground shadow-md">
           No matches
         </div>

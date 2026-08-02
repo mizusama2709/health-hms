@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Menu } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {

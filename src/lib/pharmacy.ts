@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
-import { createInvoice } from "@/lib/billing";
-import type { PrescriptionStatus, DoseTime, DurationUnit } from "@prisma/client";
+import { createInvoice, recordPayment } from "@/lib/billing";
+import type { PrescriptionStatus, DoseTime, DurationUnit, PaymentMode } from "@prisma/client";
 
 export async function listMedicines(tenantId: string, filters?: { isActive?: boolean; lowStock?: boolean }) {
   const medicines = await db.medicine.findMany({
@@ -13,6 +13,26 @@ export async function listMedicines(tenantId: string, filters?: { isActive?: boo
     return medicines.filter((m) => m.reorderLevel !== null && m.stockQuantity <= m.reorderLevel);
   }
   return medicines;
+}
+
+export async function countMedicines(tenantId: string, filters?: { isActive?: boolean }) {
+  return db.medicine.count({ where: { tenantId, ...(filters?.isActive !== undefined && { isActive: filters.isActive }) } });
+}
+
+export async function searchMedicines(tenantId: string, query: string, limit = 20) {
+  const medicines = await db.medicine.findMany({
+    where: {
+      tenantId,
+      isActive: true,
+      ...(query.trim() && { name: { contains: query.trim(), mode: "insensitive" as const } }),
+    },
+    orderBy: { name: "asc" },
+    take: limit,
+  });
+  return medicines.map((m) => ({
+    value: m.id,
+    label: `${m.name} (stock: ${m.stockQuantity})${Number(m.unitPrice) === 0 ? " — ⚠ no price set" : ""}`,
+  }));
 }
 
 export async function listMedicinesPaged(
@@ -43,6 +63,52 @@ export async function listMedicinesPaged(
 
 export async function updateMedicinePrice(tenantId: string, medicineId: string, unitPrice: number) {
   return db.medicine.updateMany({ where: { id: medicineId, tenantId }, data: { unitPrice } });
+}
+
+// Rows are "name,unitPrice" (an optional header row is skipped automatically).
+// Matches by exact medicine name (case-insensitive); unmatched names and
+// malformed rows are reported back rather than silently dropped.
+export async function bulkUpdateMedicinePrices(tenantId: string, csvText: string) {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  let matched = 0;
+  let notFound = 0;
+  let invalidRows = 0;
+  const notFoundNames: string[] = [];
+
+  await db.$transaction(async (tx) => {
+    for (const line of lines) {
+      const [rawName, rawPrice] = line.split(",");
+      const name = rawName?.trim();
+      const price = Number(rawPrice?.trim());
+
+      if (!name || !rawPrice) {
+        invalidRows++;
+        continue;
+      }
+      if (name.toLowerCase() === "name" && Number.isNaN(price)) continue; // header row
+      if (!Number.isFinite(price) || price < 0) {
+        invalidRows++;
+        continue;
+      }
+
+      const result = await tx.medicine.updateMany({
+        where: { tenantId, name: { equals: name, mode: "insensitive" } },
+        data: { unitPrice: price },
+      });
+      if (result.count > 0) {
+        matched += result.count;
+      } else {
+        notFound++;
+        notFoundNames.push(name);
+      }
+    }
+  });
+
+  return { matched, notFound, invalidRows, notFoundNames: notFoundNames.slice(0, 10) };
 }
 
 export type BatchExpiryFilter = "all" | "expired" | "30d" | "90d";
@@ -113,10 +179,22 @@ export async function createMedicine(params: {
 }
 
 export async function adjustMedicineStock(tenantId: string, medicineId: string, delta: number) {
-  return db.medicine.updateMany({
-    where: { id: medicineId, tenantId },
+  if (delta >= 0) {
+    return db.medicine.updateMany({
+      where: { id: medicineId, tenantId },
+      data: { stockQuantity: { increment: delta } },
+    });
+  }
+  // Negative delta: same conditional-decrement guard as dispensePrescription
+  // — only apply it if enough stock remains, so this can never go negative.
+  const result = await db.medicine.updateMany({
+    where: { id: medicineId, tenantId, stockQuantity: { gte: -delta } },
     data: { stockQuantity: { increment: delta } },
   });
+  if (result.count === 0) {
+    throw new Error("Cannot reduce stock below zero");
+  }
+  return result;
 }
 
 export async function listSuppliers(tenantId: string) {
@@ -307,6 +385,25 @@ export async function dispensePrescription(tenantId: string, prescriptionId: str
 
     return prescription;
   });
+}
+
+// Convenience wrapper for the common case — collect payment in full and
+// hand over the medicines in one action — composed from the three existing,
+// independently-safe steps rather than one bigger transaction: each already
+// guards its own invariants (invoice numbering, payment locking, stock
+// checks), so there's nothing extra to protect by nesting them together.
+export async function billCollectAndDispensePrescription(
+  tenantId: string,
+  prescriptionId: string,
+  mode: PaymentMode,
+  dispensedById?: string
+) {
+  const invoice = await createPharmacyInvoiceForPrescription(tenantId, prescriptionId);
+  if (Number(invoice.totalAmount) > 0) {
+    await recordPayment({ tenantId, invoiceId: invoice.id, amount: Number(invoice.totalAmount), mode });
+  }
+  await dispensePrescription(tenantId, prescriptionId, dispensedById);
+  return invoice;
 }
 
 export async function createStoreCredit(params: {

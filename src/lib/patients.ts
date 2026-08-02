@@ -13,6 +13,29 @@ export function computeAge(dateOfBirth: Date | null): number | null {
   return age;
 }
 
+export async function searchPatients(tenantId: string, query: string, limit = 20) {
+  const q = query.trim();
+  const patients = await db.patient.findMany({
+    where: {
+      tenantId,
+      ...(q && {
+        OR: [
+          { user: { name: { contains: q, mode: "insensitive" as const } } },
+          { user: { phone: { contains: q, mode: "insensitive" as const } } },
+          { user: { email: { contains: q, mode: "insensitive" as const } } },
+        ],
+      }),
+    },
+    include: { user: true },
+    orderBy: { user: { name: "asc" } },
+    take: limit,
+  });
+  return patients.map((p) => ({
+    value: p.id,
+    label: `${p.user.name}${p.user.phone ? ` · ${p.user.phone}` : ""} (${p.user.email})`,
+  }));
+}
+
 export async function createPatient(params: {
   tenantId: string;
   name: string;
@@ -123,7 +146,7 @@ export async function listPatients(
     const lastConsultation = p.appointments.find((a) => a.status === "COMPLETED") ?? null;
     const pendingInvoice = p.invoices.find((i) => i.status === "UNPAID" || i.status === "PARTIALLY_PAID");
     const paidInvoice = p.invoices.find((i) => i.status === "PAID");
-    const pendingFollowUp = p.appointments.find((a) => a.followUp && a.followUp.status === "pending");
+    const pendingFollowUp = p.appointments.find((a) => a.followUp && a.followUp.status === "PENDING");
 
     let status: PatientStatus = "new";
     if (pendingInvoice) status = "payment_pending";

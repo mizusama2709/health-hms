@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { listMedicinesPaged } from "@/lib/pharmacy";
-import { createMedicineAction, updateMedicinePriceAction } from "../actions";
+import { createMedicineAction, updateMedicinePriceAction, bulkUpdateMedicinePricesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,13 +16,16 @@ export const metadata = {
 export default async function MedicinesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; unpriced?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; unpriced?: string; page?: string; bulkResult?: string; bulkError?: string }>;
 }) {
   const tenantId = await requireTenantId();
   const params = await searchParams;
   const search = params.search || undefined;
   const unpriced = params.unpriced === "true";
   const page = Number(params.page) || 1;
+
+  const [bulkMatched, bulkNotFound, bulkInvalid] = params.bulkResult?.split(",").map(Number) ?? [];
+  const hasBulkResult = params.bulkResult !== undefined && [bulkMatched, bulkNotFound, bulkInvalid].every((n) => Number.isFinite(n));
 
   const { medicines, total, totalPages } = await listMedicinesPaged(tenantId, { search, unpriced, page, pageSize: 50 });
 
@@ -42,6 +45,41 @@ export default async function MedicinesPage({
           View batches &amp; expiry →
         </Link>
       </div>
+
+      {hasBulkResult && (
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
+          <span className="font-medium text-emerald-800 dark:text-emerald-300">
+            Bulk price upload: {bulkMatched} priced
+          </span>{" "}
+          <span className="text-emerald-700 dark:text-emerald-400">
+            {bulkNotFound > 0 && `· ${bulkNotFound} name(s) not found `}
+            {bulkInvalid > 0 && `· ${bulkInvalid} row(s) skipped (invalid)`}
+          </span>
+        </div>
+      )}
+      {params.bulkError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {params.bulkError}
+        </div>
+      )}
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Bulk price upload</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
+            Upload a CSV with two columns — medicine name, unit price — to price many medicines at once. Matches by
+            exact name (case-insensitive); an optional header row is skipped automatically.
+          </p>
+          <form action={bulkUpdateMedicinePricesAction} className="flex items-end gap-2">
+            <Input name="file" type="file" accept=".csv,text/csv" required className="flex-1" />
+            <Button type="submit" variant="outline">
+              Upload
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card className="max-w-xl">
         <CardHeader>
@@ -111,6 +149,7 @@ export default async function MedicinesPage({
                     <TableHead>Stock</TableHead>
                     <TableHead>Reorder level</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Batches</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -150,6 +189,14 @@ export default async function MedicinesPage({
                       <TableCell>{m.reorderLevel ?? "—"}</TableCell>
                       <TableCell>
                         <Badge variant={m.isActive ? "default" : "secondary"}>{m.isActive ? "Active" : "Inactive"}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/admin/pharmacy/medicines/batches?search=${encodeURIComponent(m.name)}`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          View →
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))}

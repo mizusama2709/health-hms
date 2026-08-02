@@ -9,12 +9,13 @@ import {
   getDashboardSummary,
   listUpcomingAppointments,
 } from "@/lib/dashboardStats";
-import { bookWalkIn, addDoctor, sendInvoiceWhatsApp } from "./actions";
+import { bookWalkIn, addDoctor, sendInvoiceWhatsApp, searchPatientsAction } from "./actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -230,9 +231,11 @@ export default async function AdminHome() {
               <p className="text-xs text-muted-foreground">{pharmacyStats.skuCount} SKUs · no sale 90d</p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Expiring within 30 days</p>
-              <p className="mt-1 text-xl font-semibold text-amber-600">{formatINR(pharmacyStats.expiringSoonValueAtMrp)}</p>
-              <p className="text-xs text-muted-foreground">{pharmacyStats.expiringSoonCount} units at MRP</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Expiring within 30 days (at cost)</p>
+              <p className="mt-1 text-xl font-semibold text-amber-600">{formatINR(pharmacyStats.expiringSoonValueAtCost)}</p>
+              <p className="text-xs text-muted-foreground">
+                {pharmacyStats.expiringSoonCount} units · MRP {formatINR(pharmacyStats.expiringSoonValueAtMrp)}
+              </p>
             </div>
           </div>
 
@@ -316,8 +319,14 @@ export default async function AdminHome() {
                   </option>
                 ))}
               </NativeSelect>
-              <Label htmlFor="patientEmail">Patient email</Label>
-              <Input id="patientEmail" name="patientEmail" type="email" placeholder="Patient email" required />
+              <Label htmlFor="patientId">Patient</Label>
+              <SearchableSelect
+                id="patientId"
+                name="patientId"
+                required
+                placeholder="Search patients by name, phone, or email…"
+                search={searchPatientsAction}
+              />
               <Label htmlFor="datetime">Date &amp; time</Label>
               <Input id="datetime" name="datetime" type="datetime-local" required />
               <Button type="submit" className="mt-2">
