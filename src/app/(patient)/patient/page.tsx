@@ -1,5 +1,9 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
+export const metadata = {
+  title: "Patient Portal",
+};
+
 export default function PatientHome() {
   return (
     <div className="flex flex-col gap-6">

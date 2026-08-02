@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant, listDoctorsForTenant } from "@/lib/appointments";
-import { getOpdToday, getOpdPipeline, getDoctorPerformance, getPharmacyStats } from "@/lib/dashboardStats";
+import {
+  getOpdToday,
+  getOpdPipeline,
+  getDoctorPerformance,
+  getPharmacyStats,
+  getDashboardSummary,
+  listUpcomingAppointments,
+} from "@/lib/dashboardStats";
 import { bookWalkIn, addDoctor, sendInvoiceWhatsApp } from "./actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,24 +18,114 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 
+export const metadata = {
+  title: "Admin Dashboard",
+};
+
 function formatINR(value: number) {
   return `₹${Math.round(value).toLocaleString("en-IN")}`;
 }
 
 export default async function AdminHome() {
   const tenantId = await requireTenantId();
-  const [appointments, doctors, opdToday, opdPipeline, doctorPerformance, pharmacyStats] = await Promise.all([
+  const [
+    appointments,
+    doctors,
+    opdToday,
+    opdPipeline,
+    doctorPerformance,
+    pharmacyStats,
+    summary,
+    { upcoming, totalUpcoming },
+  ] = await Promise.all([
     listAppointmentsForTenant(tenantId),
     listDoctorsForTenant(tenantId),
     getOpdToday(tenantId),
     getOpdPipeline(tenantId),
     getDoctorPerformance(tenantId),
     getPharmacyStats(tenantId),
+    getDashboardSummary(tenantId),
+    listUpcomingAppointments(tenantId, 5),
   ]);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Admin / Reception Console</h1>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-lg border p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Patients</p>
+          <p className="mt-1 text-2xl font-semibold">{summary.totalPatients.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Appointments today</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {summary.appointmentsToday.completed}/{summary.appointmentsToday.total}
+          </p>
+          <p className="text-xs text-muted-foreground">{summary.appointmentsToday.confirmed} confirmed</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Revenue this month</p>
+          <p className="mt-1 text-2xl font-semibold">{formatINR(summary.revenueThisMonth)}</p>
+          <p className="text-xs text-muted-foreground">{formatINR(summary.pendingThisMonth)} pending</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Consultations this month</p>
+          <p className="mt-1 text-2xl font-semibold">{summary.consultationsThisMonth}</p>
+          <p className="text-xs text-muted-foreground">Completed</p>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick actions</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Link href="/admin/schedule/appointments?date=today" className="rounded-lg border p-3 text-sm font-medium hover:bg-muted">
+            Today&apos;s appointments
+          </Link>
+          <Link href="/admin/patients" className="rounded-lg border p-3 text-sm font-medium hover:bg-muted">
+            Show patients
+          </Link>
+          <Link href={`/admin/reports?from=${todayStr}&to=${todayStr}`} className="rounded-lg border p-3 text-sm font-medium hover:bg-muted">
+            Today&apos;s revenue
+          </Link>
+          <Link href="/admin/billing/invoices?filter=UNPAID" className="rounded-lg border p-3 text-sm font-medium hover:bg-muted">
+            Pending payments
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Upcoming appointments</CardTitle>
+            <CardDescription>Next {upcoming.length} of {totalUpcoming} upcoming</CardDescription>
+          </div>
+          <Link href="/admin/schedule/appointments" className="text-sm font-medium text-primary hover:underline">
+            View all →
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No upcoming appointments.</p>
+          ) : (
+            <ul className="flex flex-col divide-y rounded-lg border">
+              {upcoming.map((appt) => (
+                <li key={appt.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                  <div>
+                    <span className="font-medium">{appt.patient.user.name}</span>
+                    <span className="text-muted-foreground"> — Dr. {appt.doctor.user.name}</span>
+                  </div>
+                  <span className="text-muted-foreground">{new Date(appt.datetime).toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -133,11 +230,25 @@ export default async function AdminHome() {
               <p className="text-xs text-muted-foreground">{pharmacyStats.skuCount} SKUs · no sale 90d</p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Expiry write-off (30d)</p>
-              <p className="mt-1 text-xl font-semibold">₹0</p>
-              <p className="text-xs text-muted-foreground">Expiry dates not tracked yet</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Expiring within 30 days</p>
+              <p className="mt-1 text-xl font-semibold text-amber-600">{formatINR(pharmacyStats.expiringSoonValueAtMrp)}</p>
+              <p className="text-xs text-muted-foreground">{pharmacyStats.expiringSoonCount} units at MRP</p>
             </div>
           </div>
+
+          {pharmacyStats.unpricedCount > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950">
+              <span className="font-medium text-amber-800 dark:text-amber-300">
+                {pharmacyStats.unpricedCount} medicine{pharmacyStats.unpricedCount === 1 ? "" : "s"} have no price set
+              </span>{" "}
+              <span className="text-amber-700 dark:text-amber-400">
+                — dispensing these will bill patients ₹0, and their stock is excluded from the cost/dead-stock figures above.
+              </span>{" "}
+              <Link href="/admin/pharmacy/medicines?unpriced=true" className="font-medium text-primary hover:underline">
+                Set prices →
+              </Link>
+            </div>
+          )}
 
           <div>
             <p className="mb-2 text-sm font-medium text-muted-foreground">Top moving medicines (30d)</p>

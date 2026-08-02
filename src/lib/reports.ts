@@ -63,6 +63,40 @@ export async function getMasterReport(
   };
 }
 
+export async function getCollectionByPaymentMode(
+  tenantId: string,
+  filters: { from?: Date; to?: Date }
+) {
+  const dateRange =
+    filters.from || filters.to ? { gte: filters.from, lte: filters.to } : undefined;
+
+  const grouped = await db.payment.groupBy({
+    by: ["mode"],
+    where: {
+      tenantId,
+      status: "SUCCESS",
+      ...(dateRange && { paidAt: dateRange }),
+    },
+    _sum: { amount: true },
+  });
+
+  const total = grouped.reduce((sum, g) => sum + Number(g._sum.amount ?? 0), 0);
+
+  return {
+    total,
+    byMode: grouped
+      .map((g) => {
+        const amount = Number(g._sum.amount ?? 0);
+        return {
+          mode: g.mode,
+          amount,
+          percent: total > 0 ? Math.round((amount / total) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.amount - a.amount),
+  };
+}
+
 export async function listTransactions(
   tenantId: string,
   filters?: { from?: Date; to?: Date; status?: string }
@@ -75,7 +109,13 @@ export async function listTransactions(
         ? { paidAt: { gte: filters?.from, lte: filters?.to } }
         : {}),
     },
-    include: { invoice: { include: { patient: { include: { user: true } } } } },
+    include: {
+      invoice: {
+        include: {
+          patient: { include: { user: true } },
+        },
+      },
+    },
     orderBy: { paidAt: "desc" },
   });
 }
@@ -131,4 +171,60 @@ export async function getSelfEfficacyReport(
   });
 
   return { appointmentsConsidered: appointments.length, transitions };
+}
+
+export async function getPatientEfficacyReport(tenantId: string, patientId: string) {
+  const appointments = await db.appointment.findMany({
+    where: { tenantId, patientId },
+    select: {
+      id: true,
+      datetime: true,
+      status: true,
+      journeyEvents: { orderBy: { occurredAt: "asc" } },
+    },
+    orderBy: { datetime: "desc" },
+  });
+
+  const transitionDurations = new Map<string, number[]>();
+
+  const perAppointment = appointments.map((appt) => {
+    const byStep = new Map<JourneyStep, Date>();
+    for (const event of appt.journeyEvents) {
+      if (!byStep.has(event.step)) byStep.set(event.step, event.occurredAt);
+    }
+
+    const stepTimes = STEP_TRANSITIONS.flatMap(([from, to]) => [from, to])
+      .filter((step, i, arr) => arr.indexOf(step) === i)
+      .map((step) => ({ step, occurredAt: byStep.get(step) ?? null }));
+
+    const transitions = STEP_TRANSITIONS.map(([from, to]) => {
+      const fromTime = byStep.get(from);
+      const toTime = byStep.get(to);
+      let minutes: number | null = null;
+      if (fromTime && toTime && toTime >= fromTime) {
+        minutes = (toTime.getTime() - fromTime.getTime()) / 60000;
+        const key = `${from}→${to}`;
+        transitionDurations.set(key, [...(transitionDurations.get(key) ?? []), minutes]);
+      }
+      return { from, to, minutes };
+    });
+
+    return {
+      appointmentId: appt.id,
+      datetime: appt.datetime,
+      status: appt.status,
+      stepTimes,
+      transitions,
+    };
+  });
+
+  const transitionAverages = STEP_TRANSITIONS.map(([from, to]) => {
+    const key = `${from}→${to}`;
+    const durations = transitionDurations.get(key) ?? [];
+    const avgMinutes =
+      durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
+    return { from, to, sampleSize: durations.length, avgMinutes };
+  });
+
+  return { appointmentsConsidered: appointments.length, transitionAverages, perAppointment };
 }

@@ -22,7 +22,7 @@ function NavLinks({ sections }: { sections: NavSection[] }) {
       {sections.map((section, i) => (
         <div key={section.title ?? i} className="flex flex-col gap-1">
           {section.title && (
-            <div className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-white/40 uppercase">
+            <div className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-white/60 uppercase">
               {section.title}
             </div>
           )}
@@ -58,6 +58,12 @@ export function RoleShell({
 }) {
   return (
     <div className="flex min-h-screen w-full">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-black focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#0d0e1a] p-4 md:flex">
         <div className="mb-4 px-2">
           <div className="text-sm font-semibold text-white">Health HMS</div>
@@ -71,6 +77,7 @@ export function RoleShell({
           <div className="flex items-center gap-2">
             <Sheet>
               <SheetTrigger
+                aria-label="Open navigation menu"
                 className={cn(buttonVariants({ variant: "outline", size: "icon" }), "md:hidden")}
               >
                 <Menu className="size-4" />
@@ -92,7 +99,9 @@ export function RoleShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-auto p-4 md:p-6">{children}</main>
+        <main id="main-content" className="flex-1 overflow-x-auto p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+export const metadata = {
+  title: "Knowledge Base",
+};
+
 export default async function KnowledgeBasePage() {
   const tenantId = await requireTenantId();
   const docs = await listKnowledgeBaseDocuments(tenantId);

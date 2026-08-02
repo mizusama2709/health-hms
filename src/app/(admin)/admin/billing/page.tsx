@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 
+export const metadata = {
+  title: "Bill Patient",
+};
+
 export default async function BillPatientPage({
   searchParams,
 }: {

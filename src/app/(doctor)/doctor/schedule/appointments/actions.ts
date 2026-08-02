@@ -15,7 +15,7 @@ async function requireTenantId() {
 
 export async function cancelAppointmentAction(appointmentId: string) {
   const tenantId = await requireTenantId();
-  await cancelAppointment(appointmentId, tenantId);
+  await cancelAppointment(appointmentId, tenantId, "DOCTOR");
   revalidatePath("/doctor/schedule/appointments");
 }
 

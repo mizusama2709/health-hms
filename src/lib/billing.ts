@@ -1,8 +1,13 @@
 import { db } from "@/lib/db";
 import { ServiceType, PaymentMode, AppointmentSource, InvoiceStatus } from "@prisma/client";
 
-function generateInvoiceNumber() {
-  return `INV-${Date.now().toString(36).toUpperCase()}`;
+async function generateInvoiceNumber(tenantId: string) {
+  const counter = await db.invoiceCounter.upsert({
+    where: { tenantId },
+    create: { tenantId, value: 1 },
+    update: { value: { increment: 1 } },
+  });
+  return `INV-${String(counter.value).padStart(6, "0")}`;
 }
 
 export async function createInvoice(params: {
@@ -45,7 +50,7 @@ export async function createInvoice(params: {
       tenantId: params.tenantId,
       patientId: params.patientId,
       appointmentId: params.appointmentId,
-      invoiceNumber: generateInvoiceNumber(),
+      invoiceNumber: await generateInvoiceNumber(params.tenantId),
       serviceType: params.serviceType,
       source: params.source ?? "MANUAL",
       subtotal,
@@ -76,34 +81,41 @@ export async function recordPayment(params: {
   mode: PaymentMode;
   reference?: string;
 }) {
-  const invoice = await db.invoice.findFirstOrThrow({
-    where: { id: params.invoiceId, tenantId: params.tenantId },
+  return db.$transaction(async (tx) => {
+    // Row lock via FOR UPDATE — two concurrent payments on the same invoice
+    // must not both read the same amountPaid and overwrite each other's update.
+    const [invoice] = await tx.$queryRaw<{ amountPaid: unknown; totalAmount: unknown }[]>`
+      SELECT "amountPaid", "totalAmount" FROM "Invoice"
+      WHERE id = ${params.invoiceId} AND "tenantId" = ${params.tenantId}
+      FOR UPDATE
+    `;
+    if (!invoice) throw new Error("Invoice not found");
+
+    const payment = await tx.payment.create({
+      data: {
+        tenantId: params.tenantId,
+        invoiceId: params.invoiceId,
+        amount: params.amount,
+        mode: params.mode,
+        reference: params.reference,
+      },
+    });
+
+    const amountPaid = Number(invoice.amountPaid) + params.amount;
+    const status =
+      amountPaid >= Number(invoice.totalAmount)
+        ? "PAID"
+        : amountPaid > 0
+        ? "PARTIALLY_PAID"
+        : "UNPAID";
+
+    await tx.invoice.update({
+      where: { id: params.invoiceId },
+      data: { amountPaid, status },
+    });
+
+    return payment;
   });
-
-  const payment = await db.payment.create({
-    data: {
-      tenantId: params.tenantId,
-      invoiceId: params.invoiceId,
-      amount: params.amount,
-      mode: params.mode,
-      reference: params.reference,
-    },
-  });
-
-  const amountPaid = Number(invoice.amountPaid) + params.amount;
-  const status =
-    amountPaid >= Number(invoice.totalAmount)
-      ? "PAID"
-      : amountPaid > 0
-      ? "PARTIALLY_PAID"
-      : "UNPAID";
-
-  await db.invoice.update({
-    where: { id: params.invoiceId },
-    data: { amountPaid, status },
-  });
-
-  return payment;
 }
 
 export async function getInvoiceWithBalance(invoiceId: string, tenantId: string) {
@@ -125,9 +137,14 @@ export async function issueRefund(params: {
   reason?: string;
 }) {
   return db.$transaction(async (tx) => {
-    const invoice = await tx.invoice.findFirstOrThrow({
-      where: { id: params.invoiceId, tenantId: params.tenantId },
-    });
+    // Row lock via FOR UPDATE — same lost-update hazard as recordPayment if a
+    // refund and a payment (or two refunds) land on this invoice concurrently.
+    const [invoice] = await tx.$queryRaw<{ amountPaid: unknown; totalAmount: unknown }[]>`
+      SELECT "amountPaid", "totalAmount" FROM "Invoice"
+      WHERE id = ${params.invoiceId} AND "tenantId" = ${params.tenantId}
+      FOR UPDATE
+    `;
+    if (!invoice) throw new Error("Invoice not found");
 
     const refund = await tx.refund.create({
       data: {

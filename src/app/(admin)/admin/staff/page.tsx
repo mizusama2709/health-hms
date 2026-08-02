@@ -9,6 +9,10 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 
+export const metadata = {
+  title: "Staff",
+};
+
 const STAFF_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "NURSE", "RECEPTIONIST", "LAB", "PHARMACIST"] as const;
 const STATUSES = ["ACTIVE", "INACTIVE", "SUSPENDED"] as const;
 

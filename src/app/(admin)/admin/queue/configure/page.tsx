@@ -8,6 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import type { QueueStage } from "@prisma/client";
 
+export const metadata = {
+  title: "Configure Queue",
+};
+
 const STAGE_LABELS: Record<QueueStage, string> = {
   REGISTRATION: "Registration",
   VITALS: "Vitals",

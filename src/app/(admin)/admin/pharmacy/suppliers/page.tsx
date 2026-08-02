@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
+export const metadata = {
+  title: "Suppliers",
+};
+
 export default async function SuppliersPage() {
   const tenantId = await requireTenantId();
   const suppliers = await listSuppliers(tenantId);

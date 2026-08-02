@@ -5,6 +5,7 @@ import {
   ServiceType,
   AppointmentSource,
   PaymentMode,
+  CancelledBy,
 } from "@prisma/client";
 
 export async function listAppointmentsForDoctor(doctorId: string, tenantId: string) {
@@ -89,11 +90,12 @@ export function getScheduleStats(todaysAppointments: { datetime: Date; status: A
 export async function updateAppointmentStatus(
   appointmentId: string,
   tenantId: string,
-  status: AppointmentStatus
+  status: AppointmentStatus,
+  cancelledBy?: CancelledBy
 ) {
   return db.appointment.updateMany({
     where: { id: appointmentId, tenantId },
-    data: { status },
+    data: { status, ...(status === "CANCELLED" && { cancelledBy: cancelledBy ?? "STAFF" }) },
   });
 }
 
@@ -121,7 +123,7 @@ export async function getAppointmentDetailed(appointmentId: string, tenantId: st
     include: {
       patient: { include: { user: true } },
       doctor: { include: { user: true } },
-      invoices: { orderBy: { createdAt: "desc" }, take: 1, include: { payments: true, lineItems: true } },
+      invoices: { orderBy: { createdAt: "desc" }, take: 1, include: { payments: { orderBy: { createdAt: "desc" } }, lineItems: true } },
     },
   });
 }
@@ -134,8 +136,8 @@ export async function rescheduleAppointment(
   return updateAppointmentTiming(appointmentId, tenantId, newDatetime);
 }
 
-export async function cancelAppointment(appointmentId: string, tenantId: string) {
-  return updateAppointmentStatus(appointmentId, tenantId, "CANCELLED");
+export async function cancelAppointment(appointmentId: string, tenantId: string, cancelledBy: CancelledBy = "STAFF") {
+  return updateAppointmentStatus(appointmentId, tenantId, "CANCELLED", cancelledBy);
 }
 
 export async function createAppointment(params: {
@@ -213,7 +215,7 @@ export async function listAppointmentsForDoctorDetailed(
     include: {
       patient: { include: { user: true } },
       doctor: { include: { user: true } },
-      invoices: { orderBy: { createdAt: "desc" }, take: 1, include: { payments: true } },
+      invoices: { orderBy: { createdAt: "desc" }, take: 1, include: { payments: { orderBy: { createdAt: "desc" } } } },
     },
     orderBy: { datetime: "desc" },
   });
@@ -332,7 +334,7 @@ export async function listAppointmentsForTenantDetailed(
     include: {
       patient: { include: { user: true } },
       doctor: { include: { user: true } },
-      invoices: { orderBy: { createdAt: "desc" }, take: 1, include: { payments: true } },
+      invoices: { orderBy: { createdAt: "desc" }, take: 1, include: { payments: { orderBy: { createdAt: "desc" } } } },
     },
     orderBy: { datetime: "desc" },
   });

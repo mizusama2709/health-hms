@@ -1,14 +1,25 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listPrescriptions, listMedicines } from "@/lib/pharmacy";
 import { listRxTemplates } from "@/lib/rxTemplates";
-import { createPrescriptionAction, dispensePrescriptionAction, loadRxTemplateAction } from "../actions";
+import {
+  createPrescriptionAction,
+  dispensePrescriptionAction,
+  loadRxTemplateAction,
+  createPharmacyInvoiceAction,
+  recordPharmacyPaymentAction,
+} from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+
+export const metadata = {
+  title: "Dispense / Rx Queue",
+};
 
 export default async function DispensePage() {
   const tenantId = await requireTenantId();
@@ -56,13 +67,16 @@ export default async function DispensePage() {
             <Label htmlFor="patientEmail">Patient email</Label>
             <Input id="patientEmail" name="patientEmail" type="email" required />
             <Label htmlFor="medicineId">Medicine</Label>
-            <NativeSelect id="medicineId" name="medicineId" required>
-              {medicines.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} (stock: {m.stockQuantity})
-                </option>
-              ))}
-            </NativeSelect>
+            <SearchableSelect
+              id="medicineId"
+              name="medicineId"
+              required
+              placeholder="Search medicines by name…"
+              options={medicines.map((m) => ({
+                value: m.id,
+                label: `${m.name} (stock: ${m.stockQuantity})${Number(m.unitPrice) === 0 ? " — ⚠ no price set" : ""}`,
+              }))}
+            />
             <Label htmlFor="quantity">Quantity</Label>
             <Input id="quantity" name="quantity" type="number" min={1} required />
             <Label htmlFor="dosageInstructions">Dosage instructions (optional)</Label>
@@ -89,6 +103,7 @@ export default async function DispensePage() {
                   <TableHead>Items</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Billing</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -103,6 +118,38 @@ export default async function DispensePage() {
                       <Badge variant={p.status === "DISPENSED" ? "default" : "outline"}>{p.status}</Badge>
                     </TableCell>
                     <TableCell>{p.createdAt.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {!p.invoice ? (
+                        <form action={createPharmacyInvoiceAction}>
+                          <input type="hidden" name="prescriptionId" value={p.id} />
+                          <Button type="submit" size="sm" variant="outline">
+                            Prepare &amp; bill
+                          </Button>
+                        </form>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            {Number(p.invoice.amountPaid).toFixed(2)} / {Number(p.invoice.totalAmount).toFixed(2)} —{" "}
+                            {p.invoice.status}
+                          </span>
+                          {p.invoice.status !== "PAID" && (
+                            <form action={recordPharmacyPaymentAction} className="flex items-center gap-1">
+                              <input type="hidden" name="invoiceId" value={p.invoice.id} />
+                              <Input name="amount" type="number" step="0.01" min={0} className="w-20" placeholder="Amount" />
+                              <NativeSelect name="mode" className="w-24">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CARD">Card</option>
+                                <option value="OTHER">Other</option>
+                              </NativeSelect>
+                              <Button type="submit" size="sm" variant="outline">
+                                Collect
+                              </Button>
+                            </form>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {p.status === "PENDING" && (
                         <form action={dispensePrescriptionAction}>

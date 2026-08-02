@@ -10,6 +10,10 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import type { QueueStage } from "@prisma/client";
 
+export const metadata = {
+  title: "Queue",
+};
+
 const STAGE_LABELS: Record<QueueStage, string> = {
   REGISTRATION: "Registration",
   VITALS: "Vitals",

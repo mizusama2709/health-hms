@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
+export const metadata = {
+  title: "Store Credit",
+};
+
 export default async function StoreCreditPage() {
   const tenantId = await requireTenantId();
   const [pharmacyInvoices, storeCredits] = await Promise.all([

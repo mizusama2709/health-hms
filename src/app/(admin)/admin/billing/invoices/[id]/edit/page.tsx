@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+export const metadata = {
+  title: "Edit Invoice",
+};
+
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const tenantId = await requireTenantId();

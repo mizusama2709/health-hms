@@ -8,11 +8,15 @@ import {
   createSupplier,
   createGoodsReceipt,
   createPrescription,
+  createPharmacyInvoiceForPrescription,
   dispensePrescription,
+  updateMedicinePrice,
 } from "@/lib/pharmacy";
+import { recordPayment } from "@/lib/billing";
 import { createRxTemplate, getRxTemplateWithItems } from "@/lib/rxTemplates";
 import { recordPharmacyReturn } from "@/lib/hospitalSettings";
 import { db } from "@/lib/db";
+import type { PaymentMode } from "@prisma/client";
 
 const PHARMACY_ROLES = ["PHARMACIST", "ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
 
@@ -27,6 +31,18 @@ export async function createMedicineAction(formData: FormData) {
   const reorderLevel = formData.get("reorderLevel") ? Number(formData.get("reorderLevel")) : undefined;
 
   await createMedicine({ tenantId, name, sku, unitPrice, stockQuantity, reorderLevel });
+
+  revalidatePath("/admin/pharmacy/medicines");
+}
+
+export async function updateMedicinePriceAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const medicineId = formData.get("medicineId") as string;
+  const unitPrice = Number(formData.get("unitPrice"));
+
+  await updateMedicinePrice(tenantId, medicineId, unitPrice);
 
   revalidatePath("/admin/pharmacy/medicines");
 }
@@ -88,6 +104,30 @@ export async function createPrescriptionAction(formData: FormData) {
   revalidatePath("/admin/pharmacy/dispense");
 }
 
+export async function createPharmacyInvoiceAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const prescriptionId = formData.get("prescriptionId") as string;
+  await createPharmacyInvoiceForPrescription(tenantId, prescriptionId);
+
+  revalidatePath("/admin/pharmacy/dispense");
+}
+
+export async function recordPharmacyPaymentAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const invoiceId = formData.get("invoiceId") as string;
+  const amount = Number(formData.get("amount"));
+  const mode = formData.get("mode") as PaymentMode;
+  const reference = (formData.get("reference") as string) || undefined;
+
+  await recordPayment({ tenantId, invoiceId, amount, mode, reference });
+
+  revalidatePath("/admin/pharmacy/dispense");
+}
+
 export async function dispensePrescriptionAction(formData: FormData) {
   const session = await requireRole(...PHARMACY_ROLES);
   const tenantId = await requireTenantId();
@@ -144,11 +184,13 @@ export async function createRxTemplateAction(formData: FormData) {
   const quantities = formData.getAll("quantity") as string[];
   const dosages = formData.getAll("dosageInstructions") as string[];
 
-  const items = medicineIds.map((medicineId, i) => ({
-    medicineId,
-    quantity: Number(quantities[i]),
-    dosageInstructions: dosages[i] || undefined,
-  }));
+  const items = medicineIds
+    .map((medicineId, i) => ({
+      medicineId,
+      quantity: Number(quantities[i]),
+      dosageInstructions: dosages[i] || undefined,
+    }))
+    .filter((item) => item.medicineId);
 
   await createRxTemplate({ tenantId, name, diseaseTag, items });
 

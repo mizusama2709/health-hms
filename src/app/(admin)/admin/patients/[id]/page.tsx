@@ -2,14 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getPatientWithHistory, computeAge } from "@/lib/patients";
+import { getPatientEfficacyReport } from "@/lib/reports";
 import { updatePatientProfileAction } from "../actions";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+
+export const metadata = {
+  title: "Patient Details",
+};
 
 function toDateInputValue(d: Date | null) {
   if (!d) return "";
@@ -24,6 +29,18 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
   if (!patient) notFound();
 
   const age = computeAge(patient.dateOfBirth);
+  const efficacy = await getPatientEfficacyReport(tenantId, patient.id);
+
+  const STEP_LABELS: Record<string, string> = {
+    APPOINTMENT_BOOKED: "Booked",
+    VITALS_TAKEN: "Vitals",
+    OPD_STARTED: "OPD started",
+    OPD_COMPLETED: "OPD completed",
+    LAB_ORDERED: "Lab ordered",
+    LAB_COMPLETED: "Lab completed",
+    MEDICINES_PRESCRIBED: "Prescribed",
+    MEDICINES_DISPENSED: "Dispensed",
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -149,6 +166,70 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Efficacy drilldown</CardTitle>
+          <CardDescription>
+            {efficacy.appointmentsConsidered} appointment(s) — patient journey step timing for this patient only
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {efficacy.appointmentsConsidered === 0 ? (
+            <p className="text-sm text-muted-foreground">No journey data recorded yet.</p>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Transition</TableHead>
+                    <TableHead>Avg minutes</TableHead>
+                    <TableHead>Sample size</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {efficacy.transitionAverages.map((t) => (
+                    <TableRow key={`${t.from}-${t.to}`}>
+                      <TableCell>
+                        {STEP_LABELS[t.from] ?? t.from} → {STEP_LABELS[t.to] ?? t.to}
+                      </TableCell>
+                      <TableCell>{t.avgMinutes !== null ? t.avgMinutes.toFixed(1) : "—"}</TableCell>
+                      <TableCell>{t.sampleSize}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <div className="flex flex-col gap-3">
+                <p className="text-sm font-medium text-muted-foreground">Per-appointment timeline</p>
+                {efficacy.perAppointment.map((appt) => (
+                  <div key={appt.appointmentId} className="rounded-lg border p-3 text-sm">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="font-medium">{new Date(appt.datetime).toLocaleString()}</span>
+                      <StatusBadge status={appt.status} type="appointment" />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {appt.stepTimes.map(({ step, occurredAt }) => (
+                        <span
+                          key={step}
+                          className={
+                            occurredAt
+                              ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                          }
+                        >
+                          {STEP_LABELS[step] ?? step}
+                          {occurredAt ? ` · ${occurredAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -4,12 +4,17 @@ import { requireTenantId } from "@/lib/tenant";
 import { getInvoiceWithBalance } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { recordInvoicePayment, refundInvoicePayment } from "../../actions";
+import { PrintButton } from "@/components/print-button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
+
+export const metadata = {
+  title: "Invoice Details",
+};
 
 function formatINR(value: number) {
   return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -26,12 +31,15 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/admin/billing/invoices" className="text-sm font-medium text-primary hover:underline">
-          ← Back to invoices
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{invoice.invoiceNumber}</h1>
-        <p className="text-sm text-muted-foreground">{patient?.user.name}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <Link href="/admin/billing/invoices" className="text-sm font-medium text-primary hover:underline print:hidden">
+            ← Back to invoices
+          </Link>
+          <h1 className="mt-2 text-2xl font-semibold">{invoice.invoiceNumber}</h1>
+          <p className="text-sm text-muted-foreground">{patient?.user.name}</p>
+        </div>
+        <PrintButton />
       </div>
 
       <Card className="max-w-lg">
@@ -81,7 +89,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       </Card>
 
       {invoice.status !== "VOID" && (
-        <Card className="max-w-lg">
+        <Card className="max-w-lg print:hidden">
           <CardHeader>
             <CardTitle>Record a payment</CardTitle>
           </CardHeader>
@@ -109,7 +117,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       )}
 
       {Number(invoice.amountPaid) > 0 && (
-        <Card className="max-w-lg">
+        <Card className="max-w-lg print:hidden">
           <CardHeader>
             <CardTitle>Issue a refund</CardTitle>
           </CardHeader>

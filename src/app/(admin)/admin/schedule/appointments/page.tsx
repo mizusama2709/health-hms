@@ -15,6 +15,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 
+export const metadata = {
+  title: "Appointments",
+};
+
 const DATE_FILTERS: { value: AppointmentDateFilter | ""; label: string }[] = [
   { value: "", label: "All dates" },
   { value: "today", label: "Today" },
@@ -34,6 +38,10 @@ const PAYMENT_FILTERS: { value: AppointmentPaymentFilter | ""; label: string }[]
 
 function formatINR(value: number) {
   return `₹${Math.round(value).toLocaleString("en-IN")}`;
+}
+
+function titleCase(value: string) {
+  return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
 function filterChipUrl(params: URLSearchParams, key: string, value: string) {
@@ -65,12 +73,18 @@ export default async function AdminAppointmentsPage({
   if (params.date) currentQuery.set("date", params.date);
   if (params.payment) currentQuery.set("payment", params.payment);
   if (params.doctorId) currentQuery.set("doctorId", params.doctorId);
+  const currentUrl = `/admin/schedule/appointments${currentQuery.toString() ? `?${currentQuery.toString()}` : ""}`;
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Appointments</h1>
-        <p className="text-sm text-muted-foreground">Manage appointments and payment tracking across all doctors</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Appointments</h1>
+          <p className="text-sm text-muted-foreground">Manage appointments and payment tracking across all doctors</p>
+        </div>
+        <a href={currentUrl} className="h-9 rounded-lg border px-4 text-sm font-medium leading-9 hover:bg-muted">
+          Refresh
+        </a>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -192,6 +206,9 @@ export default async function AdminAppointmentsPage({
                       <TableCell>{a.feeAmount ? formatINR(Number(a.feeAmount)) : "—"}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} type="appointment" />
+                        {a.status === "CANCELLED" && a.cancelledBy && (
+                          <div className="mt-0.5 text-xs text-muted-foreground">by {titleCase(a.cancelledBy)}</div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {a.invoice ? (
@@ -199,6 +216,7 @@ export default async function AdminAppointmentsPage({
                             <StatusBadge status={a.invoice.status} type="invoice" />
                             <div className="mt-0.5 text-xs text-muted-foreground">
                               {formatINR(Number(a.invoice.amountPaid))} paid
+                              {a.invoice.payments[0] && ` (${titleCase(a.invoice.payments[0].mode)})`}
                             </div>
                           </div>
                         ) : (

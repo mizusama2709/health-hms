@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type StatusKind = "appointment" | "invoice" | "user" | "payment" | "patient";
+type StatusKind = "appointment" | "invoice" | "user" | "payment" | "patient" | "lead";
 
 const COLOR_MAP: Record<StatusKind, Record<string, string>> = {
   appointment: {
@@ -33,6 +33,16 @@ const COLOR_MAP: Record<StatusKind, Record<string, string>> = {
     appointment_booked: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
     follow_up: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
     new: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  },
+  lead: {
+    ENQUIRY: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+    SYMPTOMS_COLLECTED: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
+    DOCTOR_RECOMMENDED: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
+    PAYMENT_PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    PAYMENT_COLLECTED: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+    APPOINTMENT_BOOKED: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    FOLLOW_UP: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
+    CONVERTED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
   },
 };
 

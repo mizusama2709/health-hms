@@ -31,6 +31,12 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+enum CancelledBy {
+  PATIENT
+  DOCTOR
+  STAFF
+}
+
 enum AppointmentType {
   NEW
   FOLLOW_UP
@@ -112,6 +118,19 @@ enum PrescriptionStatus {
   DISPENSED
 }
 
+enum DoseTime {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+}
+
+enum DurationUnit {
+  DAYS
+  WEEKS
+  MONTHS
+}
+
 enum VitalsSource {
   IN_CLINIC
   WHATSAPP
@@ -121,6 +140,23 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+enum LeadStatus {
+  ENQUIRY
+  SYMPTOMS_COLLECTED
+  DOCTOR_RECOMMENDED
+  PAYMENT_PENDING
+  PAYMENT_COLLECTED
+  APPOINTMENT_BOOKED
+  FOLLOW_UP
+  CONVERTED
+}
+
+enum LeadSource {
+  MANUAL
+  WHATSAPP
+  IMPORT
 }
 
 enum QueueStage {
@@ -142,6 +178,7 @@ model Tenant {
   users               User[]
   doctors             Doctor[]
   patients            Patient[]
+  leads               Lead[]
   appointments        Appointment[]
   invoices            Invoice[]
   payments            Payment[]
@@ -158,6 +195,8 @@ model Tenant {
   labOrders           LabOrder[]
   labReportTemplates  LabReportTemplate[]
   medicines           Medicine[]
+  medicineBatches     MedicineBatch[]
+  invoiceCounter      InvoiceCounter?
   suppliers           Supplier[]
   goodsReceipts       GoodsReceipt[]
   prescriptions       Prescription[]
@@ -225,6 +264,23 @@ model Patient {
   @@index([tenantId])
 }
 
+model Lead {
+  id                 String     @id @default(cuid())
+  tenantId           String
+  tenant             Tenant     @relation(fields: [tenantId], references: [id])
+  name               String
+  phone              String
+  email              String?
+  status             LeadStatus @default(ENQUIRY)
+  source             LeadSource @default(MANUAL)
+  notes              String?
+  convertedPatientId String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@index([tenantId, status])
+}
+
 model Appointment {
   id          String            @id @default(cuid())
   tenantId    String
@@ -235,6 +291,7 @@ model Appointment {
   patient     Patient           @relation(fields: [patientId], references: [id])
   datetime    DateTime
   status      AppointmentStatus @default(BOOKED)
+  cancelledBy CancelledBy?
   type        AppointmentType   @default(NEW)
   serviceType ServiceType       @default(CONSULTATION)
   source      AppointmentSource @default(MANUAL)
@@ -243,14 +300,14 @@ model Appointment {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  visitRecord     VisitRecord?
-  followUp        FollowUp?
-  invoices        Invoice[]
-  journeyEvents   PatientJourneyEvent[]
-  whatsAppMessage WhatsAppMessage?
-  labOrders       LabOrder[]
-  prescriptions   Prescription[]
-  vitals          Vitals[]
+  visitRecord       VisitRecord?
+  followUp          FollowUp?
+  invoices          Invoice[]
+  journeyEvents     PatientJourneyEvent[]
+  whatsAppMessage   WhatsAppMessage?
+  labOrders         LabOrder[]
+  prescriptions     Prescription[]
+  vitals            Vitals[]
   queueStageEntries QueueStageEntry[]
 
   @@index([tenantId, datetime])
@@ -283,6 +340,13 @@ model VisitRecord {
   updatedAt     DateTime    @updatedAt
 
   prescriptions Prescription[]
+}
+
+model InvoiceCounter {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  value    Int    @default(0)
 }
 
 model Invoice {
@@ -484,8 +548,8 @@ model HospitalSettings {
   tenantId String @unique
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  registrationNumber String?
-  addressLine1       String?
+  registrationNumber  String?
+  addressLine1        String?
   addressLine2        String?
   city                String?
   state               String?
@@ -558,6 +622,7 @@ model Prescription {
   patientId     String
   patient       Patient            @relation(fields: [patientId], references: [id])
   status        PrescriptionStatus @default(PENDING)
+  invoiceId     String?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
@@ -568,12 +633,15 @@ model Prescription {
 }
 
 model PrescriptionItem {
-  id                 String       @id @default(cuid())
+  id                 String        @id @default(cuid())
   prescriptionId     String
-  prescription       Prescription @relation(fields: [prescriptionId], references: [id])
+  prescription       Prescription  @relation(fields: [prescriptionId], references: [id])
   medicineId         String
-  medicine           Medicine     @relation(fields: [medicineId], references: [id])
+  medicine           Medicine      @relation(fields: [medicineId], references: [id])
   quantity           Int
+  doseTimes          DoseTime[]
+  durationValue      Int?
+  durationUnit       DurationUnit?
   dosageInstructions String?
 
   @@index([prescriptionId])
@@ -608,22 +676,23 @@ model KnowledgeBaseDocument {
 }
 
 model WhatsAppMessage {
-  id                   String                @id @default(cuid())
-  tenantId             String
-  tenant               Tenant                @relation(fields: [tenantId], references: [id])
-  direction            WhatsAppDirection
-  status               WhatsAppMessageStatus @default(RECEIVED)
-  fromPhone            String?
-  toPhone              String?
-  rawPayload           Json
-  parsedIntent         String?
-  relatedAppointmentId String?               @unique
-  relatedAppointment   Appointment?          @relation(fields: [relatedAppointmentId], references: [id])
-  relatedInvoiceId     String?
-  relatedLabReportId   String?
-  errorMessage         String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                    String                @id @default(cuid())
+  tenantId              String
+  tenant                Tenant                @relation(fields: [tenantId], references: [id])
+  direction             WhatsAppDirection
+  status                WhatsAppMessageStatus @default(RECEIVED)
+  fromPhone             String?
+  toPhone               String?
+  rawPayload            Json
+  parsedIntent          String?
+  relatedAppointmentId  String?               @unique
+  relatedAppointment    Appointment?          @relation(fields: [relatedAppointmentId], references: [id])
+  relatedInvoiceId      String?
+  relatedLabReportId    String?
+  relatedPrescriptionId String?
+  errorMessage          String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 
   @@index([tenantId, direction, status])
   @@index([tenantId, createdAt])
@@ -668,16 +737,16 @@ model LabOrder {
 }
 
 model LabOrderItem {
-  id             String          @id @default(cuid())
+  id             String         @id @default(cuid())
   labOrderId     String
-  labOrder       LabOrder        @relation(fields: [labOrderId], references: [id])
+  labOrder       LabOrder       @relation(fields: [labOrderId], references: [id])
   labTestId      String
-  labTest        LabTestCatalog  @relation(fields: [labTestId], references: [id])
+  labTest        LabTestCatalog @relation(fields: [labTestId], references: [id])
   resultValue    String?
   resultUnit     String?
   referenceRange String?
   flag           LabResultFlag?
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime       @default(now())
 
   @@index([labOrderId])
 }
@@ -721,9 +790,31 @@ model Medicine {
   goodsReceiptItems GoodsReceiptLineItem[]
   prescriptionItems PrescriptionItem[]
   rxTemplateItems   RxTemplateItem[]
+  batches           MedicineBatch[]
 
   @@index([tenantId])
   @@index([tenantId, stockQuantity])
+}
+
+model MedicineBatch {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  medicineId     String
+  medicine       Medicine  @relation(fields: [medicineId], references: [id])
+  batchNo        String?
+  manufacturer   String?
+  genericName    String?
+  receivedDate   DateTime?
+  expiryDate     DateTime?
+  openingStock   Int       @default(0)
+  billedQty      Int       @default(0)
+  availableQty   Int       @default(0)
+  packSize       String?
+  createdAt      DateTime  @default(now())
+
+  @@index([tenantId, medicineId])
+  @@index([tenantId, expiryDate])
 }
 
 model Supplier {

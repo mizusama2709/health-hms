@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
+export const metadata = {
+  title: "Lab Report Templates",
+};
+
 export default async function LabReportTemplatesPage() {
   const tenantId = await requireTenantId();
   const templates = await listLabReportTemplates(tenantId);

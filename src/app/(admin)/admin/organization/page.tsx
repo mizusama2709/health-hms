@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+export const metadata = {
+  title: "Organization",
+};
+
 export default async function OrganizationPage() {
   const tenantId = await requireTenantId();
   const profile = await getOrganizationProfile(tenantId);

@@ -8,7 +8,7 @@ import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
 
 export async function cancelAppointmentAction(appointmentId: string) {
   const tenantId = await requireTenantId();
-  await cancelAppointment(appointmentId, tenantId);
+  await cancelAppointment(appointmentId, tenantId, "STAFF");
   revalidatePath("/admin/schedule/appointments");
 }
 

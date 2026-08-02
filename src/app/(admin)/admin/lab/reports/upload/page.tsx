@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 
+export const metadata = {
+  title: "Upload Lab Report",
+};
+
 export default async function UploadLabReportPage() {
   const tenantId = await requireTenantId();
   const orders = await listLabOrders(tenantId);
