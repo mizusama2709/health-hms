@@ -2,12 +2,14 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -16,7 +18,7 @@ export default function LoginPage() {
     e.preventDefault();
     const result = await signIn("credentials", { email, password, redirect: false });
     if (result?.error) setError("Invalid email or password");
-    else window.location.href = "/";
+    else window.location.href = searchParams.get("callbackUrl") || "/";
   }
 
   return (
@@ -24,7 +26,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">Health HMS</CardTitle>
-          <p className="text-sm text-muted-foreground">Log in to your account</p>
+          <p className="text-sm text-muted-foreground">Staff login — Admin, Reception &amp; Doctor</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">

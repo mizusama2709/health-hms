@@ -20,11 +20,20 @@ const STATUS_TO_JOURNEY_STEP: Partial<Record<AppointmentStatus, JourneyStep>> = 
   COMPLETED: "OPD_COMPLETED",
 };
 
+async function requireOwnAppointment(tenantId: string, appointmentId: string, userId: string) {
+  const doctor = await db.doctor.findUnique({ where: { userId } });
+  if (!doctor) throw new Error("Not authorized");
+  const appointment = await db.appointment.findFirst({ where: { id: appointmentId, tenantId, doctorId: doctor.id } });
+  if (!appointment) throw new Error("Appointment not found");
+  return appointment;
+}
+
 export async function setAppointmentStatus(appointmentId: string, status: AppointmentStatus) {
   const session = await auth();
   if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
 
   const tenantId = await requireTenantId();
+  await requireOwnAppointment(tenantId, appointmentId, session.user.id);
   await updateAppointmentStatus(appointmentId, tenantId, status, status === "CANCELLED" ? "DOCTOR" : undefined);
 
   const journeyStep = STATUS_TO_JOURNEY_STEP[status];
@@ -59,7 +68,7 @@ export async function completeVisitAction(formData: FormData) {
 
   if (!notes) throw new Error("Visit notes are required to complete the visit");
 
-  const appointment = await db.appointment.findFirstOrThrow({ where: { id: appointmentId, tenantId } });
+  const appointment = await requireOwnAppointment(tenantId, appointmentId, session.user.id);
 
   await db.visitRecord.upsert({
     where: { appointmentId },
@@ -129,6 +138,8 @@ export async function prescribeMedicines(formData: FormData) {
 
   if (items.length === 0) throw new Error("Select at least one medicine to prescribe");
 
+  await requireOwnAppointment(tenantId, appointmentId, session.user.id);
+
   const prescription = await createPrescription({
     tenantId,
     patientId,
@@ -156,6 +167,8 @@ export async function orderLabTests(formData: FormData) {
 
   if (testIds.length === 0) throw new Error("Select at least one test to order");
   if (!patientConsented) throw new Error("Patient consent is required before ordering a lab test");
+
+  await requireOwnAppointment(tenantId, appointmentId, session.user.id);
 
   await createLabOrder({
     tenantId,
@@ -191,6 +204,8 @@ export async function orderImagingStudy(formData: FormData) {
 
   if (!modality) throw new Error("Select a modality to order");
   if (!patientConsented) throw new Error("Patient consent is required before ordering an imaging study");
+
+  await requireOwnAppointment(tenantId, appointmentId, session.user.id);
 
   await createImagingOrder({
     tenantId,

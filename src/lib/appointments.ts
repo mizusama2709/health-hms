@@ -91,10 +91,11 @@ export async function updateAppointmentStatus(
   appointmentId: string,
   tenantId: string,
   status: AppointmentStatus,
-  cancelledBy?: CancelledBy
+  cancelledBy?: CancelledBy,
+  doctorId?: string
 ) {
   return db.appointment.updateMany({
-    where: { id: appointmentId, tenantId },
+    where: { id: appointmentId, tenantId, ...(doctorId && { doctorId }) },
     data: { status, ...(status === "CANCELLED" && { cancelledBy: cancelledBy ?? "STAFF" }) },
   });
 }
@@ -102,24 +103,25 @@ export async function updateAppointmentStatus(
 export async function updateAppointmentTiming(
   appointmentId: string,
   tenantId: string,
-  datetime: Date
+  datetime: Date,
+  doctorId?: string
 ) {
   return db.appointment.updateMany({
-    where: { id: appointmentId, tenantId },
+    where: { id: appointmentId, tenantId, ...(doctorId && { doctorId }) },
     data: { datetime },
   });
 }
 
-export async function updateAppointmentFee(appointmentId: string, tenantId: string, feeAmount: number) {
+export async function updateAppointmentFee(appointmentId: string, tenantId: string, feeAmount: number, doctorId?: string) {
   return db.appointment.updateMany({
-    where: { id: appointmentId, tenantId },
+    where: { id: appointmentId, tenantId, ...(doctorId && { doctorId }) },
     data: { feeAmount },
   });
 }
 
-export async function getAppointmentDetailed(appointmentId: string, tenantId: string) {
+export async function getAppointmentDetailed(appointmentId: string, tenantId: string, doctorId?: string) {
   return db.appointment.findFirst({
-    where: { id: appointmentId, tenantId },
+    where: { id: appointmentId, tenantId, ...(doctorId && { doctorId }) },
     include: {
       patient: { include: { user: true } },
       doctor: { include: { user: true } },
@@ -136,8 +138,8 @@ export async function rescheduleAppointment(
   return updateAppointmentTiming(appointmentId, tenantId, newDatetime);
 }
 
-export async function cancelAppointment(appointmentId: string, tenantId: string, cancelledBy: CancelledBy = "STAFF") {
-  return updateAppointmentStatus(appointmentId, tenantId, "CANCELLED", cancelledBy);
+export async function cancelAppointment(appointmentId: string, tenantId: string, cancelledBy: CancelledBy = "STAFF", doctorId?: string) {
+  return updateAppointmentStatus(appointmentId, tenantId, "CANCELLED", cancelledBy, doctorId);
 }
 
 export async function createAppointment(params: {

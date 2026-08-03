@@ -79,9 +79,15 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  const isReceptionist = session?.user?.role === "RECEPTIONIST";
+  const navSections = isReceptionist ? ADMIN_NAV_SECTIONS.slice(0, 1) : ADMIN_NAV_SECTIONS;
 
   return (
-    <RoleShell navSections={ADMIN_NAV_SECTIONS} roleLabel="Admin / Reception" userName={session?.user?.name ?? undefined}>
+    <RoleShell
+      navSections={navSections}
+      roleLabel={isReceptionist ? "Reception" : "Admin"}
+      userName={session?.user?.name ?? undefined}
+    >
       {children}
     </RoleShell>
   );
