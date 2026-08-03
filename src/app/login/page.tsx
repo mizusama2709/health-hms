@@ -1,14 +1,14 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,39 +22,47 @@ export default function LoginPage() {
   }
 
   return (
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle className="text-xl">Health HMS</CardTitle>
+        <p className="text-sm text-muted-foreground">Staff login — Admin, Reception &amp; Doctor</p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            type="email"
+            required
+          />
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            type="password"
+            required
+          />
+          <Button type="submit" className="mt-2">
+            Log in
+          </Button>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-xl">Health HMS</CardTitle>
-          <p className="text-sm text-muted-foreground">Staff login — Admin, Reception &amp; Doctor</p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              type="email"
-              required
-            />
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              type="password"
-              required
-            />
-            <Button type="submit" className="mt-2">
-              Log in
-            </Button>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </form>
-        </CardContent>
-      </Card>
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }
