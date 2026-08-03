@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getInvoiceWithBalance } from "@/lib/billing";
 import { db } from "@/lib/db";
-import { recordInvoicePayment, refundInvoicePayment } from "../../actions";
+import { recordInvoicePayment, refundInvoicePaymentActionResult } from "../../actions";
 import { PrintButton } from "@/components/print-button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Invoice Details",
@@ -122,11 +123,24 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             <CardTitle>Issue a refund</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={refundInvoicePayment} className="flex items-end gap-2">
+            <ActionForm
+              action={refundInvoicePaymentActionResult}
+              className="flex items-end gap-2"
+              confirmMessage={`Refund up to ${formatINR(Number(invoice.amountPaid))} on invoice ${invoice.invoiceNumber}? This cannot be undone.`}
+            >
               <input type="hidden" name="invoiceId" value={invoice.id} />
               <div className="flex flex-col gap-1">
                 <Label htmlFor="refundAmount">Amount</Label>
-                <Input id="refundAmount" name="amount" type="number" step="0.01" className="w-32" required />
+                <Input
+                  id="refundAmount"
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={Number(invoice.amountPaid)}
+                  className="w-32"
+                  required
+                />
               </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="reason">Reason</Label>
@@ -135,7 +149,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               <Button type="submit" variant="outline">
                 Refund
               </Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
       )}

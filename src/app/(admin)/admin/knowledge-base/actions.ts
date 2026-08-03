@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { uploadKnowledgeBaseDocument, deleteKnowledgeBaseDocument } from "@/lib/knowledgeBase";
+import { withActionResult } from "@/lib/actionResult";
 
 const SETTINGS_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
 
@@ -28,3 +29,5 @@ export async function removeKnowledgeBaseDocument(formData: FormData) {
 
   revalidatePath("/admin/knowledge-base");
 }
+
+export const removeKnowledgeBaseDocumentActionResult = withActionResult(removeKnowledgeBaseDocument, "Document removed");

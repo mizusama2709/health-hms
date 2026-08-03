@@ -117,6 +117,19 @@ export function DicomViewer({ series }: { series: DicomViewerSeries }) {
         }
 
         if (!cancelled) setStatus("rendered");
+
+        // The panel elements are sized by CSS (percentage/aspect-ratio, not
+        // fixed px) so they can shrink on narrow screens — Cornerstone
+        // doesn't watch for that itself, so a ResizeObserver drives its
+        // resize() explicitly whenever the actual element box changes.
+        const observedElements = [stackElementRef.current, axialRef.current, sagittalRef.current, coronalRef.current].filter(
+          (el): el is HTMLDivElement => el !== null
+        );
+        const engineForResize = renderingEngine;
+        resizeObserver = new ResizeObserver(() => {
+          engineForResize?.resize(true, true);
+        });
+        for (const el of observedElements) resizeObserver.observe(el);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : String(e));
@@ -125,9 +138,11 @@ export function DicomViewer({ series }: { series: DicomViewerSeries }) {
       }
     }
 
+    let resizeObserver: ResizeObserver | undefined;
     run();
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       renderingEngine?.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,15 +154,15 @@ export function DicomViewer({ series }: { series: DicomViewerSeries }) {
       {status === "error" && <p className="text-sm text-destructive">Couldn&apos;t load this study: {error}</p>}
       <div>
         <p className="mb-1 text-xs text-muted-foreground">2D — drag to window/level, middle-drag to pan, right-drag to zoom</p>
-        <div ref={stackElementRef} style={{ width: 512, height: 512, background: "black" }} />
+        <div ref={stackElementRef} className="aspect-square w-full max-w-[512px] bg-black" />
       </div>
       {isMultiSlice && (
         <div>
           <p className="mb-1 text-xs text-muted-foreground">3D volume (MPR)</p>
           <div className="flex flex-wrap gap-2">
-            <div ref={axialRef} style={{ width: 300, height: 300, background: "black" }} />
-            <div ref={sagittalRef} style={{ width: 300, height: 300, background: "black" }} />
-            <div ref={coronalRef} style={{ width: 300, height: 300, background: "black" }} />
+            <div ref={axialRef} className="aspect-square min-w-[160px] max-w-[400px] flex-1 basis-[220px] bg-black" />
+            <div ref={sagittalRef} className="aspect-square min-w-[160px] max-w-[400px] flex-1 basis-[220px] bg-black" />
+            <div ref={coronalRef} className="aspect-square min-w-[160px] max-w-[400px] flex-1 basis-[220px] bg-black" />
           </div>
         </div>
       )}

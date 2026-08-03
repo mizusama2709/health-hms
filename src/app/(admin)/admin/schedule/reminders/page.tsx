@@ -260,7 +260,10 @@ export default async function RemindersPage({
                         </span>
                       )}
                       {(f.status === "PENDING" || f.status === "ESCALATED") && (
-                        <ActionForm action={cancelFollowUpActionResult}>
+                        <ActionForm
+                          action={cancelFollowUpActionResult}
+                          confirmMessage="Cancel this follow-up? This cannot be undone."
+                        >
                           <input type="hidden" name="followUpId" value={f.id} />
                           <Button type="submit" size="sm" variant="ghost">
                             Cancel follow-up

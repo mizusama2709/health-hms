@@ -1,10 +1,11 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listKnowledgeBaseDocuments } from "@/lib/knowledgeBase";
-import { addKnowledgeBaseDocument, removeKnowledgeBaseDocument } from "./actions";
+import { addKnowledgeBaseDocument, removeKnowledgeBaseDocumentActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Knowledge Base",
@@ -54,12 +55,15 @@ export default async function KnowledgeBasePage() {
                   >
                     {doc.title}
                   </a>
-                  <form action={removeKnowledgeBaseDocument}>
+                  <ActionForm
+                    action={removeKnowledgeBaseDocumentActionResult}
+                    confirmMessage={`Delete "${doc.title}"? This cannot be undone.`}
+                  >
                     <input type="hidden" name="docId" value={doc.id} />
                     <Button type="submit" size="sm" variant="ghost">
                       Delete
                     </Button>
-                  </form>
+                  </ActionForm>
                 </li>
               ))}
             </ul>

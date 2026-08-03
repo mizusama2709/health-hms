@@ -218,6 +218,13 @@ export async function recordPharmacyReturnAction(formData: FormData) {
     where: { id: invoiceLineItemId, invoice: { tenantId } },
   });
 
+  if (!Number.isFinite(quantityReturned) || quantityReturned < 1 || quantityReturned > lineItem.quantity) {
+    throw new Error(`Quantity returned must be between 1 and ${lineItem.quantity} (the quantity originally sold)`);
+  }
+  if (refundAmount !== undefined && (!Number.isFinite(refundAmount) || refundAmount < 0 || refundAmount > Number(lineItem.lineTotal))) {
+    throw new Error(`Refund amount can't exceed the original line total (${Number(lineItem.lineTotal).toFixed(2)})`);
+  }
+
   let storeCreditPatient: { patientId: string } | undefined;
   if (asStoreCredit) {
     const patient = await db.patient.findFirst({ where: { id: patientId, tenantId } });
@@ -237,6 +244,8 @@ export async function recordPharmacyReturnAction(formData: FormData) {
 
   revalidatePath("/admin/pharmacy/store-credit");
 }
+
+export const recordPharmacyReturnActionResult = withActionResult(recordPharmacyReturnAction, "Return recorded");
 
 export async function createRxTemplateAction(formData: FormData) {
   await requireRole(...PHARMACY_ROLES);

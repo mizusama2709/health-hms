@@ -146,6 +146,10 @@ export async function issueRefund(params: {
     `;
     if (!invoice) throw new Error("Invoice not found");
 
+    if (!Number.isFinite(params.amount) || params.amount <= 0 || params.amount > Number(invoice.amountPaid)) {
+      throw new Error(`Refund amount can't exceed the amount paid (${Number(invoice.amountPaid).toFixed(2)})`);
+    }
+
     const refund = await tx.refund.create({
       data: {
         tenantId: params.tenantId,

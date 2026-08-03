@@ -1,7 +1,7 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoices } from "@/lib/billing";
 import { listStoreCredits } from "@/lib/pharmacy";
-import { recordPharmacyReturnAction, searchPatientsAction } from "../actions";
+import { recordPharmacyReturnActionResult, searchPatientsAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Store Credit",
@@ -37,7 +38,11 @@ export default async function StoreCreditPage() {
           {pharmacyLineItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pharmacy line items to return yet.</p>
           ) : (
-            <form action={recordPharmacyReturnAction} className="flex flex-col gap-2">
+            <ActionForm
+              action={recordPharmacyReturnActionResult}
+              className="flex flex-col gap-2"
+              confirmMessage="Record this pharmacy return? This cannot be undone."
+            >
               <Label htmlFor="invoiceLineItemId">Pharmacy line item</Label>
               <NativeSelect id="invoiceLineItemId" name="invoiceLineItemId" required>
                 {pharmacyLineItems.map((li) => (
@@ -49,7 +54,7 @@ export default async function StoreCreditPage() {
               <Label htmlFor="quantityReturned">Quantity returned</Label>
               <Input id="quantityReturned" name="quantityReturned" type="number" min={1} required />
               <Label htmlFor="refundAmount">Refund amount</Label>
-              <Input id="refundAmount" name="refundAmount" type="number" step="0.01" required />
+              <Input id="refundAmount" name="refundAmount" type="number" step="0.01" min="0" required />
               <Label htmlFor="reason">Reason</Label>
               <Input id="reason" name="reason" />
               <Label htmlFor="patientId">Patient (required if issuing as store credit)</Label>
@@ -66,7 +71,7 @@ export default async function StoreCreditPage() {
               <Button type="submit" className="mt-2 self-start">
                 Record return
               </Button>
-            </form>
+            </ActionForm>
           )}
         </CardContent>
       </Card>

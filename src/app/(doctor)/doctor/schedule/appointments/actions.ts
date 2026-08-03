@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { cancelAppointment, updateAppointmentFee, updateAppointmentTiming, getAppointmentDetailed } from "@/lib/appointments";
 import { createInvoice } from "@/lib/billing";
 import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
+import { withActionResult } from "@/lib/actionResult";
 
 async function requireTenantId() {
   const session = await auth();
@@ -13,11 +14,14 @@ async function requireTenantId() {
   return tenantId;
 }
 
-export async function cancelAppointmentAction(appointmentId: string) {
+export async function cancelAppointmentAction(formData: FormData) {
   const tenantId = await requireTenantId();
+  const appointmentId = formData.get("appointmentId") as string;
   await cancelAppointment(appointmentId, tenantId, "DOCTOR");
   revalidatePath("/doctor/schedule/appointments");
 }
+
+export const cancelAppointmentActionResult = withActionResult(cancelAppointmentAction, "Appointment cancelled");
 
 export async function editAppointmentAction(formData: FormData) {
   const tenantId = await requireTenantId();

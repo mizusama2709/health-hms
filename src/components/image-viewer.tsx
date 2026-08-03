@@ -46,7 +46,7 @@ export function ImageViewer({ instanceId }: { instanceId: string }) {
         </Button>
         <span className="text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
       </div>
-      <div style={{ width: 512, height: 512, overflow: "auto", background: "black" }}>
+      <div className="aspect-square w-full max-w-[512px] overflow-auto bg-black">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={url}

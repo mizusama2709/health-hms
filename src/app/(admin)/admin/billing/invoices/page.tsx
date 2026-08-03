@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoicesDetailed, type InvoiceQuickFilter } from "@/lib/billing";
-import { markInvoicePaidAction, voidInvoiceAction } from "../actions";
+import { markInvoicePaidAction, voidInvoiceActionResult } from "../actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/action-form";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -146,11 +147,15 @@ export default async function InvoicesPage({
                         </form>
                       )}
                       {inv.status !== "VOID" && (
-                        <form action={voidInvoiceAction.bind(null, inv.id)}>
+                        <ActionForm
+                          action={voidInvoiceActionResult}
+                          confirmMessage={`Void invoice ${inv.invoiceNumber}? This cannot be undone.`}
+                        >
+                          <input type="hidden" name="invoiceId" value={inv.id} />
                           <button type="submit" className="rounded-lg border border-destructive/40 px-3 py-1.5 font-medium text-destructive hover:bg-destructive/10">
                             Cancel
                           </button>
-                        </form>
+                        </ActionForm>
                       )}
                     </div>
                   </div>

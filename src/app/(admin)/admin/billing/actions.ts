@@ -11,6 +11,7 @@ import {
   markInvoicePaidInFull,
   updateInvoiceLineItem,
 } from "@/lib/billing";
+import { withActionResult } from "@/lib/actionResult";
 import type { PaymentMode, ServiceType } from "@prisma/client";
 
 const BILLING_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "RECEPTIONIST"] as const;
@@ -72,14 +73,19 @@ export async function refundInvoicePayment(formData: FormData) {
   revalidatePath("/admin/billing/invoices");
 }
 
-export async function voidInvoiceAction(invoiceId: string) {
+export const refundInvoicePaymentActionResult = withActionResult(refundInvoicePayment, "Refund issued");
+
+export async function voidInvoiceAction(formData: FormData) {
   await requireRole(...BILLING_ROLES);
   const tenantId = await requireTenantId();
+  const invoiceId = formData.get("invoiceId") as string;
 
   await voidInvoice(tenantId, invoiceId);
 
   revalidatePath("/admin/billing/invoices");
 }
+
+export const voidInvoiceActionResult = withActionResult(voidInvoiceAction, "Invoice voided");
 
 export async function editInvoiceAction(formData: FormData) {
   await requireRole(...BILLING_ROLES);

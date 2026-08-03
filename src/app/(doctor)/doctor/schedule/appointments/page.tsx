@@ -7,11 +7,12 @@ import {
   type AppointmentDateFilter,
   type AppointmentPaymentFilter,
 } from "@/lib/appointments";
-import { cancelAppointmentAction, sendReceiptAction } from "./actions";
+import { cancelAppointmentActionResult, sendReceiptAction } from "./actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { ActionForm } from "@/components/action-form";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -222,11 +223,15 @@ export default async function DoctorAppointmentsPage({
                             Edit
                           </Link>
                           {a.status !== "CANCELLED" && (
-                            <form action={cancelAppointmentAction.bind(null, a.id)}>
+                            <ActionForm
+                              action={cancelAppointmentActionResult}
+                              confirmMessage={`Cancel ${a.patient.user.name}'s appointment? This cannot be undone.`}
+                            >
+                              <input type="hidden" name="appointmentId" value={a.id} />
                               <button type="submit" className="font-medium text-destructive hover:underline">
                                 Cancel
                               </button>
-                            </form>
+                            </ActionForm>
                           )}
                           <Link href={`/doctor/schedule/appointments/${a.id}/receipt`} className="font-medium text-primary hover:underline">
                             Receipt
