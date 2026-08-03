@@ -14,7 +14,9 @@ export async function createLabTest(params: {
   tenantId: string;
   name: string;
   code?: string;
+  sampleType?: string;
   defaultPrice: number;
+  gstPercent?: number;
   turnaroundTime?: string;
 }) {
   return db.labTestCatalog.create({
@@ -22,10 +24,64 @@ export async function createLabTest(params: {
       tenantId: params.tenantId,
       name: params.name,
       code: params.code,
+      sampleType: params.sampleType,
       defaultPrice: params.defaultPrice,
+      gstPercent: params.gstPercent ?? 0,
       turnaroundTime: params.turnaroundTime,
     },
   });
+}
+
+// A real hard delete, not a soft-delete via isActive — but a test that's
+// already been ordered has LabOrderItem rows pointing at it (real patient
+// results/reports), so silently cascading that away would destroy medical
+// history. Give a clear reason instead of letting the raw FK error surface.
+export async function deleteLabTest(tenantId: string, labTestId: string) {
+  const test = await db.labTestCatalog.findFirstOrThrow({ where: { id: labTestId, tenantId } });
+  const orderCount = await db.labOrderItem.count({ where: { labTestId: test.id } });
+  if (orderCount > 0) {
+    throw new Error(`"${test.name}" has already been ordered ${orderCount} time(s) and can't be deleted`);
+  }
+  await db.labTestParameter.deleteMany({ where: { labTestId: test.id } });
+  await db.labTestCatalog.delete({ where: { id: test.id } });
+}
+
+export async function getLabTest(tenantId: string, labTestId: string) {
+  return db.labTestCatalog.findFirst({
+    where: { id: labTestId, tenantId },
+    include: { parameters: { orderBy: { sortOrder: "asc" } } },
+  });
+}
+
+export async function createLabTestParameter(params: {
+  tenantId: string;
+  labTestId: string;
+  name: string;
+  unit?: string;
+  referenceLow?: number;
+  referenceHigh?: number;
+  referenceText?: string;
+}) {
+  const test = await db.labTestCatalog.findFirstOrThrow({ where: { id: params.labTestId, tenantId: params.tenantId } });
+  const maxSort = await db.labTestParameter.aggregate({ where: { labTestId: test.id }, _max: { sortOrder: true } });
+  return db.labTestParameter.create({
+    data: {
+      labTestId: test.id,
+      name: params.name,
+      unit: params.unit,
+      referenceLow: params.referenceLow,
+      referenceHigh: params.referenceHigh,
+      referenceText: params.referenceText,
+      sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
+    },
+  });
+}
+
+export async function deleteLabTestParameter(tenantId: string, parameterId: string) {
+  await db.labTestParameter.findFirstOrThrow({
+    where: { id: parameterId, labTest: { tenantId } },
+  });
+  await db.labTestParameter.delete({ where: { id: parameterId } });
 }
 
 export async function createLabOrder(params: {
