@@ -829,6 +829,11 @@ model LabOrderItem {
   resultUnit     String?
   referenceRange String?
   flag           LabResultFlag?
+  // True once staff has deliberately chosen a flag (vs. it being computed by
+  // recordLabResult's auto-flagging) — without this, a previously-computed
+  // flag round-trips back through the form on the next save and looks like
+  // a deliberate choice, silently freezing it out of date.
+  flagIsManual   Boolean        @default(false)
   createdAt      DateTime       @default(now())
 
   @@index([labOrderId])

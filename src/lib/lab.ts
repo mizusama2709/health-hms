@@ -146,14 +146,98 @@ export async function updateLabOrderStatus(tenantId: string, labOrderId: string,
   return order;
 }
 
+function formatParameterRange(param: {
+  unit: string | null;
+  referenceLow: unknown;
+  referenceHigh: unknown;
+  referenceText: string | null;
+}): string {
+  if (param.referenceText) return param.referenceText;
+  const unit = param.unit ? ` ${param.unit}` : "";
+  if (param.referenceLow !== null && param.referenceHigh !== null) return `${param.referenceLow}–${param.referenceHigh}${unit}`;
+  if (param.referenceLow !== null) return `≥ ${param.referenceLow}${unit}`;
+  if (param.referenceHigh !== null) return `≤ ${param.referenceHigh}${unit}`;
+  return "";
+}
+
+// Only NORMAL/ABNORMAL are ever inferred — a real CRITICAL/panic-value call
+// needs test-specific alert thresholds this reference data doesn't carry
+// (e.g. potassium's critical cutoffs differ from its normal-range cutoffs),
+// so guessing one would be a patient-safety risk. CRITICAL stays a flag
+// staff assign deliberately, never something this function fabricates.
+function computeAutoFlag(
+  resultValue: string,
+  param: { unit: string | null; referenceLow: unknown; referenceHigh: unknown; referenceText: string | null }
+): LabResultFlag | undefined {
+  const trimmed = resultValue.trim();
+  if (!trimmed) return undefined;
+
+  if (param.referenceLow !== null || param.referenceHigh !== null) {
+    const numeric = Number(trimmed);
+    if (!Number.isFinite(numeric)) return undefined; // e.g. "<5", "1:160" — not safe to auto-parse
+    const low = param.referenceLow !== null ? Number(param.referenceLow) : -Infinity;
+    const high = param.referenceHigh !== null ? Number(param.referenceHigh) : Infinity;
+    return numeric >= low && numeric <= high ? "NORMAL" : "ABNORMAL";
+  }
+
+  // Qualitative single-word expected values only (e.g. "Negative",
+  // "Non-reactive") — free-text interpretive ranges ("Age- and sex-specific
+  // (use banded chart)") are never matched, since there's no fixed value to
+  // compare against.
+  const text = param.referenceText?.trim();
+  if (text && /^(negative|non-reactive|absent|clear)\b/i.test(text)) {
+    const expected = text.split(/[\s(]/)[0].toLowerCase();
+    const actual = trimmed.toLowerCase();
+    return actual === expected || actual.startsWith(expected) ? "NORMAL" : "ABNORMAL";
+  }
+
+  return undefined;
+}
+
 export async function recordLabResult(
   tenantId: string,
   labOrderItemId: string,
   params: { resultValue?: string; resultUnit?: string; referenceRange?: string; flag?: LabResultFlag }
 ) {
+  const item = await db.labOrderItem.findFirstOrThrow({
+    where: { id: labOrderItemId, labOrder: { tenantId } },
+    include: { labTest: { include: { parameters: true } } },
+  });
+
+  // Auto-flagging only makes sense when the test has exactly one parameter —
+  // a single resultValue can't be matched against several analytes' ranges
+  // (e.g. a CBC panel), so those tests keep the existing manual flag/range
+  // entry untouched.
+  const singleParam = item.labTest.parameters.length === 1 ? item.labTest.parameters[0] : undefined;
+
+  let referenceRange = params.referenceRange;
+  let flag = params.flag;
+  let flagIsManual = item.flagIsManual;
+
+  if (singleParam) {
+    if (!referenceRange) referenceRange = formatParameterRange(singleParam) || undefined;
+
+    if (params.flag === undefined) {
+      // The "—" option was submitted — an explicit reset back to auto mode.
+      flagIsManual = false;
+    } else if (item.flagIsManual || params.flag !== item.flag) {
+      // Either already manual, or this differs from what's currently
+      // stored — a deliberate choice, not the previous auto value just
+      // round-tripping back through the form unchanged.
+      flagIsManual = true;
+    }
+    // else: the submitted flag matches the currently-stored (auto) value
+    // and we're still in auto mode — not a deliberate choice, so it stays
+    // auto and gets recomputed fresh below rather than frozen in place.
+
+    flag = flagIsManual ? params.flag : params.resultValue ? computeAutoFlag(params.resultValue, singleParam) : undefined;
+  } else {
+    flagIsManual = params.flag !== undefined;
+  }
+
   return db.labOrderItem.updateMany({
     where: { id: labOrderItemId, labOrder: { tenantId } },
-    data: params,
+    data: { resultValue: params.resultValue, resultUnit: params.resultUnit, referenceRange, flag, flagIsManual },
   });
 }
 
