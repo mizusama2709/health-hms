@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { getAppointmentDetailed } from "@/lib/appointments";
 import { editAppointmentAction } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -22,8 +23,10 @@ export default async function EditAppointmentPage({ params }: { params: Promise<
   const { id } = await params;
   const session = await auth();
   const tenantId = session!.user.tenantId!;
+  const doctor = await db.doctor.findUnique({ where: { userId: session!.user.id } });
+  if (!doctor) notFound();
 
-  const appointment = await getAppointmentDetailed(id, tenantId);
+  const appointment = await getAppointmentDetailed(id, tenantId, doctor.id);
   if (!appointment) notFound();
 
   async function save(formData: FormData) {

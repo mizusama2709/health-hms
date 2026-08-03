@@ -2,42 +2,46 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { cancelAppointment, updateAppointmentFee, updateAppointmentTiming, getAppointmentDetailed } from "@/lib/appointments";
 import { createInvoice } from "@/lib/billing";
 import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
 import { withActionResult } from "@/lib/actionResult";
 
-async function requireTenantId() {
+async function requireDoctorContext() {
   const session = await auth();
   const tenantId = session?.user?.tenantId;
-  if (!tenantId) throw new Error("Not authorized");
-  return tenantId;
+  const userId = session?.user?.id;
+  if (!tenantId || !userId) throw new Error("Not authorized");
+  const doctor = await db.doctor.findUnique({ where: { userId } });
+  if (!doctor) throw new Error("Not authorized");
+  return { tenantId, doctorId: doctor.id };
 }
 
 export async function cancelAppointmentAction(formData: FormData) {
-  const tenantId = await requireTenantId();
+  const { tenantId, doctorId } = await requireDoctorContext();
   const appointmentId = formData.get("appointmentId") as string;
-  await cancelAppointment(appointmentId, tenantId, "DOCTOR");
+  await cancelAppointment(appointmentId, tenantId, "DOCTOR", doctorId);
   revalidatePath("/doctor/schedule/appointments");
 }
 
 export const cancelAppointmentActionResult = withActionResult(cancelAppointmentAction, "Appointment cancelled");
 
 export async function editAppointmentAction(formData: FormData) {
-  const tenantId = await requireTenantId();
+  const { tenantId, doctorId } = await requireDoctorContext();
   const appointmentId = formData.get("appointmentId") as string;
   const datetime = formData.get("datetime") as string;
   const feeAmount = formData.get("feeAmount") as string;
 
-  if (datetime) await updateAppointmentTiming(appointmentId, tenantId, new Date(datetime));
-  if (feeAmount) await updateAppointmentFee(appointmentId, tenantId, Number(feeAmount));
+  if (datetime) await updateAppointmentTiming(appointmentId, tenantId, new Date(datetime), doctorId);
+  if (feeAmount) await updateAppointmentFee(appointmentId, tenantId, Number(feeAmount), doctorId);
 
   revalidatePath("/doctor/schedule/appointments");
 }
 
 export async function sendReceiptAction(appointmentId: string) {
-  const tenantId = await requireTenantId();
-  const appointment = await getAppointmentDetailed(appointmentId, tenantId);
+  const { tenantId, doctorId } = await requireDoctorContext();
+  const appointment = await getAppointmentDetailed(appointmentId, tenantId, doctorId);
   if (!appointment) throw new Error("Appointment not found");
 
   const phone = appointment.patient.user.phone;
