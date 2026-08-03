@@ -895,8 +895,9 @@ model ImagingInstance {
   id             String        @id @default(cuid())
   seriesId       String
   series         ImagingSeries @relation(fields: [seriesId], references: [id])
-  sopInstanceUid String        @unique
+  sopInstanceUid String        @unique // generated for non-DICOM files, which have no real SOPInstanceUID
   instanceNumber Int
+  contentType    String        @default("application/dicom") // application/dicom | image/jpeg | image/png | application/pdf
   storageKey     String // S3/R2 object key — never bytes-in-Postgres, unlike LabReport
   fileSize       Int
   createdAt      DateTime      @default(now())

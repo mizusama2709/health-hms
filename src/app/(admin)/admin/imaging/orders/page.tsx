@@ -107,7 +107,13 @@ export default async function ImagingOrdersPage() {
                     <TableCell>
                       <ActionForm action={uploadImagingInstancesActionResult} className="flex items-center gap-2">
                         <input type="hidden" name="imagingOrderId" value={o.id} />
-                        <input type="file" name="files" multiple accept=".dcm" className="text-xs" />
+                        <input
+                          type="file"
+                          name="files"
+                          multiple
+                          accept=".dcm,image/jpeg,image/png,application/pdf"
+                          className="text-xs"
+                        />
                         <Button type="submit" size="sm" variant="outline">
                           Upload
                         </Button>

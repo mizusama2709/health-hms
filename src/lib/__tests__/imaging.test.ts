@@ -19,6 +19,9 @@ const { createImagingOrder, uploadImagingInstances, getImagingInstanceUrl } = aw
 const storage = await import("@/lib/storage");
 
 const sampleDicomPath = path.join(__dirname, "fixtures", "sample-ct.dcm");
+const sampleJpgPath = path.join(__dirname, "fixtures", "sample.jpg");
+const samplePngPath = path.join(__dirname, "fixtures", "sample.png");
+const samplePdfPath = path.join(__dirname, "fixtures", "sample-report.pdf");
 
 let tenantId: string;
 let patientId: string;
@@ -128,7 +131,7 @@ describe("uploadImagingInstances", () => {
     expect(refreshedOrder.studies).toHaveLength(0);
   });
 
-  it("rejects a file that isn't valid DICOM", async () => {
+  it("rejects a file that isn't valid DICOM, JPG, PNG, or PDF", async () => {
     const order = await createImagingOrder({
       tenantId,
       patientId,
@@ -141,6 +144,83 @@ describe("uploadImagingInstances", () => {
     await expect(
       uploadImagingInstances(tenantId, order.id, [{ name: "not-dicom.txt", bytes: Buffer.from("hello world") }])
     ).rejects.toThrow();
+  });
+
+  it("accepts a real JPG file as its own series/instance with no fabricated DICOM metadata", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "XRAY",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const bytes = readFileSync(sampleJpgPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [{ name: "sample.jpg", bytes }]);
+
+    expect(study.series).toHaveLength(1);
+    const series = study.series[0];
+    expect(series.sliceThickness).toBeNull();
+    expect(series.pixelSpacingX).toBeNull();
+    expect(series.instances).toHaveLength(1);
+    expect(series.instances[0].contentType).toBe("image/jpeg");
+    expect(uploaded.get(series.instances[0].storageKey)).toEqual(bytes);
+  });
+
+  it("accepts a real PNG file", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "XRAY",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const bytes = readFileSync(samplePngPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [{ name: "sample.png", bytes }]);
+
+    expect(study.series[0].instances[0].contentType).toBe("image/png");
+  });
+
+  it("accepts a real PDF report", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "CT",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const bytes = readFileSync(samplePdfPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [{ name: "sample-report.pdf", bytes }]);
+
+    expect(study.series[0].instances[0].contentType).toBe("application/pdf");
+    expect(uploaded.get(study.series[0].instances[0].storageKey)).toEqual(bytes);
+  });
+
+  it("keeps each non-DICOM file as its own series even when uploaded together", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "XRAY",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const jpgBytes = readFileSync(sampleJpgPath);
+    const pngBytes = readFileSync(samplePngPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [
+      { name: "sample.jpg", bytes: jpgBytes },
+      { name: "sample.png", bytes: pngBytes },
+    ]);
+
+    expect(study.series).toHaveLength(2);
+    const contentTypes = study.series.map((s) => s.instances[0].contentType).sort();
+    expect(contentTypes).toEqual(["image/jpeg", "image/png"]);
   });
 });
 
