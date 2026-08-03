@@ -8,6 +8,9 @@ import { requireTenantId } from "@/lib/tenant";
 import { db } from "@/lib/db";
 import {
   createLabTest,
+  deleteLabTest,
+  createLabTestParameter,
+  deleteLabTestParameter,
   createLabOrder,
   updateLabOrderStatus,
   approveLabOrder,
@@ -17,6 +20,7 @@ import {
 } from "@/lib/lab";
 import { sendLabReportViaWhatsApp } from "@/lib/whatsapp";
 import { searchPatients } from "@/lib/patients";
+import { withActionResult } from "@/lib/actionResult";
 import type { LabOrderStatus, LabResultFlag } from "@prisma/client";
 
 const LAB_ROLES = ["LAB", "ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
@@ -34,13 +38,58 @@ export async function createLabTestAction(formData: FormData) {
 
   const name = formData.get("name") as string;
   const code = (formData.get("code") as string) || undefined;
+  const sampleType = (formData.get("sampleType") as string) || undefined;
   const defaultPrice = Number(formData.get("defaultPrice"));
+  const gstPercent = formData.get("gstPercent") ? Number(formData.get("gstPercent")) : undefined;
   const turnaroundTime = (formData.get("turnaroundTime") as string) || undefined;
 
-  await createLabTest({ tenantId, name, code, defaultPrice, turnaroundTime });
+  await createLabTest({ tenantId, name, code, sampleType, defaultPrice, gstPercent, turnaroundTime });
 
   revalidatePath("/admin/lab/tests");
 }
+
+export async function deleteLabTestAction(formData: FormData) {
+  await requireRole(...LAB_ROLES);
+  const tenantId = await requireTenantId();
+  const labTestId = formData.get("labTestId") as string;
+
+  await deleteLabTest(tenantId, labTestId);
+
+  revalidatePath("/admin/lab/tests");
+}
+
+export const deleteLabTestActionResult = withActionResult(deleteLabTestAction, "Test deleted");
+
+export async function createLabTestParameterAction(formData: FormData) {
+  await requireRole(...LAB_ROLES);
+  const tenantId = await requireTenantId();
+
+  const labTestId = formData.get("labTestId") as string;
+  const name = formData.get("name") as string;
+  const unit = (formData.get("unit") as string) || undefined;
+  const referenceLow = formData.get("referenceLow") ? Number(formData.get("referenceLow")) : undefined;
+  const referenceHigh = formData.get("referenceHigh") ? Number(formData.get("referenceHigh")) : undefined;
+  const referenceText = (formData.get("referenceText") as string) || undefined;
+
+  await createLabTestParameter({ tenantId, labTestId, name, unit, referenceLow, referenceHigh, referenceText });
+
+  revalidatePath(`/admin/lab/tests/${labTestId}/parameters`);
+}
+
+export const createLabTestParameterActionResult = withActionResult(createLabTestParameterAction, "Parameter added");
+
+export async function deleteLabTestParameterAction(formData: FormData) {
+  await requireRole(...LAB_ROLES);
+  const tenantId = await requireTenantId();
+  const parameterId = formData.get("parameterId") as string;
+  const labTestId = formData.get("labTestId") as string;
+
+  await deleteLabTestParameter(tenantId, parameterId);
+
+  revalidatePath(`/admin/lab/tests/${labTestId}/parameters`);
+}
+
+export const deleteLabTestParameterActionResult = withActionResult(deleteLabTestParameterAction, "Parameter removed");
 
 export async function searchPatientsAction(query: string) {
   await requireRole(...LAB_ROLES);

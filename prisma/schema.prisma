@@ -762,14 +762,35 @@ model LabTestCatalog {
   tenant         Tenant   @relation(fields: [tenantId], references: [id])
   name           String
   code           String?
+  sampleType     String?
   defaultPrice   Decimal
+  gstPercent     Decimal  @default(0)
   turnaroundTime String?
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
 
   orderItems LabOrderItem[]
+  parameters LabTestParameter[]
 
   @@index([tenantId])
+}
+
+// A single reference-range row for a lab test (e.g. "Hemoglobin, g/dL,
+// 13-17"); a test can have several (per-parameter panels) or none (simple
+// tests report a single value with no separate parameter breakdown).
+model LabTestParameter {
+  id            String         @id @default(cuid())
+  labTestId     String
+  labTest       LabTestCatalog @relation(fields: [labTestId], references: [id])
+  name          String
+  unit          String?
+  referenceLow  Decimal?
+  referenceHigh Decimal?
+  referenceText String? // for non-numeric ranges, e.g. "Non-reactive", "Negative"
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+
+  @@index([labTestId])
 }
 
 model LabOrder {
