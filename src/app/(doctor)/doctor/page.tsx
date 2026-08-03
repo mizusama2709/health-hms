@@ -8,6 +8,7 @@ import {
   setAppointmentStatus,
   completeVisitActionResult,
   orderLabTestsActionResult,
+  orderImagingStudyActionResult,
   prescribeMedicinesActionResult,
   searchMedicinesAction,
 } from "./actions";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
 import { ActionForm } from "@/components/action-form";
 import { PrescriptionRows } from "@/components/prescription-rows";
@@ -167,6 +169,32 @@ export default async function DoctorHome() {
                       </ActionForm>
                     </details>
                   )}
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm font-medium text-primary">Order imaging study</summary>
+                    <ActionForm action={orderImagingStudyActionResult} className="mt-2 flex flex-col gap-2 rounded-md border p-2">
+                      <input type="hidden" name="appointmentId" value={appt.id} />
+                      <input type="hidden" name="patientId" value={appt.patientId} />
+                      <Label htmlFor={`modality-${appt.id}`}>Modality</Label>
+                      <NativeSelect id={`modality-${appt.id}`} name="modality" defaultValue="" required className="w-40">
+                        <option value="" disabled>
+                          — choose —
+                        </option>
+                        <option value="XRAY">X-Ray</option>
+                        <option value="CT">CT</option>
+                        <option value="MRI">MRI</option>
+                        <option value="ULTRASOUND">Ultrasound</option>
+                      </NativeSelect>
+                      <Label htmlFor={`imaging-description-${appt.id}`}>Description (optional)</Label>
+                      <Input id={`imaging-description-${appt.id}`} name="description" placeholder="e.g. Lumbar spine, r/o fracture" />
+                      <label className="flex items-center gap-2 text-sm font-normal">
+                        <input type="checkbox" name="patientConsented" value="true" required className="size-4" />
+                        Patient has consented to this study
+                      </label>
+                      <Button type="submit" size="sm" variant="outline" className="self-start">
+                        Order study
+                      </Button>
+                    </ActionForm>
+                  </details>
                   {medicineCount > 0 && (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-sm font-medium text-primary">Prescribe medicines</summary>

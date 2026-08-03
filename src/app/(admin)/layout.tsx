@@ -41,6 +41,10 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
+        label: "Imaging",
+        children: [{ label: "Imaging Orders", href: "/admin/imaging/orders" }],
+      },
+      {
         label: "Pharmacy",
         children: [
           { label: "Dashboard", href: "/admin/pharmacy" },

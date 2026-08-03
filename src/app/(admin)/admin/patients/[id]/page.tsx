@@ -4,6 +4,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { getPatientWithHistory, computeAge } from "@/lib/patients";
 import { getPatientEfficacyReport } from "@/lib/reports";
 import { listLabOrders } from "@/lib/lab";
+import { listImagingOrders } from "@/lib/imaging";
 import { updatePatientProfileAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
   const age = computeAge(patient.dateOfBirth);
   const efficacy = await getPatientEfficacyReport(tenantId, patient.id);
   const labOrders = await listLabOrders(tenantId, { patientId: patient.id });
+  const imagingOrders = await listImagingOrders(tenantId, { patientId: patient.id });
 
   // Group results by test across all orders — any test with 2+ numeric
   // values across visits gets a trend chart below the per-order results.
@@ -247,6 +249,40 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
                 ))}
               </div>
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Imaging studies</CardTitle>
+          <CardDescription>{imagingOrders.length} order(s) on file</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {imagingOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No imaging orders yet.</p>
+          ) : (
+            imagingOrders.map((order) => (
+              <div key={order.id} className="rounded-lg border p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {order.modality}
+                    {order.description ? ` — ${order.description}` : ""}
+                  </span>
+                  <Badge variant={order.status === "COMPLETED" ? "default" : "outline"}>{order.status}</Badge>
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">{new Date(order.orderedAt).toLocaleString()}</div>
+                {order.studies.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                    {order.studies.map((s) => (
+                      <Link key={s.id} href={`/admin/patients/${patient.id}/imaging/${s.id}`} className="font-medium text-primary hover:underline">
+                        View study ({s.series.reduce((sum, se) => sum + se.instances.length, 0)} images)
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </CardContent>
       </Card>

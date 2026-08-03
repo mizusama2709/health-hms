@@ -232,6 +232,7 @@ model Tenant {
   queueStageConfigs   QueueStageConfig[]
   followUps           FollowUp[]
   followUpCallLogs    FollowUpCallLog[]
+  imagingOrders       ImagingOrder[]
 }
 
 model User {
@@ -287,6 +288,7 @@ model Patient {
   prescriptions Prescription[]
   storeCredits  StoreCredit[]
   vitals        Vitals[]
+  imagingOrders ImagingOrder[]
 
   @@index([tenantId])
 }
@@ -336,6 +338,7 @@ model Appointment {
   prescriptions     Prescription[]
   vitals            Vitals[]
   queueStageEntries QueueStageEntry[]
+  imagingOrders     ImagingOrder[]
 
   @@index([tenantId, datetime])
   @@index([tenantId, status])
@@ -770,15 +773,15 @@ model LabTestCatalog {
 }
 
 model LabOrder {
-  id            String         @id @default(cuid())
-  tenantId      String
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  patientId     String
-  patient       Patient        @relation(fields: [patientId], references: [id])
-  appointmentId String?
-  appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
-  followUpId    String?
-  followUp      FollowUp?      @relation(fields: [followUpId], references: [id])
+  id                 String         @id @default(cuid())
+  tenantId           String
+  tenant             Tenant         @relation(fields: [tenantId], references: [id])
+  patientId          String
+  patient            Patient        @relation(fields: [patientId], references: [id])
+  appointmentId      String?
+  appointment        Appointment?   @relation(fields: [appointmentId], references: [id])
+  followUpId         String?
+  followUp           FollowUp?      @relation(fields: [followUpId], references: [id])
   orderedById        String
   status             LabOrderStatus @default(ORDERED)
   orderedAt          DateTime       @default(now())
@@ -822,6 +825,85 @@ model LabReport {
   @@index([labOrderId])
 }
 
+enum ImagingModality {
+  XRAY
+  CT
+  MRI
+  ULTRASOUND
+}
+
+enum ImagingOrderStatus {
+  ORDERED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ImagingOrder {
+  id                 String             @id @default(cuid())
+  tenantId           String
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  patientId          String
+  patient            Patient            @relation(fields: [patientId], references: [id])
+  appointmentId      String?
+  appointment        Appointment?       @relation(fields: [appointmentId], references: [id])
+  orderedById        String
+  modality           ImagingModality
+  description        String?
+  status             ImagingOrderStatus @default(ORDERED)
+  orderedAt          DateTime           @default(now())
+  patientConsentedAt DateTime
+  approvedById       String?
+  approvedAt         DateTime?
+
+  studies ImagingStudy[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, patientId])
+}
+
+model ImagingStudy {
+  id               String       @id @default(cuid())
+  imagingOrderId   String
+  imagingOrder     ImagingOrder @relation(fields: [imagingOrderId], references: [id])
+  studyInstanceUid String?
+  uploadedById     String
+  uploadedAt       DateTime     @default(now())
+
+  series ImagingSeries[]
+
+  @@index([imagingOrderId])
+}
+
+model ImagingSeries {
+  id                      String       @id @default(cuid())
+  studyId                 String
+  study                   ImagingStudy @relation(fields: [studyId], references: [id])
+  seriesInstanceUid       String
+  seriesNumber            Int?
+  sliceThickness          Float?
+  pixelSpacingX           Float?
+  pixelSpacingY           Float?
+  imageOrientationPatient String? // comma-separated direction cosines, from the DICOM header
+
+  instances ImagingInstance[]
+
+  @@unique([studyId, seriesInstanceUid])
+}
+
+model ImagingInstance {
+  id             String        @id @default(cuid())
+  seriesId       String
+  series         ImagingSeries @relation(fields: [seriesId], references: [id])
+  sopInstanceUid String        @unique
+  instanceNumber Int
+  storageKey     String // S3/R2 object key — never bytes-in-Postgres, unlike LabReport
+  fileSize       Int
+  createdAt      DateTime      @default(now())
+
+  @@index([seriesId])
+}
+
 model LabReportTemplate {
   id        String   @id @default(cuid())
   tenantId  String
@@ -858,21 +940,21 @@ model Medicine {
 }
 
 model MedicineBatch {
-  id             String    @id @default(cuid())
-  tenantId       String
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
-  medicineId     String
-  medicine       Medicine  @relation(fields: [medicineId], references: [id])
-  batchNo        String?
-  manufacturer   String?
-  genericName    String?
-  receivedDate   DateTime?
-  expiryDate     DateTime?
-  openingStock   Int       @default(0)
-  billedQty      Int       @default(0)
-  availableQty   Int       @default(0)
-  packSize       String?
-  createdAt      DateTime  @default(now())
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  medicineId   String
+  medicine     Medicine  @relation(fields: [medicineId], references: [id])
+  batchNo      String?
+  manufacturer String?
+  genericName  String?
+  receivedDate DateTime?
+  expiryDate   DateTime?
+  openingStock Int       @default(0)
+  billedQty    Int       @default(0)
+  availableQty Int       @default(0)
+  packSize     String?
+  createdAt    DateTime  @default(now())
 
   @@index([tenantId, medicineId])
   @@index([tenantId, expiryDate])

@@ -7,11 +7,12 @@ import { updateAppointmentStatus } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { createFollowUp } from "@/lib/followUps";
 import { createLabOrder, linkLabOrdersToFollowUp } from "@/lib/lab";
+import { createImagingOrder } from "@/lib/imaging";
 import { createPrescription, searchMedicines } from "@/lib/pharmacy";
 import { sendPrescriptionViaWhatsApp } from "@/lib/whatsapp";
 import { withActionResult } from "@/lib/actionResult";
 import { db } from "@/lib/db";
-import { AppointmentStatus, JourneyStep, DoseTime, DurationUnit } from "@prisma/client";
+import { AppointmentStatus, JourneyStep, DoseTime, DurationUnit, ImagingModality } from "@prisma/client";
 
 const MAX_PRESCRIPTION_ROWS = 50;
 
@@ -176,3 +177,32 @@ export async function searchMedicinesAction(query: string) {
   const tenantId = await requireTenantId();
   return searchMedicines(tenantId, query);
 }
+
+export async function orderImagingStudy(formData: FormData) {
+  const session = await auth();
+  if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");
+
+  const tenantId = await requireTenantId();
+  const appointmentId = formData.get("appointmentId") as string;
+  const patientId = formData.get("patientId") as string;
+  const modality = formData.get("modality") as ImagingModality;
+  const description = (formData.get("description") as string) || undefined;
+  const patientConsented = formData.get("patientConsented") === "true";
+
+  if (!modality) throw new Error("Select a modality to order");
+  if (!patientConsented) throw new Error("Patient consent is required before ordering an imaging study");
+
+  await createImagingOrder({
+    tenantId,
+    patientId,
+    appointmentId,
+    orderedById: session.user.id,
+    modality,
+    description,
+    patientConsentedAt: new Date(),
+  });
+
+  revalidatePath("/doctor");
+}
+
+export const orderImagingStudyActionResult = withActionResult(orderImagingStudy, "Imaging study ordered");
