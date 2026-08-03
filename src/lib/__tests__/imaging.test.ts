@@ -13,9 +13,13 @@ vi.mock("@/lib/storage", () => ({
     uploaded.set(key, bytes);
   }),
   getPresignedGetUrl: vi.fn(async (key: string) => `https://fake-bucket.example/${key}?signed=1`),
+  deleteObject: vi.fn(async (key: string) => {
+    uploaded.delete(key);
+  }),
 }));
 
-const { createImagingOrder, uploadImagingInstances, getImagingInstanceUrl } = await import("@/lib/imaging");
+const { createImagingOrder, uploadImagingInstances, getImagingInstanceUrl, cancelImagingOrder, deleteImagingSeries } =
+  await import("@/lib/imaging");
 const storage = await import("@/lib/storage");
 
 const sampleDicomPath = path.join(__dirname, "fixtures", "sample-ct.dcm");
@@ -258,5 +262,134 @@ describe("getImagingInstanceUrl", () => {
     const instanceId = study.series[0].instances[0].id;
 
     await expect(getImagingInstanceUrl("some-other-tenant-id", instanceId)).rejects.toThrow();
+  });
+});
+
+describe("cancelImagingOrder", () => {
+  it("cancels an order", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "CT",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const cancelled = await cancelImagingOrder(tenantId, order.id);
+    expect(cancelled.status).toBe("CANCELLED");
+  });
+
+  it("refuses to cancel an order that's already cancelled", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "CT",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    await cancelImagingOrder(tenantId, order.id);
+    await expect(cancelImagingOrder(tenantId, order.id)).rejects.toThrow("already cancelled");
+  });
+});
+
+describe("deleteImagingSeries", () => {
+  it("deletes a series, its instances, and the underlying storage objects", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "XRAY",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const bytes = readFileSync(sampleJpgPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [{ name: "sample.jpg", bytes }]);
+    const seriesId = study.series[0].id;
+    const storageKey = study.series[0].instances[0].storageKey;
+    expect(uploaded.has(storageKey)).toBe(true);
+
+    await deleteImagingSeries(tenantId, seriesId);
+
+    expect(uploaded.has(storageKey)).toBe(false);
+    await expect(db.imagingSeries.findUniqueOrThrow({ where: { id: seriesId } })).rejects.toThrow();
+  });
+
+  it("deletes the study too once its last series is removed, and reverts the order to ORDERED", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "XRAY",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const bytes = readFileSync(sampleJpgPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [{ name: "sample.jpg", bytes }]);
+    const studyId = study.id;
+    const seriesId = study.series[0].id;
+
+    let refreshedOrder = await db.imagingOrder.findUniqueOrThrow({ where: { id: order.id } });
+    expect(refreshedOrder.status).toBe("COMPLETED");
+
+    await deleteImagingSeries(tenantId, seriesId);
+
+    await expect(db.imagingStudy.findUniqueOrThrow({ where: { id: studyId } })).rejects.toThrow();
+    refreshedOrder = await db.imagingOrder.findUniqueOrThrow({ where: { id: order.id } });
+    expect(refreshedOrder.status).toBe("ORDERED");
+  });
+
+  it("keeps the study and COMPLETED status when other series remain", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "XRAY",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const jpgBytes = readFileSync(sampleJpgPath);
+    const pngBytes = readFileSync(samplePngPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [
+      { name: "sample.jpg", bytes: jpgBytes },
+      { name: "sample.png", bytes: pngBytes },
+    ]);
+    const [firstSeries] = study.series;
+
+    await deleteImagingSeries(tenantId, firstSeries.id);
+
+    const refreshedStudy = await db.imagingStudy.findUniqueOrThrow({
+      where: { id: study.id },
+      include: { series: true },
+    });
+    expect(refreshedStudy.series).toHaveLength(1);
+
+    const refreshedOrder = await db.imagingOrder.findUniqueOrThrow({ where: { id: order.id } });
+    expect(refreshedOrder.status).toBe("COMPLETED");
+  });
+
+  it("still removes the DB rows even when the storage delete fails", async () => {
+    const order = await createImagingOrder({
+      tenantId,
+      patientId,
+      orderedById: staffUserId,
+      modality: "XRAY",
+      patientConsentedAt: new Date(),
+    });
+    createdOrderIds.push(order.id);
+
+    const bytes = readFileSync(sampleJpgPath);
+    const study = await uploadImagingInstances(tenantId, order.id, [{ name: "sample.jpg", bytes }]);
+    const seriesId = study.series[0].id;
+
+    vi.mocked(storage.deleteObject).mockRejectedValueOnce(new Error("simulated bucket failure"));
+
+    await expect(deleteImagingSeries(tenantId, seriesId)).resolves.not.toThrow();
+    await expect(db.imagingSeries.findUniqueOrThrow({ where: { id: seriesId } })).rejects.toThrow();
   });
 });

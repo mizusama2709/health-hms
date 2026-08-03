@@ -17,11 +17,14 @@ export type ActionResult = { success: boolean; message?: string };
 function ActionForm({
   action,
   successMessage,
+  confirmMessage,
   children,
   className,
 }: {
   action: (prevState: ActionResult | undefined, formData: FormData) => Promise<ActionResult>;
   successMessage?: string;
+  /** When set, a native confirm() must be accepted before the action fires — for destructive/irreversible actions. */
+  confirmMessage?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -41,7 +44,15 @@ function ActionForm({
   }, [state, successMessage]);
 
   return (
-    <form action={formAction} className={className}>
+    <form
+      action={formAction}
+      className={className}
+      onSubmit={(e) => {
+        if (confirmMessage && !window.confirm(confirmMessage)) {
+          e.preventDefault();
+        }
+      }}
+    >
       {children}
     </form>
   );

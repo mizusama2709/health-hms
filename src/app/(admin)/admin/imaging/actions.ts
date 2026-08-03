@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { db } from "@/lib/db";
-import { createImagingOrder, uploadImagingInstances } from "@/lib/imaging";
+import { createImagingOrder, cancelImagingOrder, deleteImagingSeries } from "@/lib/imaging";
 import { searchPatients } from "@/lib/patients";
 import { withActionResult } from "@/lib/actionResult";
 import type { ImagingModality } from "@prisma/client";
@@ -45,23 +45,28 @@ export async function createImagingOrderAction(formData: FormData) {
 
 export const createImagingOrderActionResult = withActionResult(createImagingOrderAction, "Imaging study ordered");
 
-export async function uploadImagingInstancesAction(formData: FormData) {
+export async function cancelImagingOrderAction(formData: FormData) {
   await requireRole(...IMAGING_ROLES);
   const tenantId = await requireTenantId();
-
   const imagingOrderId = formData.get("imagingOrderId") as string;
-  const files = formData.getAll("files") as File[];
-  const realFiles = files.filter((f) => f.size > 0);
 
-  if (realFiles.length === 0) throw new Error("Choose at least one DICOM file to upload");
-
-  const parsed = await Promise.all(
-    realFiles.map(async (file) => ({ name: file.name, bytes: Buffer.from(await file.arrayBuffer()) }))
-  );
-
-  await uploadImagingInstances(tenantId, imagingOrderId, parsed);
+  await cancelImagingOrder(tenantId, imagingOrderId);
 
   revalidatePath("/admin/imaging/orders");
 }
 
-export const uploadImagingInstancesActionResult = withActionResult(uploadImagingInstancesAction, "Files uploaded");
+export const cancelImagingOrderActionResult = withActionResult(cancelImagingOrderAction, "Order cancelled");
+
+export async function deleteImagingSeriesAction(formData: FormData) {
+  await requireRole(...IMAGING_ROLES);
+  const tenantId = await requireTenantId();
+  const seriesId = formData.get("seriesId") as string;
+  const patientId = formData.get("patientId") as string;
+
+  await deleteImagingSeries(tenantId, seriesId);
+
+  revalidatePath("/admin/imaging/orders");
+  revalidatePath(`/admin/patients/${patientId}`);
+}
+
+export const deleteImagingSeriesActionResult = withActionResult(deleteImagingSeriesAction, "File(s) removed");

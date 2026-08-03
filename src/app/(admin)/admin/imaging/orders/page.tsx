@@ -1,6 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listImagingOrders } from "@/lib/imaging";
-import { createImagingOrderActionResult, uploadImagingInstancesActionResult, searchPatientsAction } from "../actions";
+import { createImagingOrderActionResult, cancelImagingOrderActionResult, searchPatientsAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ActionForm } from "@/components/action-form";
+import { ImagingUploadForm } from "@/components/imaging-upload-form";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -79,6 +80,7 @@ export default async function ImagingOrdersPage() {
                   <TableHead>Ordered</TableHead>
                   <TableHead>Studies</TableHead>
                   <TableHead>Upload files</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -88,7 +90,9 @@ export default async function ImagingOrdersPage() {
                     <TableCell>{o.modality}</TableCell>
                     <TableCell>{o.description ?? "—"}</TableCell>
                     <TableCell>
-                      <Badge variant={o.status === "COMPLETED" ? "default" : "outline"}>{o.status}</Badge>
+                      <Badge variant={o.status === "COMPLETED" ? "default" : o.status === "CANCELLED" ? "destructive" : "outline"}>
+                        {o.status}
+                      </Badge>
                     </TableCell>
                     <TableCell>{o.orderedAt.toLocaleString()}</TableCell>
                     <TableCell>
@@ -105,19 +109,17 @@ export default async function ImagingOrdersPage() {
                           ))}
                     </TableCell>
                     <TableCell>
-                      <ActionForm action={uploadImagingInstancesActionResult} className="flex items-center gap-2">
-                        <input type="hidden" name="imagingOrderId" value={o.id} />
-                        <input
-                          type="file"
-                          name="files"
-                          multiple
-                          accept=".dcm,image/jpeg,image/png,application/pdf"
-                          className="text-xs"
-                        />
-                        <Button type="submit" size="sm" variant="outline">
-                          Upload
-                        </Button>
-                      </ActionForm>
+                      {o.status !== "CANCELLED" && <ImagingUploadForm imagingOrderId={o.id} />}
+                    </TableCell>
+                    <TableCell>
+                      {o.status !== "CANCELLED" && (
+                        <ActionForm action={cancelImagingOrderActionResult}>
+                          <input type="hidden" name="imagingOrderId" value={o.id} />
+                          <Button type="submit" size="sm" variant="ghost">
+                            Cancel
+                          </Button>
+                        </ActionForm>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

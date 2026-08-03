@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { uploadObject, getPresignedGetUrl } from "@/lib/storage";
+import { uploadObject, getPresignedGetUrl, deleteObject } from "@/lib/storage";
+import { detectContentType } from "@/lib/imagingFormat";
 import * as dicomParser from "dicom-parser";
 import type { ImagingModality, ImagingOrderStatus } from "@prisma/client";
 
@@ -24,6 +25,12 @@ export async function createImagingOrder(params: {
       patientConsentedAt: params.patientConsentedAt,
     },
   });
+}
+
+export async function cancelImagingOrder(tenantId: string, imagingOrderId: string) {
+  const order = await db.imagingOrder.findFirstOrThrow({ where: { id: imagingOrderId, tenantId } });
+  if (order.status === "CANCELLED") throw new Error("This order is already cancelled");
+  return db.imagingOrder.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
 }
 
 export async function listImagingOrders(tenantId: string, filters?: { patientId?: string; status?: ImagingOrderStatus }) {
@@ -52,19 +59,6 @@ type ParsedFileHeader = {
   sliceThickness: string | undefined;
   imageOrientationPatient: string | undefined;
 };
-
-export const SUPPORTED_IMAGING_CONTENT_TYPES = ["application/dicom", "image/jpeg", "image/png", "application/pdf"] as const;
-
-// DICOM's "DICM" magic sits at byte 128 in a standard Part-10 file, but some
-// files omit that 128-byte preamble entirely — those get a real parse
-// attempt below rather than being rejected on sniffing alone.
-function detectContentType(bytes: Buffer): string {
-  if (bytes.length >= 132 && bytes.toString("ascii", 128, 132) === "DICM") return "application/dicom";
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
-  if (bytes.length >= 4 && bytes.toString("ascii", 0, 4) === "%PDF") return "application/pdf";
-  return "application/dicom";
-}
 
 function parseDicomHeader(bytes: Buffer): Omit<ParsedFileHeader, "contentType"> {
   const byteArray = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -213,4 +207,43 @@ export async function getImagingInstanceUrl(tenantId: string, instanceId: string
     where: { id: instanceId, series: { study: { imagingOrder: { tenantId } } } },
   });
   return getPresignedGetUrl(instance.storageKey);
+}
+
+// Removes an entire mistakenly-uploaded series (e.g. the wrong file, or a
+// botched multi-slice batch) rather than individual instances — for a
+// non-DICOM file a series is exactly one file, so this is "delete this
+// file"; for DICOM, deleting one slice out of a series wouldn't leave
+// anything coherent to view anyway, so the series is the right unit here.
+export async function deleteImagingSeries(tenantId: string, seriesId: string) {
+  const series = await db.imagingSeries.findFirstOrThrow({
+    where: { id: seriesId, study: { imagingOrder: { tenantId } } },
+    include: { instances: true, study: true },
+  });
+
+  // Best-effort object deletion — a delete failure (no bucket configured,
+  // a network blip) shouldn't block removing the DB records; the object
+  // is orphaned in that case, not left half-referenced by a row that no
+  // longer resolves to anything.
+  for (const instance of series.instances) {
+    await deleteObject(instance.storageKey).catch(() => {});
+  }
+
+  const imagingOrderId = series.study.imagingOrderId;
+
+  await db.$transaction(async (tx) => {
+    await tx.imagingInstance.deleteMany({ where: { seriesId: series.id } });
+    await tx.imagingSeries.delete({ where: { id: series.id } });
+
+    const remainingSeriesInStudy = await tx.imagingSeries.count({ where: { studyId: series.study.id } });
+    if (remainingSeriesInStudy === 0) {
+      await tx.imagingStudy.delete({ where: { id: series.study.id } });
+    }
+
+    const remainingInstancesInOrder = await tx.imagingInstance.count({
+      where: { series: { study: { imagingOrderId } } },
+    });
+    if (remainingInstancesInOrder === 0) {
+      await tx.imagingOrder.update({ where: { id: imagingOrderId }, data: { status: "ORDERED" } });
+    }
+  });
 }
