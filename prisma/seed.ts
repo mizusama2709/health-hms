@@ -50,6 +50,18 @@ async function main() {
     },
   });
 
+  await db.user.upsert({
+    where: { email: "reception@demo.com" },
+    update: {},
+    create: {
+      email: "reception@demo.com",
+      name: "Test Reception",
+      role: "RECEPTIONIST",
+      passwordHash,
+      tenantId: tenant.id,
+    },
+  });
+
   const patientUser = await db.user.findUniqueOrThrow({
     where: { email: "patient@demo.com" },
     include: { patient: true },
