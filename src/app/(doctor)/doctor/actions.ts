@@ -53,6 +53,14 @@ export async function setAppointmentStatus(appointmentId: string, status: Appoin
   revalidatePath("/doctor");
 }
 
+export async function setAppointmentStatusAction(formData: FormData) {
+  const appointmentId = formData.get("appointmentId") as string;
+  const status = formData.get("status") as AppointmentStatus;
+  await setAppointmentStatus(appointmentId, status);
+}
+
+export const setAppointmentStatusActionResult = withActionResult(setAppointmentStatusAction, "Appointment updated");
+
 export async function completeVisitAction(formData: FormData) {
   const session = await auth();
   if (session?.user?.role !== "DOCTOR") throw new Error("Not authorized");

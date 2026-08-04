@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
+import { LiveStageStatus } from "@/components/live-stage-status";
 import type { QueueStage } from "@prisma/client";
 
 export const metadata = {
@@ -155,12 +156,14 @@ export default async function QueuePage() {
 
                         if (entry) {
                           const elapsedMs = now - entry.startedAt.getTime();
-                          const overdue = elapsedMs > turnaround * 60000;
                           return (
                             <TableCell key={stage} className="text-xs">
-                              <div className={overdue ? "text-destructive font-medium" : ""}>
-                                {entry.assignedTo?.name ?? "Unassigned"} · {formatElapsed(elapsedMs)}
-                              </div>
+                              <LiveStageStatus
+                                startedAtIso={entry.startedAt.toISOString()}
+                                initialElapsedMs={elapsedMs}
+                                turnaroundMinutes={turnaround}
+                                assignedToName={entry.assignedTo?.name ?? "Unassigned"}
+                              />
                               <form action={completeStageAction} className="mt-1">
                                 <input type="hidden" name="entryId" value={entry.id} />
                                 <Button type="submit" size="sm" variant="outline">

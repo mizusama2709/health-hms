@@ -8,9 +8,26 @@ import {
   CancelledBy,
 } from "@prisma/client";
 
-export async function listAppointmentsForDoctor(doctorId: string, tenantId: string) {
+export async function listAppointmentsForDoctor(
+  doctorId: string,
+  tenantId: string,
+  filters?: { scope?: "today" | "upcoming" | "all" }
+) {
+  const scope = filters?.scope ?? "all";
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  let datetimeWhere: { gte?: Date; lte?: Date } | undefined;
+  if (scope === "today") {
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    datetimeWhere = { gte: start, lte: end };
+  } else if (scope === "upcoming") {
+    datetimeWhere = { gte: start };
+  }
+
   return db.appointment.findMany({
-    where: { doctorId, tenantId },
+    where: { doctorId, tenantId, ...(datetimeWhere && { datetime: datetimeWhere }) },
     include: { patient: { include: { user: true } } },
     orderBy: { datetime: "asc" },
   });

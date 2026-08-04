@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { requireTenantId } from "@/lib/tenant";
-import { listAppointmentsForTenant, listDoctorsForTenant } from "@/lib/appointments";
+import { listDoctorsForTenant } from "@/lib/appointments";
 import {
   getOpdToday,
   getOpdPipeline,
@@ -19,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { StatusBadge } from "@/components/status-badge";
 import { StatTile } from "@/components/stat-tile";
 
 export const metadata = {
@@ -33,7 +33,6 @@ function formatINR(value: number) {
 export default async function AdminHome() {
   const tenantId = await requireTenantId();
   const [
-    appointments,
     doctors,
     opdToday,
     opdPipeline,
@@ -43,7 +42,6 @@ export default async function AdminHome() {
     { upcoming, totalUpcoming },
     { dueToday, totalDueToday },
   ] = await Promise.all([
-    listAppointmentsForTenant(tenantId),
     listDoctorsForTenant(tenantId),
     getOpdToday(tenantId),
     getOpdPipeline(tenantId),
@@ -55,6 +53,33 @@ export default async function AdminHome() {
   ]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+
+  const overdueFollowUps = dueToday.filter((f) => f.isOverdue).length;
+  // Consolidates signals that would otherwise only surface by scrolling all
+  // the way to the Follow-ups card or the Pharmacy card further down —
+  // everything here is already fetched above, just re-surfaced up top.
+  const attentionItems = [
+    overdueFollowUps > 0 && {
+      key: "followups",
+      label: `${overdueFollowUps} overdue follow-up call${overdueFollowUps === 1 ? "" : "s"}`,
+      href: "/admin/schedule/reminders",
+    },
+    pharmacyStats.unpricedCount > 0 && {
+      key: "unpriced",
+      label: `${pharmacyStats.unpricedCount} medicine${pharmacyStats.unpricedCount === 1 ? "" : "s"} with no price set`,
+      href: "/admin/pharmacy/medicines?unpriced=true",
+    },
+    pharmacyStats.expiringSoonCount > 0 && {
+      key: "expiring",
+      label: `${pharmacyStats.expiringSoonCount} unit(s) of stock expiring within 30 days`,
+      href: "/admin/pharmacy/medicines/batches",
+    },
+    pharmacyStats.skuCount > 0 && {
+      key: "deadstock",
+      label: `${pharmacyStats.skuCount} SKU(s) of dead stock (no sale in 90 days)`,
+      href: "/admin/pharmacy",
+    },
+  ].filter((item): item is { key: string; label: string; href: string } => Boolean(item));
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,10 +95,46 @@ export default async function AdminHome() {
         <StatTile
           label="Revenue this month"
           value={formatINR(summary.revenueThisMonth)}
-          sub={`${formatINR(summary.pendingThisMonth)} pending`}
+          sub={
+            <>
+              {formatINR(summary.pendingThisMonth)} pending
+              {summary.revenueDeltaPercent !== null && (
+                <span className={summary.revenueDeltaPercent >= 0 ? "text-emerald-600" : "text-destructive"}>
+                  {" "}
+                  · {summary.revenueDeltaPercent >= 0 ? "▲" : "▼"} {Math.abs(summary.revenueDeltaPercent).toFixed(0)}% vs last month
+                </span>
+              )}
+            </>
+          }
         />
         <StatTile label="Consultations this month" value={summary.consultationsThisMonth} sub="Completed" />
       </div>
+
+      {attentionItems.length > 0 && (
+        <Card className="border-amber-300 dark:border-amber-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="size-4" />
+              Needs attention
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col divide-y rounded-lg border border-amber-300 dark:border-amber-900">
+              {attentionItems.map((item) => (
+                <li key={item.key}>
+                  <Link
+                    href={item.href}
+                    className="flex items-center justify-between px-4 py-2 text-sm text-amber-800 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950"
+                  >
+                    <span className="font-medium">{item.label}</span>
+                    <span>→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -377,42 +438,6 @@ export default async function AdminHome() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All appointments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Doctor</TableHead>
-                  <TableHead>Date &amp; time</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {appointments.map((appt) => (
-                  <TableRow key={appt.id}>
-                    <TableCell className="font-medium">{appt.patient.user.name}</TableCell>
-                    <TableCell>Dr. {appt.doctor.user.name}</TableCell>
-                    <TableCell>{new Date(appt.datetime).toLocaleString()}</TableCell>
-                    <TableCell>{appt.type}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={appt.status} type="appointment" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

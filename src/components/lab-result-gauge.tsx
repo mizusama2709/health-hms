@@ -12,7 +12,7 @@ const FLAG_COLOR: Record<LabResultFlag, string> = {
   CRITICAL: "bg-red-500",
 };
 
-const FLAG_BADGE_CLASS: Record<LabResultFlag, string> = {
+export const FLAG_BADGE_CLASS: Record<LabResultFlag, string> = {
   NORMAL: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
   ABNORMAL: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   CRITICAL: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
