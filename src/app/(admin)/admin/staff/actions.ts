@@ -9,7 +9,7 @@ import type { Role, UserStatus } from "@prisma/client";
 const STAFF_ADMIN_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
 
 export async function createStaff(formData: FormData) {
-  await requireRole(...STAFF_ADMIN_ROLES);
+  const session = await requireRole(...STAFF_ADMIN_ROLES);
   const tenantId = await requireTenantId();
 
   await createStaffUser({
@@ -19,18 +19,19 @@ export async function createStaff(formData: FormData) {
     phone: (formData.get("phone") as string) || undefined,
     role: formData.get("role") as Role,
     password: formData.get("password") as string,
+    actingRole: session.user.role as Role,
   });
 
   revalidatePath("/admin/staff");
 }
 
 export async function changeStaffRole(formData: FormData) {
-  await requireRole(...STAFF_ADMIN_ROLES);
+  const session = await requireRole(...STAFF_ADMIN_ROLES);
   const tenantId = await requireTenantId();
 
   const userId = formData.get("userId") as string;
   const role = formData.get("role") as Role;
-  await updateStaffRole(tenantId, userId, role);
+  await updateStaffRole(tenantId, userId, role, session.user.role as Role);
 
   revalidatePath("/admin/staff");
 }

@@ -1,5 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listLabOrders, listLatestWhatsAppStatusForLabReports } from "@/lib/lab";
+import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
 import { sendLabReportWhatsAppAction } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,12 @@ export default async function LabReportsPage() {
                 return (
                 <div key={r.id} className="flex flex-col gap-2 rounded-md border p-2 text-sm">
                   <div className="flex flex-wrap items-center gap-2">
-                    <a href={r.fileUrl} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
+                    <a
+                      href={withFreshLabReportToken(r.fileUrl, r.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-primary hover:underline"
+                    >
                       {r.patientName}
                     </a>
                     <span>— {r.uploadedAt.toLocaleString()}</span>

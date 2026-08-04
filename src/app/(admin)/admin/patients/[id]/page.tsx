@@ -5,6 +5,7 @@ import { getPatientWithHistory, computeAge } from "@/lib/patients";
 import { getPatientEfficacyReport } from "@/lib/reports";
 import { listLabOrders } from "@/lib/lab";
 import { listImagingOrders } from "@/lib/imaging";
+import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
 import { updatePatientProfileAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -235,7 +236,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
                         {order.reports.map((r) => (
                           <a
                             key={r.id}
-                            href={r.fileUrl}
+                            href={withFreshLabReportToken(r.fileUrl, r.id)}
                             target="_blank"
                             rel="noreferrer"
                             className="font-medium text-primary hover:underline"

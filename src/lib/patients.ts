@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import type { Gender } from "@prisma/client";
+import { isUniqueConstraintViolation } from "@/lib/prismaErrors";
 
 export function computeAge(dateOfBirth: Date | null): number | null {
   if (!dateOfBirth) return null;
@@ -45,29 +46,38 @@ export async function createPatient(params: {
   dateOfBirth?: Date;
   gender?: Gender;
 }) {
-  const existing = await db.user.findUnique({ where: { email: params.email } });
-  if (existing) throw new Error(`A user with email ${params.email} already exists`);
-
   const passwordHash = await bcrypt.hash(params.password, 10);
 
-  return db.user.create({
-    data: {
-      email: params.email,
-      name: params.name,
-      phone: params.phone,
-      role: "PATIENT",
-      passwordHash,
-      tenantId: params.tenantId,
-      patient: {
-        create: {
-          tenantId: params.tenantId,
-          dateOfBirth: params.dateOfBirth,
-          gender: params.gender,
+  // No pre-check by email: since email is globally unique (not per-tenant),
+  // a findUnique-by-email check run before create() would tell staff at one
+  // tenant whether an email is registered at *any* tenant, not just their
+  // own — a cross-tenant enumeration leak. Attempting the create and
+  // catching the real constraint violation gives the same UX without it.
+  try {
+    return await db.user.create({
+      data: {
+        email: params.email,
+        name: params.name,
+        phone: params.phone,
+        role: "PATIENT",
+        passwordHash,
+        tenantId: params.tenantId,
+        patient: {
+          create: {
+            tenantId: params.tenantId,
+            dateOfBirth: params.dateOfBirth,
+            gender: params.gender,
+          },
         },
       },
-    },
-    include: { patient: true },
-  });
+      include: { patient: true },
+    });
+  } catch (e) {
+    if (isUniqueConstraintViolation(e, "email")) {
+      throw new Error("That email may already be registered — try a different one");
+    }
+    throw e;
+  }
 }
 
 export async function updatePatientProfile(

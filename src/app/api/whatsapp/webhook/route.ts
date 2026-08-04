@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleInboundWebhook } from "@/lib/whatsapp";
+import { WHATSAPP_SIGNATURE_HEADER, verifyWhatsAppWebhookSignature } from "@/lib/whatsappWebhookAuth";
 
 export async function POST(req: NextRequest) {
-  const payload = await req.json();
+  const rawBody = await req.text();
+
+  if (!verifyWhatsAppWebhookSignature(rawBody, req.headers.get(WHATSAPP_SIGNATURE_HEADER))) {
+    return NextResponse.json({ error: "Invalid or missing webhook signature" }, { status: 401 });
+  }
+
+  const payload = JSON.parse(rawBody);
 
   const tenantId = payload.tenantId as string | undefined;
   const fromPhone = payload.from as string | undefined;

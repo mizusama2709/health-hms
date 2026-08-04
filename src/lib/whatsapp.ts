@@ -4,6 +4,7 @@ import { createAppointment } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { MockWhatsAppProvider } from "@/lib/whatsapp/mockProvider";
 import type { WhatsAppProvider } from "@/lib/whatsapp/provider";
+import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
 
 const provider: WhatsAppProvider = new MockWhatsAppProvider();
 
@@ -161,7 +162,8 @@ export async function sendLabReportViaWhatsApp(params: {
   if (!report) throw new Error("Lab report not found");
 
   const testNames = report.labOrder.items.map((i) => i.labTest.name).join(", ");
-  const body = `Lab report for ${report.labOrder.patient.user.name}\nTests: ${testNames}\nView report: ${report.fileUrl}`;
+  const reportUrl = withFreshLabReportToken(report.fileUrl, report.id);
+  const body = `Lab report for ${report.labOrder.patient.user.name}\nTests: ${testNames}\nView report: ${reportUrl}`;
 
   const result = await provider.sendMessage(params.toPhone, body);
 
