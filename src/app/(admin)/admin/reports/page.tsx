@@ -1,5 +1,5 @@
 import { requireTenantId } from "@/lib/tenant";
-import { getMasterReport, getCollectionByPaymentMode, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
+import { getMasterReport, getCollectionByPaymentMode, getRevenueTrend, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
 import { listDoctorsForTenant } from "@/lib/appointments";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { RevenueTrendChart } from "@/components/revenue-trend-chart";
+import type { PaymentMode } from "@prisma/client";
 
 export const metadata = {
   title: "Reports",
@@ -20,6 +22,16 @@ const MASTER_REPORT_LABELS: Record<string, string> = {
   totalRevenue: "Total revenue",
   totalDiscounts: "Total discounts",
   totalRefunds: "Total refunds",
+};
+
+// Fixed categorical order/hues — never reassigned by rank, so "CASH" is
+// always the same color regardless of which modes appear in a given range.
+const PAYMENT_MODE_COLOR: Record<PaymentMode, string> = {
+  CASH: "bg-blue-500",
+  CARD: "bg-violet-500",
+  UPI: "bg-emerald-500",
+  RAZORPAY: "bg-amber-500",
+  OTHER: "bg-slate-400",
 };
 
 export default async function ReportsPage({
@@ -36,9 +48,10 @@ export default async function ReportsPage({
     doctorId: params.doctorId || undefined,
   };
 
-  const [master, collection, transactions, selfEfficacy, doctors] = await Promise.all([
+  const [master, collection, revenueTrend, transactions, selfEfficacy, doctors] = await Promise.all([
     getMasterReport(tenantId, filters),
     getCollectionByPaymentMode(tenantId, filters),
+    getRevenueTrend(tenantId, { from: filters.from, to: filters.to }),
     listTransactions(tenantId, { from: filters.from, to: filters.to }),
     getSelfEfficacyReport(tenantId, filters),
     listDoctorsForTenant(tenantId),
@@ -103,6 +116,12 @@ export default async function ReportsPage({
           </div>
 
           <Card>
+            <CardContent className="pt-6">
+              <RevenueTrendChart points={revenueTrend} />
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader>
               <CardTitle>Collection by payment mode</CardTitle>
               <p className="text-xs text-muted-foreground">Total ₹{collection.total.toLocaleString("en-IN")}</p>
@@ -111,17 +130,19 @@ export default async function ReportsPage({
               {collection.byMode.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No successful payments in this range.</p>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <div className="flex flex-col gap-3">
                   {collection.byMode.map((m) => (
-                    <div key={m.mode} className="rounded-lg border p-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{m.mode}</span>
-                        <span>{m.percent}%</span>
+                    <div key={m.mode} className="flex items-center gap-3">
+                      <span className="w-20 shrink-0 text-xs text-muted-foreground">{m.mode}</span>
+                      <div className="flex h-4 flex-1 items-center rounded-full bg-muted">
+                        <div
+                          className={`h-4 min-w-1 rounded-full ${PAYMENT_MODE_COLOR[m.mode]}`}
+                          style={{ width: `${m.percent}%` }}
+                        />
                       </div>
-                      <div className="mt-1 text-lg font-semibold">₹{m.amount.toLocaleString("en-IN")}</div>
-                      <div className="mt-2 h-1.5 rounded-full bg-muted">
-                        <div className="h-1.5 rounded-full bg-primary" style={{ width: `${m.percent}%` }} />
-                      </div>
+                      <span className="w-36 shrink-0 text-right text-sm font-medium">
+                        ₹{m.amount.toLocaleString("en-IN")} <span className="text-xs text-muted-foreground">({m.percent}%)</span>
+                      </span>
                     </div>
                   ))}
                 </div>

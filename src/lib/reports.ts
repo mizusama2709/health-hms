@@ -63,6 +63,33 @@ export async function getMasterReport(
   };
 }
 
+export async function getRevenueTrend(tenantId: string, filters: { from?: Date; to?: Date }) {
+  const to = filters.to ?? new Date();
+  const from = filters.from ?? new Date(to.getTime() - 29 * 24 * 60 * 60 * 1000);
+
+  const invoices = await db.invoice.findMany({
+    where: { tenantId, createdAt: { gte: from, lte: to } },
+    select: { createdAt: true, totalAmount: true },
+  });
+
+  const byDay = new Map<string, number>();
+  const cursor = new Date(from);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(to);
+  end.setHours(0, 0, 0, 0);
+  while (cursor <= end) {
+    byDay.set(cursor.toISOString().slice(0, 10), 0);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  for (const inv of invoices) {
+    const key = inv.createdAt.toISOString().slice(0, 10);
+    if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + Number(inv.totalAmount));
+  }
+
+  return [...byDay.entries()].map(([date, revenue]) => ({ date: new Date(date), revenue }));
+}
+
 export async function getCollectionByPaymentMode(
   tenantId: string,
   filters: { from?: Date; to?: Date }
