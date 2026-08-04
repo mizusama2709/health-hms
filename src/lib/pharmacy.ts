@@ -197,12 +197,41 @@ export async function adjustMedicineStock(tenantId: string, medicineId: string, 
   return result;
 }
 
-export async function listSuppliers(tenantId: string) {
-  return db.supplier.findMany({ where: { tenantId }, orderBy: { name: "asc" } });
+export async function listSuppliers(tenantId: string, filters?: { isActive?: boolean }) {
+  return db.supplier.findMany({
+    where: { tenantId, ...(filters?.isActive !== undefined && { isActive: filters.isActive }) },
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function listSuppliersPaged(tenantId: string, filters: { page?: number; pageSize?: number } = {}) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = filters.pageSize ?? 50;
+  const where = { tenantId };
+
+  const [total, suppliers] = await Promise.all([
+    db.supplier.count({ where }),
+    db.supplier.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { suppliers, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
 export async function createSupplier(params: { tenantId: string; name: string; contactPhone?: string; contactEmail?: string }) {
   return db.supplier.create({ data: params });
+}
+
+export async function updateSupplier(
+  tenantId: string,
+  supplierId: string,
+  params: Partial<{ name: string; contactPhone: string; contactEmail: string; isActive: boolean }>
+) {
+  return db.supplier.updateMany({ where: { id: supplierId, tenantId }, data: params });
 }
 
 export async function createGoodsReceipt(params: {

@@ -16,6 +16,31 @@ export async function listStaff(tenantId: string, filters?: { role?: Role; statu
   });
 }
 
+export async function listStaffPaged(
+  tenantId: string,
+  filters?: { role?: Role; status?: UserStatus; page?: number; pageSize?: number }
+) {
+  const page = Math.max(1, filters?.page ?? 1);
+  const pageSize = filters?.pageSize ?? 50;
+  const where = {
+    tenantId,
+    ...(filters?.role && { role: filters.role }),
+    ...(filters?.status && { status: filters.status }),
+  };
+
+  const [total, staff] = await Promise.all([
+    db.user.count({ where }),
+    db.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { staff, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+}
+
 export async function updateStaffRole(tenantId: string, userId: string, role: Role, actingRole: Role) {
   if (NON_STAFF_ROLES.has(role)) {
     throw new Error(`Role ${role} has its own dedicated flow — not managed via staff role changes.`);

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
-import { listPatients, listDoctorsForFilter, type PatientStatus } from "@/lib/patients";
+import { listPatientsPaged, listDoctorsForFilter, type PatientStatus } from "@/lib/patients";
 import { listLeads } from "@/lib/leads";
 import {
   createPatientAction,
   createLeadAction,
-  importLeadsAction,
+  importLeadsActionResult,
   updateLeadStatusAction,
   convertLeadAction,
 } from "./actions";
@@ -18,6 +18,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { StatusBadge } from "@/components/status-badge";
 import { TabsContent } from "@/components/ui/tabs";
 import { PatientsTabs } from "@/components/patients-tabs";
+import { ActionForm } from "@/components/action-form";
+import { BulkImportField } from "@/components/bulk-import-field";
 import type { LeadStatus } from "@prisma/client";
 
 export const metadata = {
@@ -57,7 +59,15 @@ function formatDateTime(d: Date | null | undefined) {
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; sort?: string; doctorId?: string; status?: string; tab?: string; leadStatus?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    sort?: string;
+    doctorId?: string;
+    status?: string;
+    tab?: string;
+    leadStatus?: string;
+    page?: string;
+  }>;
 }) {
   const tenantId = await requireTenantId();
   const params = await searchParams;
@@ -65,17 +75,30 @@ export default async function PatientsPage({
   const status = (params.status || undefined) as PatientStatus | undefined;
   const tab = params.tab === "enquiry" ? "enquiry" : "patients";
   const leadStatus = (params.leadStatus || undefined) as LeadStatus | undefined;
+  const page = Number(params.page) || 1;
 
-  const [patients, doctors, leads] = await Promise.all([
-    listPatients(tenantId, {
+  const [{ patients, total, totalPages }, doctors, leads] = await Promise.all([
+    listPatientsPaged(tenantId, {
       search: params.search,
       sort,
       doctorId: params.doctorId || undefined,
       status,
+      page,
+      pageSize: 50,
     }),
     listDoctorsForFilter(tenantId),
     listLeads(tenantId, { search: tab === "enquiry" ? params.search : undefined, status: leadStatus }),
   ]);
+
+  function pageHref(p: number) {
+    const q = new URLSearchParams();
+    if (params.search) q.set("search", params.search);
+    if (params.sort) q.set("sort", params.sort);
+    if (params.doctorId) q.set("doctorId", params.doctorId);
+    if (status) q.set("status", status);
+    q.set("page", String(p));
+    return `/admin/patients?${q.toString()}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,19 +131,17 @@ export default async function PatientsPage({
                 <CardTitle>Import leads</CardTitle>
               </CardHeader>
               <CardContent>
-                <form action={importLeadsAction} className="flex flex-col gap-2">
-                  <Label htmlFor="rows">Paste one lead per line: name, phone, email (optional)</Label>
-                  <textarea
+                <ActionForm action={importLeadsActionResult} className="flex flex-col gap-2">
+                  <Label htmlFor="rows">One lead per line: name, phone, email (optional)</Label>
+                  <BulkImportField
                     id="rows"
-                    name="rows"
-                    rows={5}
+                    rowsFieldName="rows"
                     placeholder={"Priya Sharma, +919876543210\nRahul Verma, +919812345678, rahul@example.com"}
-                    className="rounded-md border bg-transparent p-2 text-sm"
                   />
                   <Button type="submit" className="mt-2 self-start">
                     Import leads
                   </Button>
-                </form>
+                </ActionForm>
               </CardContent>
             </Card>
           </div>
@@ -266,7 +287,7 @@ export default async function PatientsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Directory ({patients.length})</CardTitle>
+          <CardTitle>Directory ({total})</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <form method="get" className="flex flex-wrap items-end gap-2">
@@ -373,6 +394,26 @@ export default async function PatientsPage({
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                    ← Previous
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                    Next →
+                  </Link>
+                )}
+              </div>
             </div>
           )}
         </CardContent>

@@ -18,7 +18,7 @@ export default async function GoodsReceiptPage() {
   const tenantId = await requireTenantId();
   const [receipts, suppliers, medicineCount] = await Promise.all([
     listGoodsReceipts(tenantId),
-    listSuppliers(tenantId),
+    listSuppliers(tenantId, { isActive: true }),
     countMedicines(tenantId, { isActive: true }),
   ]);
 

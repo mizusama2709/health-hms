@@ -180,6 +180,36 @@ export async function listPatients(
   });
 }
 
+export async function listPatientsPaged(
+  tenantId: string,
+  filters?: {
+    search?: string;
+    sort?: "newest" | "oldest";
+    doctorId?: string;
+    status?: PatientStatus;
+    page?: number;
+    pageSize?: number;
+  }
+) {
+  // status/doctorId are derived fields computed after the query (see
+  // listPatients above), so they can't be pushed into a Prisma where clause
+  // — filter in memory first, then paginate the filtered set.
+  const filtered = await listPatients(tenantId, filters);
+
+  const page = Math.max(1, filters?.page ?? 1);
+  const pageSize = filters?.pageSize ?? 50;
+  const total = filtered.length;
+  const start = (page - 1) * pageSize;
+
+  return {
+    patients: filtered.slice(start, start + pageSize),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
 export async function getPatientWithHistory(patientId: string, tenantId: string) {
   return db.patient.findFirst({
     where: { id: patientId, tenantId },

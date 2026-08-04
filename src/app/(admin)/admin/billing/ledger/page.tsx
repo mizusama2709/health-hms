@@ -18,16 +18,28 @@ function formatINR(value: number) {
 export default async function LedgerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; source?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; source?: string; page?: string }>;
 }) {
   const tenantId = await requireTenantId();
   const params = await searchParams;
+  const page = Number(params.page) || 1;
 
   const ledger = await getConsolidatedLedger(tenantId, {
     from: params.from ? new Date(params.from) : undefined,
     to: params.to ? new Date(`${params.to}T23:59:59`) : undefined,
     source: params.source ? (params.source as LedgerSource) : undefined,
+    page,
+    pageSize: 50,
   });
+
+  function pageHref(p: number) {
+    const q = new URLSearchParams();
+    if (params.from) q.set("from", params.from);
+    if (params.to) q.set("to", params.to);
+    if (params.source) q.set("source", params.source);
+    q.set("page", String(p));
+    return `/admin/billing/ledger?${q.toString()}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,6 +140,26 @@ export default async function LedgerPage({
           )}
         </CardContent>
       </Card>
+
+      {ledger.totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {page} of {ledger.totalPages}
+          </span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                ← Previous
+              </Link>
+            )}
+            {page < ledger.totalPages && (
+              <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                Next →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

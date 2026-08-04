@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { getConsolidatedLedger } from "@/lib/billing";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,9 +12,19 @@ function formatINR(value: number) {
   return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export default async function PharmacySalesLedgerPage() {
+export default async function PharmacySalesLedgerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenantId = await requireTenantId();
-  const ledger = await getConsolidatedLedger(tenantId, { source: "PHARMACY" });
+  const params = await searchParams;
+  const page = Number(params.page) || 1;
+  const ledger = await getConsolidatedLedger(tenantId, { source: "PHARMACY", page, pageSize: 50 });
+
+  function pageHref(p: number) {
+    return `/admin/pharmacy/ledger?page=${p}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -21,30 +32,52 @@ export default async function PharmacySalesLedgerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Entries ({ledger.rows.length})</CardTitle>
+          <CardTitle>Entries ({ledger.total})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           {ledger.rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pharmacy sales entries yet.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ledger.rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>{r.date.toLocaleDateString()}</TableCell>
-                    <TableCell className="font-medium">{r.invoiceNumber}</TableCell>
-                    <TableCell>{formatINR(r.total)}</TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Total</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {ledger.rows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{r.date.toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{r.invoiceNumber}</TableCell>
+                      <TableCell>{formatINR(r.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {ledger.totalPages > 1 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Page {page} of {ledger.totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    {page > 1 && (
+                      <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                        ← Previous
+                      </Link>
+                    )}
+                    {page < ledger.totalPages && (
+                      <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                        Next →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
-import { listStaff } from "@/lib/staff";
+import { listStaffPaged } from "@/lib/staff";
 import { createStaffActionResult, changeStaffRoleActionResult, changeStaffStatusActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,9 +18,19 @@ export const metadata = {
 const STAFF_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "NURSE", "RECEPTIONIST", "LAB", "PHARMACIST"] as const;
 const STATUSES = ["ACTIVE", "INACTIVE", "SUSPENDED"] as const;
 
-export default async function StaffPage() {
+export default async function StaffPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenantId = await requireTenantId();
-  const staff = await listStaff(tenantId);
+  const params = await searchParams;
+  const page = Number(params.page) || 1;
+  const { staff, total, totalPages } = await listStaffPaged(tenantId, { page, pageSize: 50 });
+
+  function pageHref(p: number) {
+    return `/admin/staff?page=${p}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,9 +67,9 @@ export default async function StaffPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All staff ({staff.length})</CardTitle>
+          <CardTitle>All staff ({total})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -115,6 +126,26 @@ export default async function StaffPage() {
               ))}
             </TableBody>
           </Table>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                    ← Previous
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                    Next →
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

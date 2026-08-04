@@ -74,7 +74,13 @@ export async function importLeadsAction(formData: FormData) {
   await requireRole(...PATIENT_MANAGEMENT_ROLES);
   const tenantId = await requireTenantId();
 
-  const raw = (formData.get("rows") as string) || "";
+  // Accepts either pasted rows (name, phone, email per line) or an uploaded
+  // CSV with the same shape — same shared bulk-import pattern as medicines'
+  // CSV price upload, just with text pasted directly as an alternative to a
+  // file for the common case of adding one or two leads by hand.
+  const file = formData.get("file");
+  const raw = file instanceof File && file.size > 0 ? await file.text() : ((formData.get("rows") as string) || "");
+
   const rows = raw
     .split("\n")
     .map((line) => line.trim())
@@ -89,6 +95,8 @@ export async function importLeadsAction(formData: FormData) {
 
   revalidatePath("/admin/patients");
 }
+
+export const importLeadsActionResult = withActionResult(importLeadsAction, "Leads imported");
 
 export async function updateLeadStatusAction(formData: FormData) {
   await requireRole(...PATIENT_MANAGEMENT_ROLES);

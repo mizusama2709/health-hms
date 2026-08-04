@@ -212,12 +212,44 @@ export async function listInvoices(
   });
 }
 
+export async function listInvoicesPaged(
+  tenantId: string,
+  filters?: { status?: InvoiceStatus; serviceType?: ServiceType; from?: Date; to?: Date; page?: number; pageSize?: number }
+) {
+  const page = Math.max(1, filters?.page ?? 1);
+  const pageSize = filters?.pageSize ?? 50;
+
+  const where = {
+    tenantId,
+    ...(filters?.status && { status: filters.status }),
+    ...(filters?.serviceType && { serviceType: filters.serviceType }),
+    ...(filters?.from || filters?.to ? { createdAt: { gte: filters?.from, lte: filters?.to } } : {}),
+  };
+
+  const [total, invoices] = await Promise.all([
+    db.invoice.count({ where }),
+    db.invoice.findMany({
+      where,
+      include: {
+        patient: { include: { user: true } },
+        appointment: true,
+        lineItems: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { invoices, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+}
+
 export type LedgerSource = "CONSULTATION" | "PHARMACY" | "LAB" | "MANUAL";
 
 // An invoice not linked to any appointment is treated as "Manual" billing.
 export async function getConsolidatedLedger(
   tenantId: string,
-  filters: { from?: Date; to?: Date; source?: LedgerSource }
+  filters: { from?: Date; to?: Date; source?: LedgerSource; page?: number; pageSize?: number }
 ) {
   const invoices = await db.invoice.findMany({
     where: {
@@ -261,8 +293,19 @@ export async function getConsolidatedLedger(
     {} as Record<LedgerSource, { total: number; count: number }>
   );
 
+  // totals/bySource are aggregates over the *entire* filtered set, computed
+  // before pagination slices rows — otherwise they'd only reflect the
+  // current page instead of the whole ledger range.
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = filters.pageSize ?? 50;
+  const start = (page - 1) * pageSize;
+
   return {
-    rows,
+    rows: rows.slice(start, start + pageSize),
+    total: rows.length,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(rows.length / pageSize)),
     totals: { ...totals, invoiceCount: rows.length },
     bySource,
   };
