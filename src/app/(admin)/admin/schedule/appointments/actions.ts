@@ -28,6 +28,8 @@ export async function editAppointmentAction(formData: FormData) {
   revalidatePath("/admin/schedule/appointments");
 }
 
+export const editAppointmentActionResult = withActionResult(editAppointmentAction, "Appointment updated");
+
 export async function sendReceiptAction(appointmentId: string) {
   const tenantId = await requireTenantId();
   const appointment = await getAppointmentDetailed(appointmentId, tenantId);

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { ActionForm } from "@/components/action-form";
+import { StatTile } from "@/components/stat-tile";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -98,26 +99,11 @@ export default async function DoctorAppointmentsPage({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.total}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending payment</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-600">{stats.pendingPayment}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Confirmed</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-600">{stats.confirmed}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.completed}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Revenue</p>
-          <p className="mt-1 text-2xl font-semibold">{formatINR(stats.revenue)}</p>
-        </div>
+        <StatTile label="Total" value={stats.total} />
+        <StatTile label="Pending payment" value={stats.pendingPayment} valueClassName="text-amber-600" />
+        <StatTile label="Confirmed" value={stats.confirmed} valueClassName="text-emerald-600" />
+        <StatTile label="Completed" value={stats.completed} />
+        <StatTile label="Revenue" value={formatINR(stats.revenue)} />
       </div>
 
       <Card>

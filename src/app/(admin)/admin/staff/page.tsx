@@ -1,6 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listStaff } from "@/lib/staff";
-import { createStaff, changeStaffRole, changeStaffStatus } from "./actions";
+import { createStaffActionResult, changeStaffRoleActionResult, changeStaffStatusActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Staff",
@@ -29,7 +30,7 @@ export default async function StaffPage() {
           <CardTitle>Add staff</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createStaff} className="flex flex-col gap-2">
+          <ActionForm action={createStaffActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Full name</Label>
             <Input id="name" name="name" placeholder="Full name" required />
             <Label htmlFor="email">Email</Label>
@@ -49,7 +50,7 @@ export default async function StaffPage() {
             <Button type="submit" className="mt-2">
               Add staff
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
@@ -82,7 +83,7 @@ export default async function StaffPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1.5">
-                      <form action={changeStaffRole} className="flex items-center gap-1">
+                      <ActionForm action={changeStaffRoleActionResult} className="flex items-center gap-1">
                         <input type="hidden" name="userId" value={u.id} />
                         <NativeSelect name="role" defaultValue={u.role} className="w-40">
                           {STAFF_ROLES.map((r) => (
@@ -94,8 +95,8 @@ export default async function StaffPage() {
                         <Button type="submit" size="sm" variant="outline">
                           Save
                         </Button>
-                      </form>
-                      <form action={changeStaffStatus} className="flex items-center gap-1">
+                      </ActionForm>
+                      <ActionForm action={changeStaffStatusActionResult} className="flex items-center gap-1">
                         <input type="hidden" name="userId" value={u.id} />
                         <NativeSelect name="status" defaultValue={u.status} className="w-40">
                           {STATUSES.map((s) => (
@@ -107,7 +108,7 @@ export default async function StaffPage() {
                         <Button type="submit" size="sm" variant="outline">
                           Save
                         </Button>
-                      </form>
+                      </ActionForm>
                     </div>
                   </TableCell>
                 </TableRow>

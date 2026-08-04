@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { createStaffUser, updateStaffRole, updateStaffStatus } from "@/lib/staff";
+import { withActionResult } from "@/lib/actionResult";
 import type { Role, UserStatus } from "@prisma/client";
 
 const STAFF_ADMIN_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
@@ -25,6 +26,8 @@ export async function createStaff(formData: FormData) {
   revalidatePath("/admin/staff");
 }
 
+export const createStaffActionResult = withActionResult(createStaff, "Staff member added");
+
 export async function changeStaffRole(formData: FormData) {
   const session = await requireRole(...STAFF_ADMIN_ROLES);
   const tenantId = await requireTenantId();
@@ -36,6 +39,8 @@ export async function changeStaffRole(formData: FormData) {
   revalidatePath("/admin/staff");
 }
 
+export const changeStaffRoleActionResult = withActionResult(changeStaffRole, "Role updated");
+
 export async function changeStaffStatus(formData: FormData) {
   await requireRole(...STAFF_ADMIN_ROLES);
   const tenantId = await requireTenantId();
@@ -46,3 +51,5 @@ export async function changeStaffStatus(formData: FormData) {
 
   revalidatePath("/admin/staff");
 }
+
+export const changeStaffStatusActionResult = withActionResult(changeStaffStatus, "Status updated");

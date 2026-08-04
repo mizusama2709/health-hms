@@ -15,7 +15,7 @@ export function NavLinks({ sections }: { sections: NavSection[] }) {
       {sections.map((section, i) => (
         <div key={section.title ?? i} className="flex flex-col gap-1">
           {section.title && (
-            <div className="px-3 pt-5 pb-1 text-xs font-semibold tracking-wider text-white/40 uppercase">
+            <div className="px-3 pt-5 pb-1 text-xs font-semibold tracking-wider text-sidebar-foreground/40 uppercase">
               {section.title}
             </div>
           )}
@@ -39,10 +39,12 @@ export function NavLinks({ sections }: { sections: NavSection[] }) {
                 href={item.href!}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold",
-                  active ? "bg-indigo-500/15 text-indigo-300" : "text-white/70 hover:bg-white/5 hover:text-white"
+                  active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 )}
               >
-                <Icon className={cn("size-5 shrink-0", active ? "text-indigo-300" : "text-white/50")} />
+                <Icon className={cn("size-5 shrink-0", active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/50")} />
                 {item.label}
               </Link>
             );

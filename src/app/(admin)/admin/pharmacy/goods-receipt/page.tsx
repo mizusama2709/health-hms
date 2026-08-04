@@ -1,12 +1,14 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listGoodsReceipts, listSuppliers, countMedicines } from "@/lib/pharmacy";
-import { createGoodsReceiptAction, searchMedicinesAction } from "../actions";
+import { createGoodsReceiptActionResult, searchMedicinesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ActionForm } from "@/components/action-form";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export const metadata = {
   title: "Goods Receipt",
@@ -34,7 +36,7 @@ export default async function GoodsReceiptPage() {
               Add at least one supplier and one medicine before recording a goods receipt.
             </p>
           ) : (
-            <form action={createGoodsReceiptAction} className="flex flex-col gap-2">
+            <ActionForm action={createGoodsReceiptActionResult} className="flex flex-col gap-2">
               <Label htmlFor="supplierId">Supplier</Label>
               <NativeSelect id="supplierId" name="supplierId" required>
                 {suppliers.map((s) => (
@@ -66,7 +68,7 @@ export default async function GoodsReceiptPage() {
               <Button type="submit" className="mt-2">
                 Record receipt
               </Button>
-            </form>
+            </ActionForm>
           )}
         </CardContent>
       </Card>
@@ -75,22 +77,36 @@ export default async function GoodsReceiptPage() {
         <CardHeader>
           <CardTitle>Receipts ({receipts.length})</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent>
           {receipts.length === 0 ? (
             <p className="text-sm text-muted-foreground">No goods receipts yet.</p>
           ) : (
-            receipts.map((r) => (
-              <div key={r.id} className="rounded-lg border p-3 text-sm">
-                <div className="font-medium">
-                  {r.supplier.name} — {r.receivedAt.toLocaleString()}
-                </div>
-                {r.lineItems.map((li) => (
-                  <div key={li.id} className="text-muted-foreground">
-                    {li.medicine.name}: +{li.quantityReceived} @ {Number(li.unitCost).toFixed(2)}
-                  </div>
-                ))}
-              </div>
-            ))
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Received</TableHead>
+                  <TableHead>Medicine</TableHead>
+                  <TableHead>Qty received</TableHead>
+                  <TableHead>Unit cost</TableHead>
+                  <TableHead>Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {receipts.flatMap((r) =>
+                  r.lineItems.map((li) => (
+                    <TableRow key={li.id}>
+                      <TableCell className="font-medium">{r.supplier.name}</TableCell>
+                      <TableCell>{r.receivedAt.toLocaleString()}</TableCell>
+                      <TableCell>{li.medicine.name}</TableCell>
+                      <TableCell>+{li.quantityReceived}</TableCell>
+                      <TableCell>{Number(li.unitCost).toFixed(2)}</TableCell>
+                      <TableCell>{r.notes ?? "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

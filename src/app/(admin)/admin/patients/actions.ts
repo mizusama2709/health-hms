@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { createPatient, updatePatientProfile } from "@/lib/patients";
 import { createLead, importLeads, updateLeadStatus, convertLeadToPatient } from "@/lib/leads";
+import { withActionResult } from "@/lib/actionResult";
 import type { Gender, LeadStatus } from "@prisma/client";
 
 const PATIENT_MANAGEMENT_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "RECEPTIONIST", "NURSE"] as const;
@@ -53,6 +54,8 @@ export async function updatePatientProfileAction(formData: FormData) {
   revalidatePath(`/admin/patients/${patientId}`);
   revalidatePath("/admin/patients");
 }
+
+export const updatePatientProfileActionResult = withActionResult(updatePatientProfileAction, "Profile updated");
 
 export async function createLeadAction(formData: FormData) {
   await requireRole(...PATIENT_MANAGEMENT_ROLES);

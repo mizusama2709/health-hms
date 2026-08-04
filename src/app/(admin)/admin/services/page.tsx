@@ -1,6 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listServices } from "@/lib/services";
-import { createServiceAction, toggleServiceActiveAction } from "./actions";
+import { createServiceActionResult, toggleServiceActiveActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Services",
@@ -26,7 +27,7 @@ export default async function ServicesPage() {
           <CardTitle>Add service</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createServiceAction} className="flex flex-col gap-2">
+          <ActionForm action={createServiceActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" placeholder="e.g. General Consultation" required />
             <Label htmlFor="serviceType">Type</Label>
@@ -44,7 +45,7 @@ export default async function ServicesPage() {
             <Button type="submit" className="mt-2">
               Add service
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
@@ -78,13 +79,13 @@ export default async function ServicesPage() {
                       <Badge variant={s.isActive ? "default" : "secondary"}>{s.isActive ? "Active" : "Inactive"}</Badge>
                     </TableCell>
                     <TableCell>
-                      <form action={toggleServiceActiveAction}>
+                      <ActionForm action={toggleServiceActiveActionResult}>
                         <input type="hidden" name="serviceId" value={s.id} />
                         <input type="hidden" name="isActive" value={String(s.isActive)} />
                         <Button type="submit" size="sm" variant="outline">
                           {s.isActive ? "Deactivate" : "Activate"}
                         </Button>
-                      </form>
+                      </ActionForm>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -6,7 +6,8 @@ import { getPatientEfficacyReport } from "@/lib/reports";
 import { listLabOrders } from "@/lib/lab";
 import { listImagingOrders } from "@/lib/imaging";
 import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
-import { updatePatientProfileAction } from "../actions";
+import { updatePatientProfileActionResult } from "../actions";
+import { ActionForm } from "@/components/action-form";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,7 +84,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updatePatientProfileAction} className="flex flex-col gap-2">
+          <ActionForm action={updatePatientProfileActionResult} className="flex flex-col gap-2">
             <input type="hidden" name="patientId" value={patient.id} />
             <Label htmlFor="name">Full name</Label>
             <Input id="name" name="name" defaultValue={patient.user.name} required />
@@ -101,7 +102,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
             <Button type="submit" className="mt-2 self-start">
               Save profile
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 

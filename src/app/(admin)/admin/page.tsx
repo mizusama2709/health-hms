@@ -10,7 +10,8 @@ import {
   listUpcomingAppointments,
 } from "@/lib/dashboardStats";
 import { listFollowUpsDueToday } from "@/lib/followUps";
-import { bookWalkIn, addDoctor, sendInvoiceWhatsApp, searchPatientsAction } from "./actions";
+import { bookWalkInActionResult, addDoctorActionResult, sendInvoiceWhatsAppActionResult, searchPatientsAction } from "./actions";
+import { ActionForm } from "@/components/action-form";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { StatTile } from "@/components/stat-tile";
 
 export const metadata = {
   title: "Admin Dashboard",
@@ -59,27 +61,18 @@ export default async function AdminHome() {
       <h1 className="text-2xl font-semibold">Admin / Reception Console</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Patients</p>
-          <p className="mt-1 text-2xl font-semibold">{summary.totalPatients.toLocaleString("en-IN")}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Appointments today</p>
-          <p className="mt-1 text-2xl font-semibold">
-            {summary.appointmentsToday.completed}/{summary.appointmentsToday.total}
-          </p>
-          <p className="text-xs text-muted-foreground">{summary.appointmentsToday.confirmed} confirmed</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Revenue this month</p>
-          <p className="mt-1 text-2xl font-semibold">{formatINR(summary.revenueThisMonth)}</p>
-          <p className="text-xs text-muted-foreground">{formatINR(summary.pendingThisMonth)} pending</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Consultations this month</p>
-          <p className="mt-1 text-2xl font-semibold">{summary.consultationsThisMonth}</p>
-          <p className="text-xs text-muted-foreground">Completed</p>
-        </div>
+        <StatTile label="Patients" value={summary.totalPatients.toLocaleString("en-IN")} />
+        <StatTile
+          label="Appointments today"
+          value={`${summary.appointmentsToday.completed}/${summary.appointmentsToday.total}`}
+          sub={`${summary.appointmentsToday.confirmed} confirmed`}
+        />
+        <StatTile
+          label="Revenue this month"
+          value={formatINR(summary.revenueThisMonth)}
+          sub={`${formatINR(summary.pendingThisMonth)} pending`}
+        />
+        <StatTile label="Consultations this month" value={summary.consultationsThisMonth} sub="Completed" />
       </div>
 
       <Card>
@@ -249,28 +242,24 @@ export default async function AdminHome() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Revenue (30d)</p>
-              <p className="mt-1 text-xl font-semibold">{formatINR(pharmacyStats.revenue)}</p>
-              <p className="text-xs text-muted-foreground">{pharmacyStats.billsCount} bills</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Inventory at cost</p>
-              <p className="mt-1 text-xl font-semibold">{formatINR(pharmacyStats.inventoryAtCost)}</p>
-              <p className="text-xs text-muted-foreground">MRP {formatINR(pharmacyStats.inventoryAtMrp)}</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Dead stock</p>
-              <p className="mt-1 text-xl font-semibold text-amber-600">{formatINR(pharmacyStats.deadStockAtCost)}</p>
-              <p className="text-xs text-muted-foreground">{pharmacyStats.skuCount} SKUs · no sale 90d</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Expiring within 30 days (at cost)</p>
-              <p className="mt-1 text-xl font-semibold text-amber-600">{formatINR(pharmacyStats.expiringSoonValueAtCost)}</p>
-              <p className="text-xs text-muted-foreground">
-                {pharmacyStats.expiringSoonCount} units · MRP {formatINR(pharmacyStats.expiringSoonValueAtMrp)}
-              </p>
-            </div>
+            <StatTile label="Revenue (30d)" value={formatINR(pharmacyStats.revenue)} sub={`${pharmacyStats.billsCount} bills`} />
+            <StatTile
+              label="Inventory at cost"
+              value={formatINR(pharmacyStats.inventoryAtCost)}
+              sub={`MRP ${formatINR(pharmacyStats.inventoryAtMrp)}`}
+            />
+            <StatTile
+              label="Dead stock"
+              value={formatINR(pharmacyStats.deadStockAtCost)}
+              valueClassName="text-amber-600"
+              sub={`${pharmacyStats.skuCount} SKUs · no sale 90d`}
+            />
+            <StatTile
+              label="Expiring within 30 days (at cost)"
+              value={formatINR(pharmacyStats.expiringSoonValueAtCost)}
+              valueClassName="text-amber-600"
+              sub={`${pharmacyStats.expiringSoonCount} units · MRP ${formatINR(pharmacyStats.expiringSoonValueAtMrp)}`}
+            />
           </div>
 
           {pharmacyStats.unpricedCount > 0 && (
@@ -322,7 +311,7 @@ export default async function AdminHome() {
                 </li>
               ))}
             </ul>
-            <form action={addDoctor} className="flex flex-col gap-2">
+            <ActionForm action={addDoctorActionResult} className="flex flex-col gap-2">
               <Label htmlFor="name">Full name</Label>
               <Input id="name" name="name" placeholder="Full name" required />
               <Label htmlFor="email">Email</Label>
@@ -334,7 +323,7 @@ export default async function AdminHome() {
               <Button type="submit" className="mt-2">
                 Add doctor
               </Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
 
@@ -343,7 +332,7 @@ export default async function AdminHome() {
             <CardTitle>Book a walk-in</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={bookWalkIn} className="flex flex-col gap-2">
+            <ActionForm action={bookWalkInActionResult} className="flex flex-col gap-2">
               <Label htmlFor="doctorId">Doctor</Label>
               <NativeSelect id="doctorId" name="doctorId" required>
                 <option value="">Select doctor</option>
@@ -366,7 +355,7 @@ export default async function AdminHome() {
               <Button type="submit" className="mt-2">
                 Book appointment
               </Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
 
@@ -376,7 +365,7 @@ export default async function AdminHome() {
             <CardDescription>Mocked for now — no real WhatsApp credentials yet.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={sendInvoiceWhatsApp} className="flex flex-col gap-2">
+            <ActionForm action={sendInvoiceWhatsAppActionResult} className="flex flex-col gap-2">
               <Label htmlFor="invoiceId">Invoice ID</Label>
               <Input id="invoiceId" name="invoiceId" placeholder="Invoice ID" required />
               <Label htmlFor="toPhone">Patient phone</Label>
@@ -384,7 +373,7 @@ export default async function AdminHome() {
               <Button type="submit" className="mt-2">
                 Send invoice
               </Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
       </div>

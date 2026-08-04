@@ -39,6 +39,8 @@ export async function editAppointmentAction(formData: FormData) {
   revalidatePath("/doctor/schedule/appointments");
 }
 
+export const editAppointmentActionResult = withActionResult(editAppointmentAction, "Appointment updated");
+
 export async function sendReceiptAction(appointmentId: string) {
   const { tenantId, doctorId } = await requireDoctorContext();
   const appointment = await getAppointmentDetailed(appointmentId, tenantId, doctorId);

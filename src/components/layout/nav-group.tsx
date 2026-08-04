@@ -29,12 +29,14 @@ export function NavGroup({
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold",
-          active ? "text-indigo-300" : "text-white/70 hover:bg-white/5 hover:text-white"
+          active
+            ? "text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
-        <Icon className={cn("size-5 shrink-0", active ? "text-indigo-300" : "text-white/50")} />
+        <Icon className={cn("size-5 shrink-0", active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/50")} />
         <span className="flex-1 text-left">{label}</span>
-        <ChevronDown className={cn("size-4 text-white/40 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("size-4 text-sidebar-foreground/40 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
         <div className="flex flex-col gap-1 py-1 pl-11">
@@ -46,7 +48,7 @@ export function NavGroup({
                 href={child.href!}
                 className={cn(
                   "rounded-md px-3 py-2 text-sm font-medium",
-                  childActive ? "text-indigo-300" : "text-white/60 hover:text-white"
+                  childActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
                 )}
               >
                 {child.label}

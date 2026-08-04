@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { createService, updateService } from "@/lib/services";
+import { withActionResult } from "@/lib/actionResult";
 import type { ServiceType } from "@prisma/client";
 
 const SERVICE_ADMIN_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
@@ -23,6 +24,8 @@ export async function createServiceAction(formData: FormData) {
   revalidatePath("/admin/services");
 }
 
+export const createServiceActionResult = withActionResult(createServiceAction, "Service added");
+
 export async function toggleServiceActiveAction(formData: FormData) {
   await requireRole(...SERVICE_ADMIN_ROLES);
   const tenantId = await requireTenantId();
@@ -34,3 +37,5 @@ export async function toggleServiceActiveAction(formData: FormData) {
 
   revalidatePath("/admin/services");
 }
+
+export const toggleServiceActiveActionResult = withActionResult(toggleServiceActiveAction, "Service updated");

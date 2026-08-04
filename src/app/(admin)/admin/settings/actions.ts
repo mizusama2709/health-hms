@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { updateHospitalSettings, savePaymentSettings, addDepartment, removeDepartment } from "@/lib/hospitalSettings";
+import { withActionResult } from "@/lib/actionResult";
 
 const SETTINGS_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
 
@@ -35,6 +36,8 @@ export async function saveHospitalSettings(formData: FormData) {
   revalidatePath("/admin/settings");
 }
 
+export const saveHospitalSettingsActionResult = withActionResult(saveHospitalSettings, "Settings saved");
+
 export async function savePaymentSettingsAction(formData: FormData) {
   await requireRole(...SETTINGS_ROLES);
   const tenantId = await requireTenantId();
@@ -52,6 +55,8 @@ export async function savePaymentSettingsAction(formData: FormData) {
   revalidatePath("/admin/settings");
 }
 
+export const savePaymentSettingsActionResult = withActionResult(savePaymentSettingsAction, "Payment settings saved");
+
 export async function addDepartmentAction(formData: FormData) {
   await requireRole(...SETTINGS_ROLES);
   const tenantId = await requireTenantId();
@@ -62,6 +67,8 @@ export async function addDepartmentAction(formData: FormData) {
   revalidatePath("/admin/settings");
 }
 
+export const addDepartmentActionResult = withActionResult(addDepartmentAction, "Department added");
+
 export async function removeDepartmentAction(formData: FormData) {
   await requireRole(...SETTINGS_ROLES);
   const tenantId = await requireTenantId();
@@ -71,3 +78,5 @@ export async function removeDepartmentAction(formData: FormData) {
 
   revalidatePath("/admin/settings");
 }
+
+export const removeDepartmentActionResult = withActionResult(removeDepartmentAction, "Department removed");

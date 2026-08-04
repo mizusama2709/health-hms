@@ -1,10 +1,10 @@
 import { requireTenantId } from "@/lib/tenant";
 import { getHospitalSettings } from "@/lib/hospitalSettings";
 import {
-  saveHospitalSettings,
-  savePaymentSettingsAction,
-  addDepartmentAction,
-  removeDepartmentAction,
+  saveHospitalSettingsActionResult,
+  savePaymentSettingsActionResult,
+  addDepartmentActionResult,
+  removeDepartmentActionResult,
 } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Settings",
@@ -30,7 +31,7 @@ export default async function HospitalSettingsPage() {
           <CardTitle>General</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={saveHospitalSettings} className="flex flex-col gap-2">
+          <ActionForm action={saveHospitalSettingsActionResult} className="flex flex-col gap-2">
             <Label htmlFor="registrationNumber">Registration number</Label>
             <Input id="registrationNumber" name="registrationNumber" defaultValue={settings?.registrationNumber ?? ""} />
             <Label htmlFor="addressLine1">Address line 1</Label>
@@ -86,7 +87,7 @@ export default async function HospitalSettingsPage() {
             <Button type="submit" className="mt-2 self-start">
               Save settings
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
@@ -95,7 +96,7 @@ export default async function HospitalSettingsPage() {
           <CardTitle>Payment settings</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={savePaymentSettingsAction} className="flex flex-col gap-2">
+          <ActionForm action={savePaymentSettingsActionResult} className="flex flex-col gap-2">
             <Label htmlFor="paymentUpiId">UPI ID</Label>
             <Input id="paymentUpiId" name="paymentUpiId" defaultValue={settings?.paymentUpiId ?? ""} />
             <Label htmlFor="paymentPayeeName">Payee name</Label>
@@ -109,7 +110,7 @@ export default async function HospitalSettingsPage() {
             <Button type="submit" className="mt-2 self-start">
               Save payment settings
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
@@ -122,21 +123,21 @@ export default async function HospitalSettingsPage() {
             {settings?.departments.map((d) => (
               <li key={d.id} className="flex items-center gap-2">
                 <Badge variant="secondary">{d.name}</Badge>
-                <form action={removeDepartmentAction}>
+                <ActionForm action={removeDepartmentActionResult} confirmMessage={`Remove the "${d.name}" department?`}>
                   <input type="hidden" name="departmentId" value={d.id} />
                   <Button type="submit" size="sm" variant="ghost">
                     Remove
                   </Button>
-                </form>
+                </ActionForm>
               </li>
             ))}
           </ul>
-          <form action={addDepartmentAction} className="flex gap-2">
+          <ActionForm action={addDepartmentActionResult} className="flex gap-2">
             <Input name="name" placeholder="Department name" required />
             <Button type="submit" variant="outline">
               Add department
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
     </div>

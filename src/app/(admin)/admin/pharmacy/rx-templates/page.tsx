@@ -1,12 +1,13 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listRxTemplates } from "@/lib/rxTemplates";
-import { createRxTemplateAction, searchMedicinesAction } from "../actions";
+import { createRxTemplateActionResult, searchMedicinesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Rx Templates",
@@ -25,7 +26,7 @@ export default async function RxTemplatesPage() {
           <CardTitle>Create template</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createRxTemplateAction} className="flex flex-col gap-2">
+          <ActionForm action={createRxTemplateActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Template name</Label>
             <Input id="name" name="name" placeholder="e.g. Malaria Protocol" required />
             <Label htmlFor="diseaseTag">Disease tag</Label>
@@ -70,7 +71,7 @@ export default async function RxTemplatesPage() {
             <Button type="submit" className="mt-2">
               Save template
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 

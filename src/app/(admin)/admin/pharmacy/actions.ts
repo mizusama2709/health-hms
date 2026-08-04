@@ -94,6 +94,8 @@ export async function createSupplierAction(formData: FormData) {
   revalidatePath("/admin/pharmacy/suppliers");
 }
 
+export const createSupplierActionResult = withActionResult(createSupplierAction, "Supplier added");
+
 export async function createGoodsReceiptAction(formData: FormData) {
   const session = await requireRole(...PHARMACY_ROLES);
   const tenantId = await requireTenantId();
@@ -122,6 +124,8 @@ export async function createGoodsReceiptAction(formData: FormData) {
   revalidatePath("/admin/pharmacy/goods-receipt");
   revalidatePath("/admin/pharmacy/medicines");
 }
+
+export const createGoodsReceiptActionResult = withActionResult(createGoodsReceiptAction, "Receipt recorded");
 
 export async function createPrescriptionAction(formData: FormData) {
   const session = await requireRole(...PHARMACY_ROLES);
@@ -269,6 +273,8 @@ export async function createRxTemplateAction(formData: FormData) {
 
   revalidatePath("/admin/pharmacy/rx-templates");
 }
+
+export const createRxTemplateActionResult = withActionResult(createRxTemplateAction, "Template created");
 
 export async function loadRxTemplateAction(formData: FormData) {
   const session = await requireRole(...PHARMACY_ROLES);

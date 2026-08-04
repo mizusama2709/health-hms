@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { TabsContent } from "@/components/ui/tabs";
+import { PatientsTabs } from "@/components/patients-tabs";
 import type { LeadStatus } from "@prisma/client";
 
 export const metadata = {
@@ -79,23 +81,8 @@ export default async function PatientsPage({
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Patients</h1>
 
-      <div className="flex gap-2 border-b">
-        <Link
-          href="/admin/patients"
-          className={`px-3 py-2 text-sm font-medium ${tab === "patients" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          Patients
-        </Link>
-        <Link
-          href="/admin/patients?tab=enquiry"
-          className={`px-3 py-2 text-sm font-medium ${tab === "enquiry" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          Enquiry
-        </Link>
-      </div>
-
-      {tab === "enquiry" ? (
-        <>
+      <PatientsTabs tab={tab}>
+        <TabsContent value="enquiry" className="flex flex-col gap-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <Card>
               <CardHeader>
@@ -244,9 +231,9 @@ export default async function PatientsPage({
               )}
             </CardContent>
           </Card>
-        </>
-      ) : (
-        <>
+        </TabsContent>
+
+        <TabsContent value="patients" className="flex flex-col gap-6">
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>Add patient</CardTitle>
@@ -390,8 +377,8 @@ export default async function PatientsPage({
           )}
         </CardContent>
       </Card>
-        </>
-      )}
+        </TabsContent>
+      </PatientsTabs>
     </div>
   );
 }

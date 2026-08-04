@@ -1,10 +1,11 @@
 import { requireTenantId } from "@/lib/tenant";
 import { getOrganizationProfile } from "@/lib/organization";
-import { saveOrganizationProfile } from "./actions";
+import { saveOrganizationProfileActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Organization",
@@ -23,7 +24,7 @@ export default async function OrganizationPage() {
           <CardTitle>Organization profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={saveOrganizationProfile} className="flex flex-col gap-2">
+          <ActionForm action={saveOrganizationProfileActionResult} className="flex flex-col gap-2">
             <Label htmlFor="legalName">Legal name</Label>
             <Input id="legalName" name="legalName" placeholder="Legal name" defaultValue={profile?.legalName ?? ""} />
             <Label htmlFor="gstNumber">GST number</Label>
@@ -57,7 +58,7 @@ export default async function OrganizationPage() {
             <Button type="submit" className="mt-2">
               Save organization profile
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
     </div>

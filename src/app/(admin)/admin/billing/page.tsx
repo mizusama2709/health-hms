@@ -3,12 +3,13 @@ import { requireTenantId } from "@/lib/tenant";
 import { listPatients } from "@/lib/patients";
 import { listServices } from "@/lib/services";
 import { db } from "@/lib/db";
-import { billPatient } from "./actions";
+import { billPatientActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { ActionForm } from "@/components/action-form";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -80,7 +81,7 @@ export default async function BillPatientPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={billPatient} className="flex flex-col gap-2">
+            <ActionForm action={billPatientActionResult} className="flex flex-col gap-2">
               <input type="hidden" name="patientId" value={selectedPatient.id} />
               <Label htmlFor="serviceType">Service type</Label>
               <NativeSelect id="serviceType" name="serviceType" required>
@@ -123,7 +124,7 @@ export default async function BillPatientPage({
               <Button type="submit" className="mt-2">
                 Create invoice
               </Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
       )}

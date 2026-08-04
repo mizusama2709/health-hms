@@ -1,11 +1,12 @@
 import { requireTenantId } from "@/lib/tenant";
 import { listSuppliers } from "@/lib/pharmacy";
-import { createSupplierAction } from "../actions";
+import { createSupplierActionResult } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Suppliers",
@@ -24,7 +25,7 @@ export default async function SuppliersPage() {
           <CardTitle>Add supplier</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createSupplierAction} className="flex flex-col gap-2">
+          <ActionForm action={createSupplierActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" required />
             <Label htmlFor="contactPhone">Contact phone (optional)</Label>
@@ -34,7 +35,7 @@ export default async function SuppliersPage() {
             <Button type="submit" className="mt-2">
               Add supplier
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 

@@ -9,6 +9,8 @@ import { recordJourneyEvent } from "@/lib/journey";
 import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
 import { searchPatients } from "@/lib/patients";
 import { db } from "@/lib/db";
+import { withActionResult } from "@/lib/actionResult";
+import { isUniqueConstraintViolation } from "@/lib/prismaErrors";
 
 async function requireAdmin() {
   const session = await auth();
@@ -51,6 +53,8 @@ export async function bookWalkIn(formData: FormData) {
   revalidatePath("/admin");
 }
 
+export const bookWalkInActionResult = withActionResult(bookWalkIn, "Walk-in booked");
+
 export async function addDoctor(formData: FormData) {
   await requireAdmin();
   const tenantId = await requireTenantId();
@@ -60,24 +64,34 @@ export async function addDoctor(formData: FormData) {
   const specialty = formData.get("specialty") as string;
   const password = formData.get("password") as string;
 
-  const existing = await db.user.findUnique({ where: { email } });
-  if (existing) throw new Error(`A user with email ${email} already exists`);
-
   const passwordHash = await bcrypt.hash(password, 10);
 
-  await db.user.create({
-    data: {
-      email,
-      name,
-      role: "DOCTOR",
-      passwordHash,
-      tenantId,
-      doctor: { create: { tenantId, specialty } },
-    },
-  });
+  // No pre-check by email — see the matching comment in patients.ts
+  // createPatient: since email is globally unique (not per-tenant), a
+  // findUnique-by-email check would tell staff at one tenant whether an
+  // email is registered at *any* tenant, a cross-tenant enumeration leak.
+  try {
+    await db.user.create({
+      data: {
+        email,
+        name,
+        role: "DOCTOR",
+        passwordHash,
+        tenantId,
+        doctor: { create: { tenantId, specialty } },
+      },
+    });
+  } catch (e) {
+    if (isUniqueConstraintViolation(e, "email")) {
+      throw new Error("That email may already be registered — try a different one");
+    }
+    throw e;
+  }
 
   revalidatePath("/admin");
 }
+
+export const addDoctorActionResult = withActionResult(addDoctor, "Doctor added");
 
 export async function sendInvoiceWhatsApp(formData: FormData) {
   await requireAdmin();
@@ -90,3 +104,5 @@ export async function sendInvoiceWhatsApp(formData: FormData) {
 
   revalidatePath("/admin");
 }
+
+export const sendInvoiceWhatsAppActionResult = withActionResult(sendInvoiceWhatsApp, "Invoice sent via WhatsApp");
