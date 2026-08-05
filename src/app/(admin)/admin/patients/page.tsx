@@ -352,7 +352,7 @@ export default async function PatientsPage({
           {patients.length === 0 ? (
             <EmptyState icon={Users} message={<>No patients found.</>} />
           ) : (
-            <div className="overflow-x-auto">
+            <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -364,7 +364,7 @@ export default async function PatientsPage({
                     <TableHead>Last consultation</TableHead>
                     <TableHead>Last logged in</TableHead>
                     <TableHead>Updated</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="sticky right-0 z-20 bg-card"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -394,7 +394,7 @@ export default async function PatientsPage({
                       </TableCell>
                       <TableCell>{formatDateTime(p.user.lastLoginAt)}</TableCell>
                       <TableCell>{formatDate(p.user.updatedAt)}</TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 bg-card">
                         <div className="flex gap-3">
                           <Link href={`/admin/patients/${p.id}`} className="text-sm font-medium text-primary hover:underline">
                             View chart
@@ -411,7 +411,7 @@ export default async function PatientsPage({
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </>
           )}
 
           {totalPages > 1 && (

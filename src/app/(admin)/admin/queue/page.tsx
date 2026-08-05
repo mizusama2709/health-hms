@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarX2 } from "lucide-react";
+import { CalendarX2, ClipboardList, Activity, Stethoscope, FlaskConical, UserCheck, Package, CheckCircle2 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant } from "@/lib/appointments";
@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
+import { StatTile } from "@/components/stat-tile";
 import { QueueInProgressCell } from "@/components/queue-in-progress-cell";
 import { QueueLiveRefresh } from "@/components/queue-live-refresh";
 import type { QueueStage } from "@prisma/client";
@@ -25,6 +26,15 @@ const STAGE_LABELS: Record<QueueStage, string> = {
   LAB: "Lab",
   CONSULTATION_2: "Consultation 2",
   PHARMACY: "Pharmacy",
+};
+
+const STAGE_TILE_CONFIG: Record<QueueStage, { icon: typeof ClipboardList; iconColor: "blue" | "emerald" | "amber" | "red" | "violet" | "slate" }> = {
+  REGISTRATION: { icon: ClipboardList, iconColor: "slate" },
+  VITALS: { icon: Activity, iconColor: "blue" },
+  CONSULTATION: { icon: Stethoscope, iconColor: "violet" },
+  LAB: { icon: FlaskConical, iconColor: "amber" },
+  CONSULTATION_2: { icon: UserCheck, iconColor: "violet" },
+  PHARMACY: { icon: Package, iconColor: "emerald" },
 };
 
 function formatElapsed(ms: number) {
@@ -100,19 +110,15 @@ export default async function QueuePage() {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
         {QUEUE_STAGES.map((stage) => (
-          <Card key={stage}>
-            <CardContent className="p-4">
-              <div className="text-2xl font-semibold">{stageCounts[stage]}</div>
-              <div className="text-xs text-muted-foreground">{STAGE_LABELS[stage]}</div>
-            </CardContent>
-          </Card>
+          <StatTile
+            key={stage}
+            label={STAGE_LABELS[stage]}
+            value={stageCounts[stage]}
+            icon={STAGE_TILE_CONFIG[stage].icon}
+            iconColor={STAGE_TILE_CONFIG[stage].iconColor}
+          />
         ))}
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-semibold">{completedAllCount}</div>
-            <div className="text-xs text-muted-foreground">Completed all stages</div>
-          </CardContent>
-        </Card>
+        <StatTile label="Completed all stages" value={completedAllCount} icon={CheckCircle2} iconColor="emerald" />
       </div>
 
       <Card>

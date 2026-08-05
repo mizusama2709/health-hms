@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { UserX, CalendarX2 } from "lucide-react";
+import { UserX, CalendarX2, CalendarDays, CheckCircle2, Hourglass, Ban } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { StatTile } from "@/components/stat-tile";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listAppointmentsForDoctor } from "@/lib/appointments";
@@ -58,11 +59,19 @@ export default async function DoctorHome({
     );
   }
 
-  const [appointments, labTests, medicineCount] = await Promise.all([
+  const [appointments, todaysAppointments, labTests, medicineCount] = await Promise.all([
     listAppointmentsForDoctor(doctor.id, tenantId, { scope }),
+    listAppointmentsForDoctor(doctor.id, tenantId, { scope: "today" }),
     listLabTests(tenantId, { isActive: true }),
     countMedicines(tenantId, { isActive: true }),
   ]);
+
+  const todayStats = {
+    total: todaysAppointments.length,
+    completed: todaysAppointments.filter((a) => a.status === "COMPLETED").length,
+    pending: todaysAppointments.filter((a) => a.status === "BOOKED").length,
+    cancelled: todaysAppointments.filter((a) => a.status === "CANCELLED" || a.status === "NO_SHOW").length,
+  };
 
   const [recentLabsByPatient, appointmentIdsWithPendingLabOrders] = await Promise.all([
     listLatestCompletedLabOrdersForPatients(tenantId, [...new Set(appointments.map((a) => a.patientId))]),
@@ -76,6 +85,13 @@ export default async function DoctorHome({
         <Link href="/doctor/schedule/calendar" className="text-sm font-medium text-primary hover:underline">
           Calendar view
         </Link>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="Today" value={todayStats.total} icon={CalendarDays} iconColor="blue" />
+        <StatTile label="Completed" value={todayStats.completed} icon={CheckCircle2} iconColor="emerald" valueClassName="text-emerald-500" />
+        <StatTile label="Pending" value={todayStats.pending} icon={Hourglass} iconColor="amber" valueClassName="text-amber-500" />
+        <StatTile label="Cancelled / no-show" value={todayStats.cancelled} icon={Ban} iconColor="red" />
       </div>
 
       <div className="flex flex-wrap gap-2">

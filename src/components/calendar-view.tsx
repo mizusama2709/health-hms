@@ -1,8 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { AppointmentStatus } from "@prisma/client";
+import { CalendarCheck2, Clock, Timer, CircleDot } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { StatTile } from "@/components/stat-tile";
+import { DayViewScrollContainer } from "@/components/day-view-scroll-container";
+import { DOCTOR_WORKING_HOURS } from "@/lib/appointments";
 import { cn } from "@/lib/utils";
 
 export type View = "day" | "week" | "month";
@@ -165,30 +169,24 @@ export function CalendarView<T extends CalendarAppointment>({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Today booked</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.bookedCount}</p>
-          <p className="text-xs text-muted-foreground">{stats.bookedHours.toFixed(1)}h</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Today free</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-600">{stats.freeHours.toFixed(1)}h</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Working hours</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.workingHoursLabel}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
-          <p
-            className={cn(
-              "mt-1 text-2xl font-semibold",
-              stats.status === "Available" ? "text-emerald-600" : stats.status === "In consultation" ? "text-amber-600" : "text-muted-foreground"
-            )}
-          >
-            {stats.status}
-          </p>
-        </div>
+        <StatTile label="Today booked" value={stats.bookedCount} sub={`${stats.bookedHours.toFixed(1)}h`} icon={CalendarCheck2} iconColor="blue" />
+        <StatTile
+          label="Today free"
+          value={`${stats.freeHours.toFixed(1)}h`}
+          icon={Clock}
+          iconColor="emerald"
+          valueClassName="text-emerald-500"
+        />
+        <StatTile label="Working hours" value={stats.workingHoursLabel} icon={Timer} iconColor="violet" />
+        <StatTile
+          label="Status"
+          value={stats.status}
+          icon={CircleDot}
+          iconColor={stats.status === "Available" ? "emerald" : stats.status === "In consultation" ? "amber" : "slate"}
+          valueClassName={cn(
+            stats.status === "Available" ? "text-emerald-500" : stats.status === "In consultation" ? "text-amber-500" : "text-muted-foreground"
+          )}
+        />
       </div>
 
       <div className="overflow-hidden rounded-lg border">
@@ -229,7 +227,11 @@ export function CalendarView<T extends CalendarAppointment>({
         {/* DAY VIEW */}
         {view === "day" && (
           <div className="flex">
-            <div className="max-h-[640px] flex-1 overflow-y-auto px-4 py-4">
+            <DayViewScrollContainer
+              hourHeight={HOUR_HEIGHT}
+              scrollToHour={Math.max(0, (isToday ? new Date().getHours() : DOCTOR_WORKING_HOURS.startHour) - 1)}
+              className="flex-1 px-4 py-4"
+            >
               <div className="relative">
                 {HOURS.map((hour) => (
                   <div key={hour} className="relative flex" style={{ height: HOUR_HEIGHT }}>
@@ -272,7 +274,7 @@ export function CalendarView<T extends CalendarAppointment>({
                   );
                 })}
               </div>
-            </div>
+            </DayViewScrollContainer>
 
             <div className="w-[280px] shrink-0 border-l bg-muted/30 px-4 py-4">
               {selected ? (
@@ -295,7 +297,10 @@ export function CalendarView<T extends CalendarAppointment>({
 
         {/* WEEK VIEW */}
         {view === "week" && (
-          <div className="max-h-[640px] overflow-y-auto">
+          <DayViewScrollContainer
+            hourHeight={WEEK_HOUR_HEIGHT}
+            scrollToHour={Math.max(0, DOCTOR_WORKING_HOURS.startHour - 1)}
+          >
             <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b text-center text-xs font-medium">
               <div />
               {weekDays.map((d) => (
@@ -347,7 +352,7 @@ export function CalendarView<T extends CalendarAppointment>({
                 );
               })}
             </div>
-          </div>
+          </DayViewScrollContainer>
         )}
 
         {/* MONTH VIEW */}

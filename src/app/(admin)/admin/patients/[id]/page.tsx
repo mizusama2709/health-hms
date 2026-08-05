@@ -22,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { LabResultGauge } from "@/components/lab-result-gauge";
 import { LabTrendChart, type LabTrendPoint } from "@/components/lab-trend-chart";
 import { PatientChartTabs, type ChartAlert } from "@/components/patient-chart-tabs";
+import { Avatar } from "@/components/avatar";
+import { patientDisplayId } from "@/lib/patients";
 
 export const metadata = {
   title: "Patient Details",
@@ -86,18 +88,33 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
     MEDICINES_DISPENSED: "Dispensed",
   };
 
+  const lastVisit = patient.appointments[0]?.datetime ?? null;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <Link href="/admin/patients" className="text-sm font-medium text-primary hover:underline">
           ← Back to Patients
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{patient.user.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {patient.user.email} {patient.user.phone && `· ${patient.user.phone}`}
-          {age !== null && ` · ${age} yrs`}
-          {patient.gender && ` · ${patient.gender.charAt(0) + patient.gender.slice(1).toLowerCase()}`}
-        </p>
+        <div className="mt-2 flex items-center gap-3">
+          <Avatar name={patient.user.name} size="lg" />
+          <div>
+            <h1 className="text-2xl font-semibold">{patient.user.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              {patient.user.email} {patient.user.phone && `· ${patient.user.phone}`}
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge variant="outline" className="font-mono">
+            {patientDisplayId(patient.id)}
+          </Badge>
+          {age !== null && <Badge variant="outline">{age} yrs</Badge>}
+          {patient.gender && <Badge variant="outline">{patient.gender.charAt(0) + patient.gender.slice(1).toLowerCase()}</Badge>}
+          <Badge variant="outline">
+            Last visit: {lastVisit ? new Date(lastVisit).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+          </Badge>
+        </div>
       </div>
 
       <PatientChartTabs

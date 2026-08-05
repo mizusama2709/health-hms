@@ -1,5 +1,5 @@
 import { requireTenantId } from "@/lib/tenant";
-import { Receipt } from "lucide-react";
+import { Receipt, CalendarDays, Stethoscope, Package, FlaskConical, IndianRupee, Tag, Undo2 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { getMasterReport, getCollectionByPaymentMode, getRevenueTrend, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
 import { listDoctorsForTenant } from "@/lib/appointments";
@@ -11,21 +11,26 @@ import { DateRangePresets } from "@/components/date-range-presets";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RevenueTrendChart } from "@/components/revenue-trend-chart";
+import { StatTile } from "@/components/stat-tile";
 import type { PaymentMode } from "@prisma/client";
 
 export const metadata = {
   title: "Reports",
 };
 
-const MASTER_REPORT_LABELS: Record<string, string> = {
-  totalAppointments: "Total appointments",
-  consultations: "Consultations",
-  pharmacy: "Pharmacy",
-  lab: "Lab",
-  totalRevenue: "Total revenue",
-  totalDiscounts: "Total discounts",
-  totalRefunds: "Total refunds",
-};
+function formatINR(value: number) {
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+}
+
+const MASTER_REPORT_CONFIG = {
+  totalAppointments: { label: "Total appointments", icon: CalendarDays, iconColor: "blue", currency: false },
+  consultations: { label: "Consultations", icon: Stethoscope, iconColor: "violet", currency: false },
+  pharmacy: { label: "Pharmacy", icon: Package, iconColor: "amber", currency: false },
+  lab: { label: "Lab", icon: FlaskConical, iconColor: "slate", currency: false },
+  totalRevenue: { label: "Total revenue", icon: IndianRupee, iconColor: "emerald", currency: true },
+  totalDiscounts: { label: "Total discounts", icon: Tag, iconColor: "amber", currency: true },
+  totalRefunds: { label: "Total refunds", icon: Undo2, iconColor: "red", currency: true },
+} as const;
 
 // Fixed categorical order/hues — never reassigned by rank, so "CASH" is
 // always the same color regardless of which modes appear in a given range.
@@ -114,14 +119,19 @@ export default async function ReportsPage({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            {Object.entries(master).map(([key, value]) => (
-              <Card key={key}>
-                <CardContent className="pt-0">
-                  <div className="pt-4 text-xs text-muted-foreground">{MASTER_REPORT_LABELS[key] ?? key}</div>
-                  <div className="text-2xl font-semibold">{value}</div>
-                </CardContent>
-              </Card>
-            ))}
+            {(Object.keys(master) as (keyof typeof master)[]).map((key) => {
+              const config = MASTER_REPORT_CONFIG[key as keyof typeof MASTER_REPORT_CONFIG];
+              const value = master[key];
+              return (
+                <StatTile
+                  key={key}
+                  label={config?.label ?? key}
+                  value={config?.currency ? formatINR(value) : value}
+                  icon={config?.icon}
+                  iconColor={config?.iconColor}
+                />
+              );
+            })}
           </div>
 
           <Card>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
-import { AlertTriangle, Users, CalendarCheck, IndianRupee, Stethoscope, CalendarX2, Inbox, Package } from "lucide-react";
+import { AlertTriangle, Users, CalendarCheck, IndianRupee, Stethoscope, CalendarX2, Inbox, Package, Archive, Clock3 } from "lucide-react";
 import { requireTenantId } from "@/lib/tenant";
 import { listDoctorsForTenant } from "@/lib/appointments";
 import {
@@ -371,23 +371,35 @@ export default async function AdminHome({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatTile label="Revenue (30d)" value={formatINR(pharmacyStats.revenue)} sub={`${pharmacyStats.billsCount} bills`} />
+            <StatTile
+              label="Revenue (30d)"
+              value={formatINR(pharmacyStats.revenue)}
+              sub={`${pharmacyStats.billsCount} bills`}
+              icon={IndianRupee}
+              iconColor="emerald"
+            />
             <StatTile
               label="Inventory at cost"
               value={formatINR(pharmacyStats.inventoryAtCost)}
               sub={`MRP ${formatINR(pharmacyStats.inventoryAtMrp)}`}
+              icon={Archive}
+              iconColor="violet"
             />
             <StatTile
               label="Dead stock"
               value={formatINR(pharmacyStats.deadStockAtCost)}
-              valueClassName="text-amber-600"
+              valueClassName="text-amber-500"
               sub={`${pharmacyStats.skuCount} SKUs · no sale 90d`}
+              icon={Package}
+              iconColor="amber"
             />
             <StatTile
               label="Expiring within 30 days (at cost)"
               value={formatINR(pharmacyStats.expiringSoonValueAtCost)}
-              valueClassName="text-amber-600"
+              valueClassName="text-amber-500"
               sub={`${pharmacyStats.expiringSoonCount} units · MRP ${formatINR(pharmacyStats.expiringSoonValueAtMrp)}`}
+              icon={Clock3}
+              iconColor="amber"
             />
           </div>
 
