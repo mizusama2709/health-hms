@@ -26,6 +26,6 @@ export function decryptPHI(value: string): string {
   return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
 }
 
-export function decryptPHIMaybe(value: string | null | undefined) {
-  return value == null ? value : decryptPHI(value);
+export function decryptPHIMaybe(value: string | null | undefined): string | null {
+  return value == null ? null : decryptPHI(value);
 }

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 // ponytail: fire-and-forget insert, no queue/batching. Fine at this write volume;
 // move to a buffered writer if audit inserts ever show up in latency profiling.
@@ -9,7 +10,7 @@ export async function logAudit(entry: {
   action: string;
   entityType: string;
   entityId?: string | null;
-  meta?: Record<string, unknown>;
+  meta?: Prisma.InputJsonValue;
 }) {
   try {
     await db.auditLog.create({
