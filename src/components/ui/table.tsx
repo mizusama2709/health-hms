@@ -6,13 +6,28 @@ import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
+    // max-h + overflow-auto (not just overflow-x-auto) so this container is
+    // the real vertical scroll context for the sticky header below — an
+    // ancestor with overflow-x-auto but a content-sized (unbounded) height
+    // technically satisfies "nearest scroll container" for position:sticky
+    // without ever actually scrolling internally, which silently no-ops
+    // sticky instead of erroring. Tables shorter than the cap are visually
+    // unaffected — the max-height is simply never reached.
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full max-h-[70vh] overflow-auto"
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn(
+          // Tailwind's preflight sets `border-collapse: collapse` on every
+          // table, which silently breaks `position: sticky` on <th>/<td> in
+          // every browser engine (a well-documented CSS interaction, not a
+          // bug in the sticky header below) — override back to `separate`
+          // so the sticky header in TableHead actually sticks.
+          "w-full caption-bottom border-separate border-spacing-0 text-sm",
+          className
+        )}
         {...props}
       />
     </div>
@@ -71,7 +86,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       data-slot="table-head"
       scope="col"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "sticky top-0 z-10 h-10 bg-card px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -84,7 +99,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "p-2 align-middle whitespace-nowrap tabular-nums [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

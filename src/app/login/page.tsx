@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { HeartPulse } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,7 @@ function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Health HMS</CardTitle>
+        <CardTitle className="text-xl">Sign in</CardTitle>
         <p className="text-sm text-muted-foreground">Staff login — Admin, Reception &amp; Doctor</p>
       </CardHeader>
       <CardContent>
@@ -34,7 +35,7 @@ function LoginForm() {
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder="you@clinic.com"
             type="email"
             required
           />
@@ -43,7 +44,7 @@ function LoginForm() {
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder="••••••••"
             type="password"
             required
           />
@@ -59,10 +60,30 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Suspense>
-        <LoginForm />
-      </Suspense>
+    <div className="grid min-h-screen lg:grid-cols-2">
+      <div className="hidden flex-col justify-between bg-card p-10 lg:flex">
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <HeartPulse className="size-5" />
+          </div>
+          <span className="font-heading text-lg font-semibold">Health HMS</span>
+        </div>
+        <div className="flex flex-col gap-3 max-w-md">
+          <p className="font-heading text-2xl font-semibold text-balance">
+            One console for the front desk, the pharmacy, and the doctor&apos;s chair.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Appointments, billing, lab results, and prescriptions — kept in sync across every role in the clinic.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Health HMS</p>
+      </div>
+
+      <div className="flex items-center justify-center p-4">
+        <Suspense>
+          <LoginForm />
+        </Suspense>
+      </div>
     </div>
   );
 }

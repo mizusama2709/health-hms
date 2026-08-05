@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listMedicineBatches, type BatchExpiryFilter } from "@/lib/pharmacy";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -65,7 +65,7 @@ export default async function MedicineBatchesPage({
           <form method="get" className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Search</span>
-              <Input name="search" placeholder="Medicine name" defaultValue={search ?? ""} className="w-64" />
+              <SearchInput name="search" placeholder="Medicine name" defaultValue={search ?? ""} className="w-64" />
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Expiry</span>

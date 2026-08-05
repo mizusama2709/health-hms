@@ -24,6 +24,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatTile } from "@/components/stat-tile";
 import { Avatar } from "@/components/avatar";
+import { cn } from "@/lib/utils";
 
 export const metadata = {
   title: "Admin Dashboard",
@@ -32,6 +33,17 @@ export const metadata = {
 function formatINR(value: number) {
   return `₹${Math.round(value).toLocaleString("en-IN")}`;
 }
+
+// Fixed categorical order/hues — never reassigned by rank, so "New
+// Patients" is always the same color regardless of which rows are present.
+const PIPELINE_COLOR: Record<string, string> = {
+  "New Patients": "bg-blue-500",
+  "Appointment Booked": "bg-violet-500",
+  "Payment Pending": "bg-amber-500",
+  Enquiry: "bg-cyan-500",
+  "Payment Collected": "bg-emerald-500",
+  "Follow Up": "bg-fuchsia-500",
+};
 
 export default async function AdminHome() {
   const tenantId = await requireTenantId();
@@ -267,9 +279,12 @@ export default async function AdminHome() {
               <div key={row.label} className="flex items-center gap-3 text-sm">
                 <span className="w-36 shrink-0 text-muted-foreground">{row.label}</span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${row.pct}%` }} />
+                  <div
+                    className={cn("h-full min-w-1 rounded-full", PIPELINE_COLOR[row.label] ?? "bg-primary")}
+                    style={{ width: `${row.pct}%` }}
+                  />
                 </div>
-                <span className="w-12 shrink-0 text-right font-medium">{row.value}</span>
+                <span className="w-12 shrink-0 text-right font-medium tabular-nums">{row.value}</span>
               </div>
             ))}
           </CardContent>

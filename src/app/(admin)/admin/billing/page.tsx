@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { billPatientActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -45,7 +46,7 @@ export default async function BillPatientPage({
         <CardContent className="flex flex-col gap-3 pt-6">
           <form method="get" className="flex flex-col gap-1">
             <Label htmlFor="search">Patient</Label>
-            <Input id="search" name="search" placeholder="Search patient by name, phone, or Patient ID..." defaultValue={params.search ?? ""} />
+            <SearchInput id="search" name="search" placeholder="Search patient by name, phone, or Patient ID..." defaultValue={params.search ?? ""} />
           </form>
 
           {matches.length > 0 && (

@@ -13,6 +13,7 @@ import {
 } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -158,7 +159,7 @@ export default async function PatientsPage({
                 <input type="hidden" name="tab" value="enquiry" />
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">Search</span>
-                  <Input name="search" placeholder="Name or phone" defaultValue={params.search ?? ""} className="w-64" />
+                  <SearchInput name="search" placeholder="Name or phone" defaultValue={params.search ?? ""} className="w-64" />
                 </div>
                 <Button type="submit" variant="outline">
                   Apply
@@ -296,7 +297,7 @@ export default async function PatientsPage({
           <form method="get" className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Search</span>
-              <Input
+              <SearchInput
                 name="search"
                 placeholder="Name, phone, Patient ID, email"
                 defaultValue={params.search ?? ""}

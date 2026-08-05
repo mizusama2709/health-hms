@@ -6,6 +6,7 @@ import { listMedicinesPaged } from "@/lib/pharmacy";
 import { createMedicineAction, updateMedicinePriceAction, bulkUpdateMedicinePricesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -122,7 +123,7 @@ export default async function MedicinesPage({
           <form method="get" className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Search</span>
-              <Input name="search" placeholder="Medicine name" defaultValue={search ?? ""} className="w-64" />
+              <SearchInput name="search" placeholder="Medicine name" defaultValue={search ?? ""} className="w-64" />
             </div>
             <label className="flex items-center gap-2 pb-2 text-sm">
               <input type="checkbox" name="unpriced" value="true" defaultChecked={unpriced} className="size-4" />

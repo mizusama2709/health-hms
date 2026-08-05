@@ -51,6 +51,9 @@ export function StatusBadge({ status, type }: { status: string; type: StatusKind
 
   return (
     <Badge variant="outline" className={cn("border-transparent font-medium", colorClass)}>
+      {/* bg-current picks up whichever text color colorClass set, so status
+          reads via shape as well as color without hardcoding a second palette. */}
+      <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {status.replace(/_/g, " ")}
     </Badge>
   );

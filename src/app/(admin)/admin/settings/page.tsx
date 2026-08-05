@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ActionForm } from "@/components/action-form";
+import { FormSection } from "@/components/form-section";
 
 export const metadata = {
   title: "Settings",
@@ -32,6 +33,7 @@ export default async function HospitalSettingsPage() {
         </CardHeader>
         <CardContent>
           <ActionForm action={saveHospitalSettingsActionResult} className="flex flex-col gap-2">
+            <FormSection title="Registration & address" />
             <Label htmlFor="registrationNumber">Registration number</Label>
             <Input id="registrationNumber" name="registrationNumber" defaultValue={settings?.registrationNumber ?? ""} />
             <Label htmlFor="addressLine1">Address line 1</Label>
@@ -72,8 +74,10 @@ export default async function HospitalSettingsPage() {
                 />
               </div>
             </div>
+            <FormSection title="Booking policy" />
             <Label htmlFor="bookingPolicyNotes">Booking policy notes</Label>
             <Textarea id="bookingPolicyNotes" name="bookingPolicyNotes" defaultValue={settings?.bookingPolicyNotes ?? ""} />
+            <FormSection title="Pharmacy & invoicing" />
             <Label htmlFor="pharmacyGstNumber">Pharmacy GST number</Label>
             <Input id="pharmacyGstNumber" name="pharmacyGstNumber" defaultValue={settings?.pharmacyGstNumber ?? ""} />
             <Label htmlFor="invoiceHeaderText">Invoice header text</Label>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ActionForm } from "@/components/action-form";
+import { FormSection } from "@/components/form-section";
 
 export const metadata = {
   title: "Organization",
@@ -25,12 +26,14 @@ export default async function OrganizationPage() {
         </CardHeader>
         <CardContent>
           <ActionForm action={saveOrganizationProfileActionResult} className="flex flex-col gap-2">
+            <FormSection title="Legal & company info" />
             <Label htmlFor="legalName">Legal name</Label>
             <Input id="legalName" name="legalName" placeholder="Legal name" defaultValue={profile?.legalName ?? ""} />
             <Label htmlFor="gstNumber">GST number</Label>
             <Input id="gstNumber" name="gstNumber" placeholder="GST number" defaultValue={profile?.gstNumber ?? ""} />
             <Label htmlFor="companySize">Company size</Label>
             <Input id="companySize" name="companySize" placeholder="Company size" defaultValue={profile?.companySize ?? ""} />
+            <FormSection title="HQ address" />
             <Label htmlFor="hqAddressLine1">HQ address line 1</Label>
             <Input id="hqAddressLine1" name="hqAddressLine1" placeholder="HQ address line 1" defaultValue={profile?.hqAddressLine1 ?? ""} />
             <Label htmlFor="hqAddressLine2">HQ address line 2</Label>

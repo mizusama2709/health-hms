@@ -10,7 +10,7 @@ import {
 } from "@/lib/appointments";
 import { cancelAppointmentActionResult, sendReceiptAction } from "./actions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
@@ -104,7 +104,7 @@ export default async function AdminAppointmentsPage({
           <form method="get" className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-muted-foreground">Search</span>
-              <Input name="search" placeholder="Patient name or phone..." defaultValue={params.search ?? ""} className="w-64" />
+              <SearchInput name="search" placeholder="Patient name or phone..." defaultValue={params.search ?? ""} className="w-64" />
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-muted-foreground">Doctor</span>

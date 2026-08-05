@@ -62,7 +62,7 @@ export function StatTile({
           )}
         </div>
         <div className="mt-1 flex items-end justify-between gap-2">
-          <p className={cn("text-2xl font-semibold", valueClassName)}>{value}</p>
+          <p className={cn("text-2xl font-semibold tabular-nums", valueClassName)}>{value}</p>
           {sparkline && sparkline.length > 1 && <Sparkline values={sparkline} className={cn("h-6 w-16 shrink-0", TEXT_COLOR[iconColor])} />}
         </div>
         {sub && <p className="text-xs text-muted-foreground">{sub}</p>}

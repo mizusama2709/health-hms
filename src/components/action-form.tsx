@@ -3,6 +3,16 @@
 import * as React from "react";
 import { useActionState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 export type ActionResult = { success: boolean; message?: string };
 
@@ -30,6 +40,9 @@ function ActionForm({
 }) {
   const [state, formAction] = useActionState(action, undefined);
   const handledRef = React.useRef<ActionResult | undefined>(undefined);
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const confirmedRef = React.useRef(false);
 
   React.useEffect(() => {
     if (state === handledRef.current) return;
@@ -44,17 +57,44 @@ function ActionForm({
   }, [state, successMessage]);
 
   return (
-    <form
-      action={formAction}
-      className={className}
-      onSubmit={(e) => {
-        if (confirmMessage && !window.confirm(confirmMessage)) {
-          e.preventDefault();
-        }
-      }}
-    >
-      {children}
-    </form>
+    <>
+      <form
+        ref={formRef}
+        action={formAction}
+        className={className}
+        onSubmit={(e) => {
+          if (confirmMessage && !confirmedRef.current) {
+            e.preventDefault();
+            setConfirmOpen(true);
+          }
+          confirmedRef.current = false;
+        }}
+      >
+        {children}
+      </form>
+      {confirmMessage && (
+        <AlertDialog open={confirmOpen} onOpenChange={(open) => setConfirmOpen(open)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>{confirmMessage}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => {
+                  confirmedRef.current = true;
+                  formRef.current?.requestSubmit();
+                }}
+              >
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
   );
 }
 
