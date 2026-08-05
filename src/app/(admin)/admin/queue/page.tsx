@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CalendarX2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant } from "@/lib/appointments";
 import { listStaff } from "@/lib/staff";
@@ -115,7 +117,7 @@ export default async function QueuePage() {
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments scheduled today.</p>
+            <EmptyState icon={CalendarX2} message={<>No appointments scheduled today.</>} />
           ) : (
             <Table>
               <TableHeader>

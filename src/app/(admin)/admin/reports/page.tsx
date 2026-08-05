@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { getMasterReport, getCollectionByPaymentMode, getRevenueTrend, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
 import { listDoctorsForTenant } from "@/lib/appointments";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -128,7 +130,7 @@ export default async function ReportsPage({
             </CardHeader>
             <CardContent>
               {collection.byMode.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No successful payments in this range.</p>
+                <EmptyState icon={Receipt} message={<>No successful payments in this range.</>} />
               ) : (
                 <div className="flex flex-col gap-3">
                   {collection.byMode.map((m) => (
@@ -166,7 +168,7 @@ export default async function ReportsPage({
             </CardHeader>
             <CardContent>
               {transactions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No transactions in this range.</p>
+                <EmptyState icon={Receipt} message={<>No transactions in this range.</>} />
               ) : (
                 <Table>
                   <TableHeader>

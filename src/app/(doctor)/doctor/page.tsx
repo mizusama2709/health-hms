@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { UserX, CalendarX2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listAppointmentsForDoctor } from "@/lib/appointments";
@@ -51,7 +53,7 @@ export default async function DoctorHome({
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold">Doctor dashboard</h1>
-        <p className="text-sm text-muted-foreground">No doctor profile linked to this account.</p>
+        <EmptyState icon={UserX} message={<>No doctor profile linked to this account.</>} />
       </div>
     );
   }
@@ -97,7 +99,7 @@ export default async function DoctorHome({
         </CardHeader>
         <CardContent>
           {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments yet.</p>
+            <EmptyState icon={CalendarX2} message={<>No appointments yet.</>} />
           ) : (
             <ul className="flex flex-col gap-3">
               {appointments.map((appt) => {

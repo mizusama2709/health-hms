@@ -1,4 +1,6 @@
 import { Fragment } from "react";
+import { FlaskConical } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listLabOrders, listLabTests } from "@/lib/lab";
 import {
@@ -68,7 +70,7 @@ export default async function LabOrdersPage() {
         </CardHeader>
         <CardContent>
           {orders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No lab orders yet.</p>
+            <EmptyState icon={FlaskConical} message={<>No lab orders yet.</>} />
           ) : (
             <Table>
               <TableHeader>

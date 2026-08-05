@@ -10,6 +10,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { ActionForm } from "@/components/action-form";
+import { Avatar } from "@/components/avatar";
 
 export const metadata = {
   title: "Staff",
@@ -83,7 +84,12 @@ export default async function StaffPage({
             <TableBody>
               {staff.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={u.name} size="sm" />
+                      {u.name}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {u.email}
                     {u.phone && ` · ${u.phone}`}

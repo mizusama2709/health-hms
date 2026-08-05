@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { AlertTriangle, Users, CalendarCheck, IndianRupee, Stethoscope, CalendarX2, Inbox, Package } from "lucide-react";
 import { requireTenantId } from "@/lib/tenant";
 import { listDoctorsForTenant } from "@/lib/appointments";
 import {
@@ -10,6 +11,7 @@ import {
   getDashboardSummary,
   listUpcomingAppointments,
 } from "@/lib/dashboardStats";
+import { getRevenueTrend } from "@/lib/reports";
 import { listFollowUpsDueToday } from "@/lib/followUps";
 import { bookWalkInActionResult, addDoctorActionResult, sendInvoiceWhatsAppActionResult, searchPatientsAction } from "./actions";
 import { ActionForm } from "@/components/action-form";
@@ -21,6 +23,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatTile } from "@/components/stat-tile";
+import { Avatar } from "@/components/avatar";
 
 export const metadata = {
   title: "Admin Dashboard",
@@ -39,6 +42,7 @@ export default async function AdminHome() {
     doctorPerformance,
     pharmacyStats,
     summary,
+    revenueTrend,
     { upcoming, totalUpcoming },
     { dueToday, totalDueToday },
   ] = await Promise.all([
@@ -48,6 +52,7 @@ export default async function AdminHome() {
     getDoctorPerformance(tenantId),
     getPharmacyStats(tenantId),
     getDashboardSummary(tenantId),
+    getRevenueTrend(tenantId, {}),
     listUpcomingAppointments(tenantId, 5),
     listFollowUpsDueToday(tenantId, 5),
   ]);
@@ -86,11 +91,18 @@ export default async function AdminHome() {
       <h1 className="text-2xl font-semibold">Admin / Reception Console</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Patients" value={summary.totalPatients.toLocaleString("en-IN")} />
+        <StatTile
+          label="Patients"
+          value={summary.totalPatients.toLocaleString("en-IN")}
+          icon={Users}
+          iconColor="blue"
+        />
         <StatTile
           label="Appointments today"
           value={`${summary.appointmentsToday.completed}/${summary.appointmentsToday.total}`}
           sub={`${summary.appointmentsToday.confirmed} confirmed`}
+          icon={CalendarCheck}
+          iconColor="violet"
         />
         <StatTile
           label="Revenue this month"
@@ -99,15 +111,24 @@ export default async function AdminHome() {
             <>
               {formatINR(summary.pendingThisMonth)} pending
               {summary.revenueDeltaPercent !== null && (
-                <span className={summary.revenueDeltaPercent >= 0 ? "text-emerald-600" : "text-destructive"}>
+                <span className={summary.revenueDeltaPercent >= 0 ? "text-emerald-500" : "text-destructive"}>
                   {" "}
                   · {summary.revenueDeltaPercent >= 0 ? "▲" : "▼"} {Math.abs(summary.revenueDeltaPercent).toFixed(0)}% vs last month
                 </span>
               )}
             </>
           }
+          icon={IndianRupee}
+          iconColor="emerald"
+          sparkline={revenueTrend.map((p) => p.revenue)}
         />
-        <StatTile label="Consultations this month" value={summary.consultationsThisMonth} sub="Completed" />
+        <StatTile
+          label="Consultations this month"
+          value={summary.consultationsThisMonth}
+          sub="Completed"
+          icon={Stethoscope}
+          iconColor="amber"
+        />
       </div>
 
       {attentionItems.length > 0 && (
@@ -168,14 +189,17 @@ export default async function AdminHome() {
         </CardHeader>
         <CardContent>
           {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming appointments.</p>
+            <EmptyState icon={CalendarX2} message={<>No upcoming appointments.</>} />
           ) : (
             <ul className="flex flex-col divide-y rounded-lg border">
               {upcoming.map((appt) => (
                 <li key={appt.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                  <div>
-                    <span className="font-medium">{appt.patient.user.name}</span>
-                    <span className="text-muted-foreground"> — Dr. {appt.doctor.user.name}</span>
+                  <div className="flex items-center gap-2">
+                    <Avatar name={appt.patient.user.name} size="sm" />
+                    <div>
+                      <span className="font-medium">{appt.patient.user.name}</span>
+                      <span className="text-muted-foreground"> — Dr. {appt.doctor.user.name}</span>
+                    </div>
                   </div>
                   <span className="text-muted-foreground">{new Date(appt.datetime).toLocaleString()}</span>
                 </li>
@@ -199,7 +223,7 @@ export default async function AdminHome() {
         </CardHeader>
         <CardContent>
           {dueToday.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No follow-up calls due today.</p>
+            <EmptyState icon={Inbox} message={<>No follow-up calls due today.</>} />
           ) : (
             <ul className="flex flex-col divide-y rounded-lg border">
               {dueToday.map((f) => (
@@ -259,7 +283,7 @@ export default async function AdminHome() {
         </CardHeader>
         <CardContent>
           {doctorPerformance.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No doctors yet.</p>
+            <EmptyState icon={Stethoscope} message={<>No doctors yet.</>} />
           ) : (
             <Table>
               <TableHeader>
@@ -276,7 +300,12 @@ export default async function AdminHome() {
               <TableBody>
                 {doctorPerformance.map((d) => (
                   <TableRow key={d.doctorId}>
-                    <TableCell className="font-medium">{d.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Avatar name={d.name} size="sm" />
+                        {d.name}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{d.specialty}</TableCell>
                     <TableCell>{d.total}</TableCell>
                     <TableCell className="text-emerald-600">{d.completed}</TableCell>
@@ -340,7 +369,7 @@ export default async function AdminHome() {
           <div>
             <p className="mb-2 text-sm font-medium text-muted-foreground">Top moving medicines (30d)</p>
             {pharmacyStats.topMoving.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No dispensing activity in this period.</p>
+              <EmptyState icon={Package} message={<>No dispensing activity in this period.</>} />
             ) : (
               <ul className="flex flex-col divide-y rounded-lg border">
                 {pharmacyStats.topMoving.map((m) => (
@@ -364,11 +393,13 @@ export default async function AdminHome() {
             <CardDescription>{doctors.length} on this tenant</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <ul className="flex flex-col gap-1 text-sm">
+            <ul className="flex flex-col gap-2 text-sm">
               {doctors.map((d) => (
-                <li key={d.id} className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{d.user.name}</span> — {d.specialty} (
-                  {d.user.email})
+                <li key={d.id} className="flex items-center gap-2 text-muted-foreground">
+                  <Avatar name={d.user.name} size="sm" />
+                  <span>
+                    <span className="font-medium text-foreground">{d.user.name}</span> — {d.specialty} ({d.user.email})
+                  </span>
                 </li>
               ))}
             </ul>

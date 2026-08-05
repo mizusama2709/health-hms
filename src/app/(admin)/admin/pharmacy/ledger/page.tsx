@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { getConsolidatedLedger } from "@/lib/billing";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -36,7 +38,7 @@ export default async function PharmacySalesLedgerPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {ledger.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pharmacy sales entries yet.</p>
+            <EmptyState icon={Receipt} message={<>No pharmacy sales entries yet.</>} />
           ) : (
             <>
               <Table>

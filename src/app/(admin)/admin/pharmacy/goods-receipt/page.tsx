@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { Package } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listGoodsReceipts, listSuppliers, countMedicines } from "@/lib/pharmacy";
 import { createGoodsReceiptActionResult, searchMedicinesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -79,7 +81,7 @@ export default async function GoodsReceiptPage() {
         </CardHeader>
         <CardContent>
           {receipts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No goods receipts yet.</p>
+            <EmptyState icon={Package} message={<>No goods receipts yet.</>} />
           ) : (
             <Table>
               <TableHeader>

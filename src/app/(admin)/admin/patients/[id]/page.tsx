@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CalendarX2, Activity, FlaskConical, FileImage, Route } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getPatientWithHistory, computeAge } from "@/lib/patients";
@@ -102,7 +104,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
             </CardHeader>
             <CardContent>
               {patient.appointments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No appointments yet.</p>
+                <EmptyState icon={CalendarX2} message={<>No appointments yet.</>} />
               ) : (
                 <ul className="flex flex-col gap-3">
                   {patient.appointments.map((appt) => (
@@ -154,7 +156,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
             </CardHeader>
             <CardContent>
               {patient.vitals.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No vitals recorded yet.</p>
+                <EmptyState icon={Activity} message={<>No vitals recorded yet.</>} />
               ) : (
                 <Table>
                   <TableHeader>
@@ -192,7 +194,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               {labOrders.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No lab orders yet.</p>
+                <EmptyState icon={FlaskConical} message={<>No lab orders yet.</>} />
               ) : (
                 <>
                   {trends.length > 0 && (
@@ -255,7 +257,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {imagingOrders.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No imaging orders yet.</p>
+                <EmptyState icon={FileImage} message={<>No imaging orders yet.</>} />
               ) : (
                 imagingOrders.map((order) => (
                   <div key={order.id} className="rounded-lg border p-3">
@@ -296,7 +298,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               {efficacy.appointmentsConsidered === 0 ? (
-                <p className="text-sm text-muted-foreground">No journey data recorded yet.</p>
+                <EmptyState icon={Route} message={<>No journey data recorded yet.</>} />
               ) : (
                 <>
                   <Table>

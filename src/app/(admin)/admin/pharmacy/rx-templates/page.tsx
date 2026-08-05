@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listRxTemplatesPaged } from "@/lib/rxTemplates";
 import { createRxTemplateActionResult, searchMedicinesAction } from "../actions";
@@ -56,7 +58,7 @@ export default async function RxTemplatesPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {templates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No templates yet.</p>
+            <EmptyState icon={FileText} message={<>No templates yet.</>} />
           ) : (
             <>
               <Table>

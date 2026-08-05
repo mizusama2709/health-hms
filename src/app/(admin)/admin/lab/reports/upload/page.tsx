@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { BarChart3 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listLabOrders, listLatestWhatsAppStatusForLabReports } from "@/lib/lab";
 import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
 import { sendLabReportWhatsAppAction } from "../../actions";
@@ -86,7 +88,7 @@ export default async function LabReportsPage() {
           </CardContent>
         </Card>
       ) : (
-        <p className="text-sm text-muted-foreground">No reports generated yet.</p>
+        <EmptyState icon={BarChart3} message={<>No reports generated yet.</>} />
       )}
     </div>
   );

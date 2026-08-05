@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Users } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { db } from "@/lib/db";
@@ -68,7 +70,7 @@ export default async function RecordVitalsPage({ params }: { params: Promise<{ a
         </CardHeader>
         <CardContent>
           {previousVitals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No previous vitals recorded for this patient.</p>
+            <EmptyState icon={Users} message={<>No previous vitals recorded for this patient.</>} />
           ) : (
             <Table>
               <TableHeader>

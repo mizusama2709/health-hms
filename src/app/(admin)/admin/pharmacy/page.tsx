@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { Package } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listMedicines } from "@/lib/pharmacy";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -40,7 +42,7 @@ export default async function PharmacyDashboardPage() {
         </CardHeader>
         <CardContent>
           {lowStock.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No medicines below their reorder level.</p>
+            <EmptyState icon={Package} message={<>No medicines below their reorder level.</>} />
           ) : (
             <Table>
               <TableHeader>

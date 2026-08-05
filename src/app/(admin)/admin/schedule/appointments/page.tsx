@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import {
   listAppointmentsForTenantDetailed,
@@ -16,6 +17,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { ActionForm } from "@/components/action-form";
 import { StatTile } from "@/components/stat-tile";
 import { cn } from "@/lib/utils";
+import { CalendarDays, Clock, CheckCircle2, CalendarCheck2, IndianRupee, CalendarX2 } from "lucide-react";
 
 export const metadata = {
   title: "Appointments",
@@ -90,11 +92,11 @@ export default async function AdminAppointmentsPage({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatTile label="Total" value={stats.total} />
-        <StatTile label="Pending payment" value={stats.pendingPayment} valueClassName="text-amber-600" />
-        <StatTile label="Confirmed" value={stats.confirmed} valueClassName="text-emerald-600" />
-        <StatTile label="Completed" value={stats.completed} />
-        <StatTile label="Revenue" value={formatINR(stats.revenue)} />
+        <StatTile label="Total" value={stats.total} icon={CalendarDays} iconColor="blue" />
+        <StatTile label="Pending payment" value={stats.pendingPayment} valueClassName="text-amber-500" icon={Clock} iconColor="amber" />
+        <StatTile label="Confirmed" value={stats.confirmed} valueClassName="text-emerald-500" icon={CheckCircle2} iconColor="emerald" />
+        <StatTile label="Completed" value={stats.completed} icon={CalendarCheck2} iconColor="violet" />
+        <StatTile label="Revenue" value={formatINR(stats.revenue)} icon={IndianRupee} iconColor="emerald" />
       </div>
 
       <Card>
@@ -157,7 +159,7 @@ export default async function AdminAppointmentsPage({
           </div>
 
           {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments match these filters.</p>
+            <EmptyState icon={CalendarX2} message={<>No appointments match these filters.</>} />
           ) : (
             <div className="overflow-x-auto">
               <Table>

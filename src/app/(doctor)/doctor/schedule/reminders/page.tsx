@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { UserX, Users } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { db } from "@/lib/db";
 import { listFollowUps } from "@/lib/followUps";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -19,7 +21,7 @@ export default async function DoctorRemindersPage() {
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold">Reminders</h1>
-        <p className="text-sm text-muted-foreground">No doctor profile linked to this account.</p>
+        <EmptyState icon={UserX} message={<>No doctor profile linked to this account.</>} />
       </div>
     );
   }
@@ -36,9 +38,9 @@ export default async function DoctorRemindersPage() {
         </CardHeader>
         <CardContent>
           {followUps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <EmptyState icon={Users} message={<>
               No follow-ups yet — prescribe one when completing a visit if you&apos;d like a nurse to check in with the patient.
-            </p>
+            </>} />
           ) : (
             <Table>
               <TableHeader>

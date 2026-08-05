@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { UserX } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { db } from "@/lib/db";
 import { getAppointmentForCalendar, getAppointmentsForRange, getScheduleStats } from "@/lib/appointments";
 import { CalendarView, toDateParam, startOfWeek, buildMonthGrid, type View } from "@/components/calendar-view";
@@ -28,7 +30,7 @@ export default async function DoctorScheduleCalendar({
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold">Calendar</h1>
-        <p className="text-sm text-muted-foreground">No doctor profile linked to this account.</p>
+        <EmptyState icon={UserX} message={<>No doctor profile linked to this account.</>} />
       </div>
     );
   }

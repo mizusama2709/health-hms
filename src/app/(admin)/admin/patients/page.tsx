@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Users } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listPatientsPaged, listDoctorsForFilter, type PatientStatus } from "@/lib/patients";
 import { listLeads } from "@/lib/leads";
@@ -20,6 +22,7 @@ import { TabsContent } from "@/components/ui/tabs";
 import { PatientsTabs } from "@/components/patients-tabs";
 import { ActionForm } from "@/components/action-form";
 import { BulkImportField } from "@/components/bulk-import-field";
+import { Avatar } from "@/components/avatar";
 import type { LeadStatus } from "@prisma/client";
 
 export const metadata = {
@@ -184,7 +187,7 @@ export default async function PatientsPage({
               </div>
 
               {leads.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No leads found.</p>
+                <EmptyState icon={Users} message={<>No leads found.</>} />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -346,7 +349,7 @@ export default async function PatientsPage({
           </div>
 
           {patients.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No patients found.</p>
+            <EmptyState icon={Users} message={<>No patients found.</>} />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -366,7 +369,12 @@ export default async function PatientsPage({
                 <TableBody>
                   {patients.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.user.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={p.user.name} size="sm" />
+                          {p.user.name}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{p.displayId}</TableCell>
                       <TableCell>{p.user.phone ?? "—"}</TableCell>
                       <TableCell>{p.user.email}</TableCell>

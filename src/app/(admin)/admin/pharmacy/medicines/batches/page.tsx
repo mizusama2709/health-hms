@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Package } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listMedicineBatches, type BatchExpiryFilter } from "@/lib/pharmacy";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -80,7 +82,7 @@ export default async function MedicineBatchesPage({
           </form>
 
           {batches.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No batches match this filter.</p>
+            <EmptyState icon={Package} message={<>No batches match this filter.</>} />
           ) : (
             <>
               <Table>

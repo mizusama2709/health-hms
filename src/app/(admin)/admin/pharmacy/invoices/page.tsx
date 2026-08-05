@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoicesPaged } from "@/lib/billing";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -34,7 +36,7 @@ export default async function PharmacyInvoicesPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {invoices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pharmacy invoices yet.</p>
+            <EmptyState icon={Receipt} message={<>No pharmacy invoices yet.</>} />
           ) : (
             <>
               <Table>

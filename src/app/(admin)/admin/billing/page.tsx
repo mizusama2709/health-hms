@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Users } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listPatients } from "@/lib/patients";
 import { listServices } from "@/lib/services";
@@ -67,7 +69,7 @@ export default async function BillPatientPage({
           )}
 
           {params.search && matches.length === 0 && (
-            <p className="text-sm text-muted-foreground">No patients match &quot;{params.search}&quot;.</p>
+            <EmptyState icon={Users} message={<>No patients match &quot;{params.search}&quot;.</>} />
           )}
         </CardContent>
       </Card>

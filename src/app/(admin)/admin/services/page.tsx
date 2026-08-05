@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listServicesPaged } from "@/lib/services";
 import { createServiceActionResult, toggleServiceActiveActionResult } from "./actions";
@@ -66,7 +68,7 @@ export default async function ServicesPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {services.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No services yet.</p>
+            <EmptyState icon={FileText} message={<>No services yet.</>} />
           ) : (
             <>
               <Table>

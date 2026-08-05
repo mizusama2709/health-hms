@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { FileImage } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { getImagingStudy } from "@/lib/imaging";
 import { deleteImagingSeriesActionResult } from "@/app/(admin)/admin/imaging/actions";
@@ -46,7 +48,7 @@ export default async function ImagingStudyPage({ params }: { params: Promise<{ i
             <CardTitle>{study.imagingOrder.description ?? "Imaging study"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">No files uploaded for this study yet.</p>
+            <EmptyState icon={FileImage} message={<>No files uploaded for this study yet.</>} />
           </CardContent>
         </Card>
       ) : (

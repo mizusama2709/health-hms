@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FlaskConical } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listLabTests } from "@/lib/lab";
 import { createLabTestAction, deleteLabTestActionResult } from "../actions";
@@ -53,7 +55,7 @@ export default async function LabTestsPage() {
         </CardHeader>
         <CardContent>
           {tests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No lab tests yet.</p>
+            <EmptyState icon={FlaskConical} message={<>No lab tests yet.</>} />
           ) : (
             <Table>
               <TableHeader>

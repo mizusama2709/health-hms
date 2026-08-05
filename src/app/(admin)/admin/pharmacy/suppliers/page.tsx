@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listSuppliersPaged } from "@/lib/pharmacy";
 import { createSupplierActionResult, updateSupplierActionResult, toggleSupplierActiveActionResult } from "../actions";
@@ -57,7 +59,7 @@ export default async function SuppliersPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {suppliers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No suppliers yet.</p>
+            <EmptyState icon={FileText} message={<>No suppliers yet.</>} />
           ) : (
             <>
               <Table>

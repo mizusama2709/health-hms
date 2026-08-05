@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { getConsolidatedLedger, type LedgerSource } from "@/lib/billing";
 import { Card, CardContent } from "@/components/ui/card";
@@ -109,7 +111,7 @@ export default async function LedgerPage({
       <Card>
         <CardContent className="pt-6">
           {ledger.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No ledger entries in this range.</p>
+            <EmptyState icon={Receipt} message={<>No ledger entries in this range.</>} />
           ) : (
             <Table>
               <TableHeader>

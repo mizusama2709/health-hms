@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Package } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listMedicinesPaged } from "@/lib/pharmacy";
 import { createMedicineAction, updateMedicinePriceAction, bulkUpdateMedicinePricesAction } from "../actions";
@@ -137,7 +139,7 @@ export default async function MedicinesPage({
           </form>
 
           {medicines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No medicines match this filter.</p>
+            <EmptyState icon={Package} message={<>No medicines match this filter.</>} />
           ) : (
             <>
               <Table>

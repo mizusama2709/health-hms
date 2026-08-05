@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/components/layout/role-shell";
@@ -12,14 +11,14 @@ export function NavGroup({
   label,
   icon: Icon,
   items,
-  active = false,
+  activeHref,
 }: {
   label: string;
   icon: LucideIcon;
   items: NavItem[];
-  active?: boolean;
+  activeHref: string | null;
 }) {
-  const pathname = usePathname();
+  const active = items.some((c) => c.href === activeHref);
   const [open, setOpen] = useState(active);
 
   return (
@@ -41,14 +40,16 @@ export function NavGroup({
       {open && (
         <div className="flex flex-col gap-1 py-1 pl-11">
           {items.map((child) => {
-            const childActive = child.href === pathname;
+            const childActive = child.href === activeHref;
             return (
               <Link
                 key={child.href}
                 href={child.href!}
                 className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium",
-                  childActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                  "rounded-md border-l-2 px-3 py-2 text-sm font-medium transition-colors",
+                  childActive
+                    ? "border-sidebar-primary text-sidebar-accent-foreground"
+                    : "border-transparent text-sidebar-foreground/60 hover:text-sidebar-foreground"
                 )}
               >
                 {child.label}

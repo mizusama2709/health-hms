@@ -5,10 +5,35 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getNavIcon } from "@/components/layout/nav-icons";
 import { NavGroup } from "@/components/layout/nav-group";
-import type { NavSection } from "@/components/layout/role-shell";
+import type { NavSection, NavItem } from "@/components/layout/role-shell";
+
+function matchesPath(pathname: string, href: string) {
+  return href === pathname || (href !== "/" && pathname.startsWith(href + "/"));
+}
+
+// A parent route like "/admin" is itself a path prefix of every other admin
+// route, so naive prefix matching lit up "Dashboard" on every single page.
+// Instead, find the single longest matching href across the whole nav tree
+// — the most specific route wins, and every other item (including any
+// shorter-prefix ancestor) is simply not active.
+function findActiveHref(sections: NavSection[], pathname: string): string | null {
+  let best: string | null = null;
+  for (const section of sections) {
+    for (const item of section.items) {
+      const candidates: NavItem[] = item.children ?? [item];
+      for (const c of candidates) {
+        if (c.href && matchesPath(pathname, c.href) && (best === null || c.href.length > best.length)) {
+          best = c.href;
+        }
+      }
+    }
+  }
+  return best;
+}
 
 export function NavLinks({ sections }: { sections: NavSection[] }) {
   const pathname = usePathname();
+  const activeHref = findActiveHref(sections, pathname);
 
   return (
     <nav className="flex flex-col gap-1">
@@ -28,19 +53,19 @@ export function NavLinks({ sections }: { sections: NavSection[] }) {
                   label={item.label}
                   icon={Icon}
                   items={item.children}
-                  active={item.children.some((c) => c.href && pathname.startsWith(c.href))}
+                  activeHref={activeHref}
                 />
               );
             }
-            const active = item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+            const active = item.href === activeHref;
             return (
               <Link
                 key={item.href}
                 href={item.href!}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold",
+                  "flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-3 text-sm font-semibold transition-colors",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    ? "rounded-l-none border-sidebar-primary bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 )}
               >

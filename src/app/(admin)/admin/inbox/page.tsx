@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listConversations, getConversationThread } from "@/lib/whatsappInbox";
 import { cn } from "@/lib/utils";
@@ -47,7 +49,7 @@ export default async function InboxPage({
 
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">No WhatsApp messages yet.</p>
+            <EmptyState icon={MessageSquare} message={<>No WhatsApp messages yet.</>} />
           ) : (
             conversations.map((c) => {
               const query = new URLSearchParams();

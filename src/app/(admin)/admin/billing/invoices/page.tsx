@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoicesDetailed, type InvoiceQuickFilter } from "@/lib/billing";
 import { markInvoicePaidAction, voidInvoiceActionResult } from "../actions";
@@ -98,7 +100,7 @@ export default async function InvoicesPage({
       </form>
 
       {invoices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No invoices match these filters.</p>
+        <EmptyState icon={Receipt} message={<>No invoices match these filters.</>} />
       ) : (
         <div className="flex flex-col gap-3">
           {invoices.map((inv) => {
