@@ -3,6 +3,7 @@ import { CalendarX2, Activity, FlaskConical, FileImage, Route } from "lucide-rea
 import { EmptyState } from "@/components/empty-state";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
+import { auth } from "@/lib/auth";
 import { getPatientWithHistory, computeAge } from "@/lib/patients";
 import { getPatientEfficacyReport } from "@/lib/reports";
 import { listLabOrders } from "@/lib/lab";
@@ -34,7 +35,11 @@ function toDateInputValue(d: Date | null) {
 export default async function PatientChartPage({ params }: { params: Promise<{ id: string }> }) {
   const tenantId = await requireTenantId();
   const { id } = await params;
-  const patient = await getPatientWithHistory(id, tenantId);
+  const session = await auth();
+  const patient = await getPatientWithHistory(id, tenantId, {
+    userId: session?.user?.id,
+    userEmail: session?.user?.email,
+  });
 
   if (!patient) notFound();
 

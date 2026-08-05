@@ -12,6 +12,8 @@ import { createPrescription, searchMedicines } from "@/lib/pharmacy";
 import { sendPrescriptionViaWhatsApp } from "@/lib/whatsapp";
 import { withActionResult } from "@/lib/actionResult";
 import { db } from "@/lib/db";
+import { encryptPHI } from "@/lib/phiCrypto";
+import { logAudit } from "@/lib/audit";
 import { AppointmentStatus, JourneyStep, DoseTime, DurationUnit, ImagingModality } from "@prisma/client";
 
 const MAX_PRESCRIPTION_ROWS = 50;
@@ -78,10 +80,24 @@ export async function completeVisitAction(formData: FormData) {
 
   const appointment = await requireOwnAppointment(tenantId, appointmentId, session.user.id);
 
+  const encNotes = encryptPHI(notes);
+  const encDiagnosis = diagnosis ? encryptPHI(diagnosis) : diagnosis;
+  const encTreatmentPlan = treatmentPlan ? encryptPHI(treatmentPlan) : treatmentPlan;
+
   await db.visitRecord.upsert({
     where: { appointmentId },
-    update: { notes, diagnosis, prescription: treatmentPlan },
-    create: { appointmentId, notes, diagnosis, prescription: treatmentPlan },
+    update: { notes: encNotes, diagnosis: encDiagnosis, prescription: encTreatmentPlan },
+    create: { appointmentId, notes: encNotes, diagnosis: encDiagnosis, prescription: encTreatmentPlan },
+  });
+
+  await logAudit({
+    tenantId,
+    userId: session.user.id,
+    userEmail: session.user.email,
+    action: "VISIT_RECORD_WRITE",
+    entityType: "VisitRecord",
+    entityId: appointmentId,
+    meta: { patientId: appointment.patientId },
   });
 
   await updateAppointmentStatus(appointmentId, tenantId, "COMPLETED");

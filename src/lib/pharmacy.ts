@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
 import { createInvoice, recordPayment } from "@/lib/billing";
+import { logAudit } from "@/lib/audit";
 import type { PrescriptionStatus, DoseTime, DurationUnit, PaymentMode } from "@prisma/client";
 
 export async function listMedicines(tenantId: string, filters?: { isActive?: boolean; lowStock?: boolean }) {
@@ -338,6 +339,15 @@ export async function createPrescription(params: {
       recordedById: params.recordedById,
     });
   }
+
+  await logAudit({
+    tenantId: params.tenantId,
+    userId: params.recordedById,
+    action: "PRESCRIPTION_CREATE",
+    entityType: "Prescription",
+    entityId: prescription.id,
+    meta: { patientId: params.patientId },
+  });
 
   return prescription;
 }

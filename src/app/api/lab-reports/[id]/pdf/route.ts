@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyLabReportToken } from "@/lib/labReportUrlSigning";
+import { logAudit } from "@/lib/audit";
 
 // Publicly reachable by id (an unguessable cuid) — this is the link sent to
 // the patient over WhatsApp and shown on the patient's chart. No session is
@@ -14,10 +15,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "This link is invalid or has expired" }, { status: 401 });
   }
 
-  const report = await db.labReport.findUnique({ where: { id } });
+  const report = await db.labReport.findUnique({ where: { id }, include: { labOrder: true } });
   if (!report || !report.pdfData) {
     return NextResponse.json({ error: "Report not found" }, { status: 404 });
   }
+
+  await logAudit({
+    tenantId: report.labOrder.tenantId,
+    action: "LAB_REPORT_VIEW",
+    entityType: "LabReport",
+    entityId: id,
+  });
 
   return new NextResponse(Buffer.from(report.pdfData), {
     headers: {

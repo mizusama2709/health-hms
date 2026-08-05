@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import type { Gender } from "@prisma/client";
+import { decryptPHIMaybe } from "@/lib/phiCrypto";
+import { logAudit } from "@/lib/audit";
 import { isUniqueConstraintViolation } from "@/lib/prismaErrors";
 
 export function computeAge(dateOfBirth: Date | null): number | null {
@@ -210,8 +212,12 @@ export async function listPatientsPaged(
   };
 }
 
-export async function getPatientWithHistory(patientId: string, tenantId: string) {
-  return db.patient.findFirst({
+export async function getPatientWithHistory(
+  patientId: string,
+  tenantId: string,
+  viewer?: { userId?: string | null; userEmail?: string | null },
+) {
+  const patient = await db.patient.findFirst({
     where: { id: patientId, tenantId },
     include: {
       user: true,
@@ -228,4 +234,25 @@ export async function getPatientWithHistory(patientId: string, tenantId: string)
       },
     },
   });
+
+  if (!patient) return patient;
+
+  for (const appt of patient.appointments) {
+    if (appt.visitRecord) {
+      appt.visitRecord.notes = decryptPHIMaybe(appt.visitRecord.notes) ?? appt.visitRecord.notes;
+      appt.visitRecord.diagnosis = decryptPHIMaybe(appt.visitRecord.diagnosis);
+      appt.visitRecord.prescription = decryptPHIMaybe(appt.visitRecord.prescription);
+    }
+  }
+
+  await logAudit({
+    tenantId,
+    userId: viewer?.userId,
+    userEmail: viewer?.userEmail,
+    action: "PATIENT_VIEW",
+    entityType: "Patient",
+    entityId: patientId,
+  });
+
+  return patient;
 }
