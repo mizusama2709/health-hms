@@ -4,9 +4,10 @@ import { EmptyState } from "@/components/empty-state";
 import { getMasterReport, getCollectionByPaymentMode, getRevenueTrend, listTransactions, getSelfEfficacyReport } from "@/lib/reports";
 import { listDoctorsForTenant } from "@/lib/appointments";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePresets } from "@/components/date-range-presets";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RevenueTrendChart } from "@/components/revenue-trend-chart";
@@ -70,10 +71,16 @@ export default async function ReportsPage({
       <h1 className="text-2xl font-semibold">Reports</h1>
 
       <Card>
-        <CardContent className="pt-0">
-          <form method="get" className="flex flex-wrap gap-2 pt-4">
-            <Input name="from" type="date" defaultValue={params.from ?? ""} className="w-40" />
-            <Input name="to" type="date" defaultValue={params.to ?? ""} className="w-40" />
+        <CardContent className="flex flex-col gap-2 pt-0">
+          <DateRangePresets
+            basePath="/admin/reports"
+            otherParams={{ doctorId: params.doctorId }}
+            activeFrom={params.from}
+            activeTo={params.to}
+          />
+          <form method="get" className="flex flex-wrap gap-2 pt-2">
+            <DatePicker name="from" defaultValue={params.from} placeholder="From" />
+            <DatePicker name="to" defaultValue={params.to} placeholder="To" />
             <NativeSelect name="doctorId" defaultValue={params.doctorId ?? ""} className="w-52">
               <option value="">All doctors</option>
               {doctors.map((d) => (

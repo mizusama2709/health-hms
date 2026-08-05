@@ -106,11 +106,11 @@ export default async function SuppliersPage({
                           </details>
                           <ActionForm
                             action={toggleSupplierActiveActionResult}
-                            confirmMessage={
-                              s.isActive
-                                ? `Deactivate ${s.name}? They'll no longer appear when recording new goods receipts.`
-                                : undefined
-                            }
+                            undo={{
+                              action: toggleSupplierActiveActionResult,
+                              fields: { supplierId: s.id, isActive: String(!s.isActive) },
+                              message: s.isActive ? "Deactivation undone" : "Reactivation undone",
+                            }}
                           >
                             <input type="hidden" name="supplierId" value={s.id} />
                             <input type="hidden" name="isActive" value={String(s.isActive)} />

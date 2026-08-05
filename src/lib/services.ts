@@ -67,3 +67,10 @@ export async function updateService(
     data: params,
   });
 }
+
+export async function bulkSetServicesActive(tenantId: string, serviceIds: string[], isActive: boolean) {
+  return db.service.updateMany({
+    where: { id: { in: serviceIds }, tenantId },
+    data: { isActive },
+  });
+}

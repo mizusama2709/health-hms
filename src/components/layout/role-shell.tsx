@@ -12,6 +12,7 @@ import {
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { CommandPalette } from "@/components/command-palette";
 
 export type NavItem = { label: string; href?: string; children?: NavItem[] };
 export type NavSection = { title?: string; items: NavItem[] };
@@ -65,6 +66,7 @@ export function RoleShell({
           </div>
 
           <div className="flex items-center gap-3">
+            <CommandPalette sections={navSections} />
             {userName && <span className="hidden text-sm text-muted-foreground sm:inline">{userName}</span>}
             <ThemeToggle />
             <SignOutButton />

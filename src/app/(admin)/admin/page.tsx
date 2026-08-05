@@ -13,6 +13,10 @@ import {
 } from "@/lib/dashboardStats";
 import { getRevenueTrend } from "@/lib/reports";
 import { listFollowUpsDueToday } from "@/lib/followUps";
+import { getOrganizationProfile } from "@/lib/organization";
+import { listServices } from "@/lib/services";
+import { listStaff } from "@/lib/staff";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { bookWalkInActionResult, addDoctorActionResult, sendInvoiceWhatsAppActionResult, searchPatientsAction } from "./actions";
 import { ActionForm } from "@/components/action-form";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -45,8 +49,13 @@ const PIPELINE_COLOR: Record<string, string> = {
   "Follow Up": "bg-fuchsia-500",
 };
 
-export default async function AdminHome() {
+export default async function AdminHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ bookPatientId?: string; bookPatientName?: string }>;
+}) {
   const tenantId = await requireTenantId();
+  const { bookPatientId, bookPatientName } = await searchParams;
   const [
     doctors,
     opdToday,
@@ -57,6 +66,9 @@ export default async function AdminHome() {
     revenueTrend,
     { upcoming, totalUpcoming },
     { dueToday, totalDueToday },
+    orgProfile,
+    services,
+    staff,
   ] = await Promise.all([
     listDoctorsForTenant(tenantId),
     getOpdToday(tenantId),
@@ -67,7 +79,17 @@ export default async function AdminHome() {
     getRevenueTrend(tenantId, {}),
     listUpcomingAppointments(tenantId, 5),
     listFollowUpsDueToday(tenantId, 5),
+    getOrganizationProfile(tenantId),
+    listServices(tenantId),
+    listStaff(tenantId),
   ]);
+
+  const onboardingItems = [
+    { label: "Set up your organization profile", done: Boolean(orgProfile?.legalName), href: "/admin/organization" },
+    { label: "Add a doctor", done: doctors.length > 0, href: "/admin#add-doctor" },
+    { label: "Add a billable service", done: services.length > 0, href: "/admin/services" },
+    { label: "Invite the rest of your staff", done: staff.length > 1, href: "/admin/staff" },
+  ];
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -101,6 +123,8 @@ export default async function AdminHome() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Admin / Reception Console</h1>
+
+      <OnboardingChecklist items={onboardingItems} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
@@ -402,7 +426,7 @@ export default async function AdminHome() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Card>
+        <Card id="add-doctor">
           <CardHeader>
             <CardTitle>Doctors</CardTitle>
             <CardDescription>{doctors.length} on this tenant</CardDescription>
@@ -434,12 +458,16 @@ export default async function AdminHome() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="book-walkin">
           <CardHeader>
             <CardTitle>Book a walk-in</CardTitle>
           </CardHeader>
           <CardContent>
-            <ActionForm action={bookWalkInActionResult} className="flex flex-col gap-2">
+            <ActionForm
+              action={bookWalkInActionResult}
+              className="flex flex-col gap-2"
+              nextStep={{ label: "Open queue", href: "/admin/queue" }}
+            >
               <Label htmlFor="doctorId">Doctor</Label>
               <NativeSelect id="doctorId" name="doctorId" required>
                 <option value="">Select doctor</option>
@@ -456,6 +484,7 @@ export default async function AdminHome() {
                 required
                 placeholder="Search patients by name, phone, or email…"
                 search={searchPatientsAction}
+                defaultOption={bookPatientId && bookPatientName ? { value: bookPatientId, label: bookPatientName } : undefined}
               />
               <Label htmlFor="datetime">Date &amp; time</Label>
               <Input id="datetime" name="datetime" type="datetime-local" required />

@@ -4,8 +4,9 @@ import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { getConsolidatedLedger, type LedgerSource } from "@/lib/billing";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePresets } from "@/components/date-range-presets";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -53,14 +54,21 @@ export default async function LedgerPage({
         <p className="text-sm text-muted-foreground">Consultation + pharmacy + lab + manual — one daybook.</p>
       </div>
 
+      <DateRangePresets
+        basePath="/admin/billing/ledger"
+        otherParams={{ source: params.source }}
+        activeFrom={params.from}
+        activeTo={params.to}
+      />
+
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">From</span>
-          <Input name="from" type="date" defaultValue={params.from ?? ""} className="w-40" />
+          <DatePicker name="from" defaultValue={params.from} placeholder="From" />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">To</span>
-          <Input name="to" type="date" defaultValue={params.to ?? ""} className="w-40" />
+          <DatePicker name="to" defaultValue={params.to} placeholder="To" />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Source</span>

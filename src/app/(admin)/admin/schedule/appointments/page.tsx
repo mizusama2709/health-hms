@@ -8,7 +8,7 @@ import {
   type AppointmentDateFilter,
   type AppointmentPaymentFilter,
 } from "@/lib/appointments";
-import { cancelAppointmentActionResult, sendReceiptAction } from "./actions";
+import { cancelAppointmentActionResult, uncancelAppointmentActionResult, sendReceiptAction } from "./actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { SearchInput } from "@/components/ui/search-input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -220,7 +220,11 @@ export default async function AdminAppointmentsPage({
                           {a.status !== "CANCELLED" && (
                             <ActionForm
                               action={cancelAppointmentActionResult}
-                              confirmMessage={`Cancel ${a.patient.user.name}'s appointment? This cannot be undone.`}
+                              undo={{
+                                action: uncancelAppointmentActionResult,
+                                fields: { appointmentId: a.id },
+                                message: "Cancellation undone",
+                              }}
                             >
                               <input type="hidden" name="appointmentId" value={a.id} />
                               <button type="submit" className="font-medium text-destructive hover:underline">

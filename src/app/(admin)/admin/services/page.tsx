@@ -3,15 +3,14 @@ import { FileText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listServicesPaged } from "@/lib/services";
-import { createServiceActionResult, toggleServiceActiveActionResult } from "./actions";
+import { createServiceActionResult, toggleServiceActiveActionResult, bulkSetServicesActiveActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { ActionForm } from "@/components/action-form";
+import { ServicesTable } from "@/components/services-table";
 
 export const metadata = {
   title: "Services",
@@ -71,40 +70,11 @@ export default async function ServicesPage({
             <EmptyState icon={FileText} message={<>No services yet.</>} />
           ) : (
             <>
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>GST</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {services.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell>{s.serviceType}</TableCell>
-                    <TableCell>{Number(s.defaultUnitPrice).toFixed(2)}</TableCell>
-                    <TableCell>{Number(s.taxRatePercent)}%</TableCell>
-                    <TableCell>
-                      <Badge variant={s.isActive ? "default" : "secondary"}>{s.isActive ? "Active" : "Inactive"}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <ActionForm action={toggleServiceActiveActionResult}>
-                        <input type="hidden" name="serviceId" value={s.id} />
-                        <input type="hidden" name="isActive" value={String(s.isActive)} />
-                        <Button type="submit" size="sm" variant="outline">
-                          {s.isActive ? "Deactivate" : "Activate"}
-                        </Button>
-                      </ActionForm>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+              <ServicesTable
+                services={services}
+                toggleAction={toggleServiceActiveActionResult}
+                bulkAction={bulkSetServicesActiveActionResult}
+              />
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-between text-sm">

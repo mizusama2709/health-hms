@@ -395,9 +395,17 @@ export default async function PatientsPage({
                       <TableCell>{formatDateTime(p.user.lastLoginAt)}</TableCell>
                       <TableCell>{formatDate(p.user.updatedAt)}</TableCell>
                       <TableCell>
-                        <Link href={`/admin/patients/${p.id}`} className="text-sm font-medium text-primary hover:underline">
-                          View chart
-                        </Link>
+                        <div className="flex gap-3">
+                          <Link href={`/admin/patients/${p.id}`} className="text-sm font-medium text-primary hover:underline">
+                            View chart
+                          </Link>
+                          <Link
+                            href={`/admin?bookPatientId=${p.id}&bookPatientName=${encodeURIComponent(p.user.name)}#book-walkin`}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            Book
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { requireTenantId } from "@/lib/tenant";
-import { cancelAppointment, updateAppointmentFee, updateAppointmentTiming, getAppointmentDetailed } from "@/lib/appointments";
+import {
+  cancelAppointment,
+  updateAppointmentStatus,
+  updateAppointmentFee,
+  updateAppointmentTiming,
+  getAppointmentDetailed,
+} from "@/lib/appointments";
 import { createInvoice } from "@/lib/billing";
 import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
 import { withActionResult } from "@/lib/actionResult";
@@ -15,6 +21,15 @@ export async function cancelAppointmentAction(formData: FormData) {
 }
 
 export const cancelAppointmentActionResult = withActionResult(cancelAppointmentAction, "Appointment cancelled");
+
+export async function uncancelAppointmentAction(formData: FormData) {
+  const tenantId = await requireTenantId();
+  const appointmentId = formData.get("appointmentId") as string;
+  await updateAppointmentStatus(appointmentId, tenantId, "BOOKED");
+  revalidatePath("/admin/schedule/appointments");
+}
+
+export const uncancelAppointmentActionResult = withActionResult(uncancelAppointmentAction, "Appointment restored");
 
 export async function editAppointmentAction(formData: FormData) {
   const tenantId = await requireTenantId();
