@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { FollowUpNextAction, FollowUpOutcome, FollowUpStatus } from "@prisma/client";
+import { decryptPHIMaybe } from "@/lib/phiCrypto";
 
 export async function createFollowUp(params: {
   tenantId: string;
@@ -54,6 +55,15 @@ export async function listFollowUps(tenantId: string, filters?: { status?: Follo
     },
     orderBy: { dueDate: "asc" },
   });
+
+  for (const f of followUps) {
+    const vr = f.appointment.visitRecord;
+    if (vr) {
+      vr.notes = decryptPHIMaybe(vr.notes) ?? vr.notes;
+      vr.diagnosis = decryptPHIMaybe(vr.diagnosis);
+      vr.prescription = decryptPHIMaybe(vr.prescription);
+    }
+  }
 
   const now = new Date();
   return followUps.map((f) => ({ ...f, isOverdue: f.status === "PENDING" && f.dueDate.getTime() < now.getTime() }));

@@ -235,6 +235,21 @@ model Tenant {
   imagingOrders       ImagingOrder[]
 }
 
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String?
+  userEmail  String?
+  action     String // e.g. "PATIENT_VIEW", "VISIT_RECORD_WRITE", "PRESCRIPTION_CREATE"
+  entityType String
+  entityId   String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+}
+
 model User {
   id           String     @id @default(cuid())
   email        String     @unique
