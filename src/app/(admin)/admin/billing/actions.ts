@@ -40,6 +40,8 @@ export async function billPatient(formData: FormData) {
   revalidatePath("/admin/billing");
 }
 
+export const billPatientActionResult = withActionResult(billPatient, "Invoice created");
+
 export async function recordInvoicePayment(formData: FormData) {
   await requireRole(...BILLING_ROLES);
   const tenantId = await requireTenantId();

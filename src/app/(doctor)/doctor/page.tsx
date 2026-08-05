@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { UserX, CalendarX2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listAppointmentsForDoctor } from "@/lib/appointments";
 import { listLabTests, listLatestCompletedLabOrdersForPatients, listAppointmentIdsWithUnlinkedLabOrders } from "@/lib/lab";
 import { countMedicines } from "@/lib/pharmacy";
 import {
-  setAppointmentStatus,
+  setAppointmentStatusActionResult,
   completeVisitActionResult,
   orderLabTestsActionResult,
   orderImagingStudyActionResult,
@@ -21,28 +23,43 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
 import { ActionForm } from "@/components/action-form";
 import { PrescriptionRows } from "@/components/prescription-rows";
+import { Badge } from "@/components/ui/badge";
+import { FLAG_BADGE_CLASS } from "@/components/lab-result-gauge";
+import { cn } from "@/lib/utils";
 
 export const metadata = {
   title: "Doctor Dashboard",
 };
 
-export default async function DoctorHome() {
+const SCOPE_FILTERS: { value: "today" | "upcoming" | "all"; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "all", label: "All" },
+];
+
+export default async function DoctorHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string }>;
+}) {
   const session = await auth();
   const userId = session!.user.id;
   const tenantId = session!.user.tenantId!;
+  const params = await searchParams;
+  const scope = params.scope === "upcoming" || params.scope === "all" ? params.scope : "today";
 
   const doctor = await db.doctor.findUnique({ where: { userId } });
   if (!doctor) {
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold">Doctor dashboard</h1>
-        <p className="text-sm text-muted-foreground">No doctor profile linked to this account.</p>
+        <EmptyState icon={UserX} message={<>No doctor profile linked to this account.</>} />
       </div>
     );
   }
 
   const [appointments, labTests, medicineCount] = await Promise.all([
-    listAppointmentsForDoctor(doctor.id, tenantId),
+    listAppointmentsForDoctor(doctor.id, tenantId, { scope }),
     listLabTests(tenantId, { isActive: true }),
     countMedicines(tenantId, { isActive: true }),
   ]);
@@ -61,13 +78,28 @@ export default async function DoctorHome() {
         </Link>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {SCOPE_FILTERS.map((f) => (
+          <Link
+            key={f.value}
+            href={`/doctor?scope=${f.value}`}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-sm font-medium",
+              scope === f.value ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+            )}
+          >
+            {f.label}
+          </Link>
+        ))}
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Appointments</CardTitle>
         </CardHeader>
         <CardContent>
           {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments yet.</p>
+            <EmptyState icon={CalendarX2} message={<>No appointments yet.</>} />
           ) : (
             <ul className="flex flex-col gap-3">
               {appointments.map((appt) => {
@@ -84,9 +116,20 @@ export default async function DoctorHome() {
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground">Type: {appt.type}</div>
                   {recentLabs && (
-                    <div className="mt-2 rounded-md bg-muted p-2 text-sm">
-                      <span className="font-medium">Recent labs</span> ({new Date(recentLabs.orderedAt).toLocaleDateString()}):{" "}
-                      {recentLabs.items.map((i) => `${i.labTest.name}: ${i.resultValue ?? "—"} ${i.resultUnit ?? ""}`.trim()).join(", ")}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md bg-muted p-2 text-sm">
+                      <span className="font-medium">Recent labs</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({new Date(recentLabs.orderedAt).toLocaleDateString()})
+                      </span>
+                      {recentLabs.items.map((i) => (
+                        <Badge
+                          key={i.id}
+                          variant="outline"
+                          className={cn("border-transparent font-normal", i.flag && FLAG_BADGE_CLASS[i.flag])}
+                        >
+                          {i.labTest.name}: {i.resultValue ?? "—"} {i.resultUnit ?? ""}
+                        </Badge>
+                      ))}
                     </div>
                   )}
                   {appt.status === "BOOKED" && (
@@ -132,16 +175,26 @@ export default async function DoctorHome() {
                         </ActionForm>
                       </details>
                       <div className="flex gap-2">
-                        <form action={async () => { "use server"; await setAppointmentStatus(appt.id, "NO_SHOW"); }}>
+                        <ActionForm
+                          action={setAppointmentStatusActionResult}
+                          confirmMessage={`Mark ${appt.patient.user.name} as a no-show?`}
+                        >
+                          <input type="hidden" name="appointmentId" value={appt.id} />
+                          <input type="hidden" name="status" value="NO_SHOW" />
                           <Button type="submit" size="sm" variant="outline">
                             Mark no-show
                           </Button>
-                        </form>
-                        <form action={async () => { "use server"; await setAppointmentStatus(appt.id, "CANCELLED"); }}>
+                        </ActionForm>
+                        <ActionForm
+                          action={setAppointmentStatusActionResult}
+                          confirmMessage={`Cancel ${appt.patient.user.name}'s appointment? This cannot be undone.`}
+                        >
+                          <input type="hidden" name="appointmentId" value={appt.id} />
+                          <input type="hidden" name="status" value="CANCELLED" />
                           <Button type="submit" size="sm" variant="ghost">
                             Cancel
                           </Button>
-                        </form>
+                        </ActionForm>
                       </div>
                     </div>
                   )}

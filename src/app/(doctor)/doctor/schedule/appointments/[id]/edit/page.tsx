@@ -1,13 +1,14 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getAppointmentDetailed } from "@/lib/appointments";
-import { editAppointmentAction } from "../../actions";
+import { editAppointmentActionResult } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Edit Appointment",
@@ -29,12 +30,6 @@ export default async function EditAppointmentPage({ params }: { params: Promise<
   const appointment = await getAppointmentDetailed(id, tenantId, doctor.id);
   if (!appointment) notFound();
 
-  async function save(formData: FormData) {
-    "use server";
-    await editAppointmentAction(formData);
-    redirect("/doctor/schedule/appointments");
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -50,7 +45,7 @@ export default async function EditAppointmentPage({ params }: { params: Promise<
           <CardTitle>Date, time &amp; fee</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={save} className="flex flex-col gap-3">
+          <ActionForm action={editAppointmentActionResult} className="flex flex-col gap-3">
             <input type="hidden" name="appointmentId" value={appointment.id} />
             <Label htmlFor="datetime">Date &amp; time</Label>
             <Input id="datetime" name="datetime" type="datetime-local" defaultValue={toDateTimeLocal(appointment.datetime)} required />
@@ -65,7 +60,7 @@ export default async function EditAppointmentPage({ params }: { params: Promise<
             <Button type="submit" className="mt-2">
               Save changes
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
     </div>

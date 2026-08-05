@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { updateOrganizationProfile } from "@/lib/organization";
+import { withActionResult } from "@/lib/actionResult";
 
 export async function saveOrganizationProfile(formData: FormData) {
   await requireRole("ADMIN_RECEPTION", "SUPER_ADMIN");
@@ -25,3 +26,5 @@ export async function saveOrganizationProfile(formData: FormData) {
 
   revalidatePath("/admin/organization");
 }
+
+export const saveOrganizationProfileActionResult = withActionResult(saveOrganizationProfile, "Organization profile saved");

@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listKnowledgeBaseDocuments } from "@/lib/knowledgeBase";
 import { addKnowledgeBaseDocument, removeKnowledgeBaseDocumentActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -42,7 +44,7 @@ export default async function KnowledgeBasePage() {
         </CardHeader>
         <CardContent>
           {docs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No documents yet.</p>
+            <EmptyState icon={FileText} message={<>No documents yet.</>} />
           ) : (
             <ul className="flex flex-col gap-2">
               {docs.map((doc) => (

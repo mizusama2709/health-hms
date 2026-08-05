@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/empty-state";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -9,11 +10,13 @@ import {
 } from "@/lib/appointments";
 import { cancelAppointmentActionResult, sendReceiptAction } from "./actions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { ActionForm } from "@/components/action-form";
+import { StatTile } from "@/components/stat-tile";
 import { cn } from "@/lib/utils";
+import { CalendarDays, Clock, CheckCircle2, CalendarCheck2, IndianRupee, UserX, CalendarX2 } from "lucide-react";
 
 export const metadata = {
   title: "Appointments",
@@ -66,7 +69,7 @@ export default async function DoctorAppointmentsPage({
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold">Appointments</h1>
-        <p className="text-sm text-muted-foreground">No doctor profile linked to this account.</p>
+        <EmptyState icon={UserX} message={<>No doctor profile linked to this account.</>} />
       </div>
     );
   }
@@ -98,33 +101,18 @@ export default async function DoctorAppointmentsPage({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.total}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending payment</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-600">{stats.pendingPayment}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Confirmed</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-600">{stats.confirmed}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.completed}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Revenue</p>
-          <p className="mt-1 text-2xl font-semibold">{formatINR(stats.revenue)}</p>
-        </div>
+        <StatTile label="Total" value={stats.total} icon={CalendarDays} iconColor="blue" />
+        <StatTile label="Pending payment" value={stats.pendingPayment} valueClassName="text-amber-500" icon={Clock} iconColor="amber" />
+        <StatTile label="Confirmed" value={stats.confirmed} valueClassName="text-emerald-500" icon={CheckCircle2} iconColor="emerald" />
+        <StatTile label="Completed" value={stats.completed} icon={CalendarCheck2} iconColor="violet" />
+        <StatTile label="Revenue" value={formatINR(stats.revenue)} icon={IndianRupee} iconColor="emerald" />
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6">
           <form method="get" className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted-foreground">Search</span>
-            <Input name="search" placeholder="Patient name or phone..." defaultValue={params.search ?? ""} className="max-w-sm" />
+            <SearchInput name="search" placeholder="Patient name or phone..." defaultValue={params.search ?? ""} className="max-w-sm" />
           </form>
 
           <div className="flex flex-col gap-1.5">
@@ -164,7 +152,7 @@ export default async function DoctorAppointmentsPage({
           </div>
 
           {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments match these filters.</p>
+            <EmptyState icon={CalendarX2} message={<>No appointments match these filters.</>} />
           ) : (
             <div className="overflow-x-auto">
               <Table>

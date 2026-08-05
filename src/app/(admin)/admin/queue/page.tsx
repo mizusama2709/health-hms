@@ -1,13 +1,17 @@
 import Link from "next/link";
+import { CalendarX2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant } from "@/lib/appointments";
 import { listStaff } from "@/lib/staff";
-import { QUEUE_STAGES, listStageConfigs, getStageEntriesForAppointments } from "@/lib/queueStages";
-import { startStageAction, completeStageAction } from "./actions";
+import { QUEUE_STAGES, listStageConfigs, getStageEntriesForAppointments, getQueueVersion } from "@/lib/queueStages";
+import { startStageAction, completeStageAction, getQueueVersionAction } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
+import { QueueInProgressCell } from "@/components/queue-in-progress-cell";
+import { QueueLiveRefresh } from "@/components/queue-live-refresh";
 import type { QueueStage } from "@prisma/client";
 
 export const metadata = {
@@ -47,10 +51,11 @@ export default async function QueuePage() {
     listStageConfigs(tenantId),
   ]);
 
-  const entriesByAppointment = await getStageEntriesForAppointments(
-    appointments.map((a) => a.id),
-    tenantId
-  );
+  const appointmentIds = appointments.map((a) => a.id);
+  const [entriesByAppointment, queueVersion] = await Promise.all([
+    getStageEntriesForAppointments(appointmentIds, tenantId),
+    getQueueVersion(tenantId, appointmentIds),
+  ]);
 
   const now = new Date().getTime();
 
@@ -91,6 +96,8 @@ export default async function QueuePage() {
         </Link>
       </div>
 
+      <QueueLiveRefresh appointmentIds={appointmentIds} initialVersion={queueVersion} getVersion={getQueueVersionAction} />
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
         {QUEUE_STAGES.map((stage) => (
           <Card key={stage}>
@@ -114,7 +121,7 @@ export default async function QueuePage() {
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments scheduled today.</p>
+            <EmptyState icon={CalendarX2} message={<>No appointments scheduled today.</>} />
           ) : (
             <Table>
               <TableHeader>
@@ -155,26 +162,17 @@ export default async function QueuePage() {
 
                         if (entry) {
                           const elapsedMs = now - entry.startedAt.getTime();
-                          const overdue = elapsedMs > turnaround * 60000;
                           return (
                             <TableCell key={stage} className="text-xs">
-                              <div className={overdue ? "text-destructive font-medium" : ""}>
-                                {entry.assignedTo?.name ?? "Unassigned"} · {formatElapsed(elapsedMs)}
-                              </div>
-                              <form action={completeStageAction} className="mt-1">
-                                <input type="hidden" name="entryId" value={entry.id} />
-                                <Button type="submit" size="sm" variant="outline">
-                                  Complete
-                                </Button>
-                              </form>
-                              {stage === "VITALS" && (
-                                <Link
-                                  href={`/admin/queue/${appt.id}/vitals`}
-                                  className="mt-1 block text-primary hover:underline"
-                                >
-                                  Record vitals →
-                                </Link>
-                              )}
+                              <QueueInProgressCell
+                                entryId={entry.id}
+                                startedAtIso={entry.startedAt.toISOString()}
+                                initialElapsedMs={elapsedMs}
+                                turnaroundMinutes={turnaround}
+                                assignedToName={entry.assignedTo?.name ?? "Unassigned"}
+                                vitalsHref={stage === "VITALS" ? `/admin/queue/${appt.id}/vitals` : undefined}
+                                completeAction={completeStageAction}
+                              />
                             </TableCell>
                           );
                         }

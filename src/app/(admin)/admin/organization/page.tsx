@@ -1,10 +1,12 @@
 import { requireTenantId } from "@/lib/tenant";
 import { getOrganizationProfile } from "@/lib/organization";
-import { saveOrganizationProfile } from "./actions";
+import { saveOrganizationProfileActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ActionForm } from "@/components/action-form";
+import { FormSection } from "@/components/form-section";
 
 export const metadata = {
   title: "Organization",
@@ -23,13 +25,15 @@ export default async function OrganizationPage() {
           <CardTitle>Organization profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={saveOrganizationProfile} className="flex flex-col gap-2">
+          <ActionForm action={saveOrganizationProfileActionResult} className="flex flex-col gap-2">
+            <FormSection title="Legal & company info" />
             <Label htmlFor="legalName">Legal name</Label>
             <Input id="legalName" name="legalName" placeholder="Legal name" defaultValue={profile?.legalName ?? ""} />
             <Label htmlFor="gstNumber">GST number</Label>
             <Input id="gstNumber" name="gstNumber" placeholder="GST number" defaultValue={profile?.gstNumber ?? ""} />
             <Label htmlFor="companySize">Company size</Label>
             <Input id="companySize" name="companySize" placeholder="Company size" defaultValue={profile?.companySize ?? ""} />
+            <FormSection title="HQ address" />
             <Label htmlFor="hqAddressLine1">HQ address line 1</Label>
             <Input id="hqAddressLine1" name="hqAddressLine1" placeholder="HQ address line 1" defaultValue={profile?.hqAddressLine1 ?? ""} />
             <Label htmlFor="hqAddressLine2">HQ address line 2</Label>
@@ -57,7 +61,7 @@ export default async function OrganizationPage() {
             <Button type="submit" className="mt-2">
               Save organization profile
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
     </div>

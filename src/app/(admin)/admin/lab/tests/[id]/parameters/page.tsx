@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FlaskConical } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getLabTest } from "@/lib/lab";
@@ -79,9 +81,9 @@ export default async function LabTestParametersPage({ params }: { params: Promis
         </CardHeader>
         <CardContent>
           {test.parameters.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <EmptyState icon={FlaskConical} message={<>
               No parameters yet — simple tests that report a single value don&apos;t need any.
-            </p>
+            </>} />
           ) : (
             <Table>
               <TableHeader>

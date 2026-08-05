@@ -1,21 +1,34 @@
+import Link from "next/link";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
-import { listServices } from "@/lib/services";
-import { createServiceAction, toggleServiceActiveAction } from "./actions";
+import { listServicesPaged } from "@/lib/services";
+import { createServiceActionResult, toggleServiceActiveActionResult, bulkSetServicesActiveActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/action-form";
+import { ServicesTable } from "@/components/services-table";
 
 export const metadata = {
   title: "Services",
 };
 
-export default async function ServicesPage() {
+export default async function ServicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenantId = await requireTenantId();
-  const services = await listServices(tenantId);
+  const params = await searchParams;
+  const page = Number(params.page) || 1;
+  const { services, total, totalPages } = await listServicesPaged(tenantId, { page, pageSize: 50 });
+
+  function pageHref(p: number) {
+    return `/admin/services?page=${p}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -26,7 +39,7 @@ export default async function ServicesPage() {
           <CardTitle>Add service</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createServiceAction} className="flex flex-col gap-2">
+          <ActionForm action={createServiceActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" placeholder="e.g. General Consultation" required />
             <Label htmlFor="serviceType">Type</Label>
@@ -44,52 +57,45 @@ export default async function ServicesPage() {
             <Button type="submit" className="mt-2">
               Add service
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Catalog ({services.length})</CardTitle>
+          <CardTitle>Catalog ({total})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           {services.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No services yet.</p>
+            <EmptyState icon={FileText} message={<>No services yet.</>} />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>GST</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {services.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell>{s.serviceType}</TableCell>
-                    <TableCell>{Number(s.defaultUnitPrice).toFixed(2)}</TableCell>
-                    <TableCell>{Number(s.taxRatePercent)}%</TableCell>
-                    <TableCell>
-                      <Badge variant={s.isActive ? "default" : "secondary"}>{s.isActive ? "Active" : "Inactive"}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <form action={toggleServiceActiveAction}>
-                        <input type="hidden" name="serviceId" value={s.id} />
-                        <input type="hidden" name="isActive" value={String(s.isActive)} />
-                        <Button type="submit" size="sm" variant="outline">
-                          {s.isActive ? "Deactivate" : "Activate"}
-                        </Button>
-                      </form>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <ServicesTable
+                services={services}
+                toggleAction={toggleServiceActiveActionResult}
+                bulkAction={bulkSetServicesActiveActionResult}
+              />
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    {page > 1 && (
+                      <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                        ← Previous
+                      </Link>
+                    )}
+                    {page < totalPages && (
+                      <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                        Next →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

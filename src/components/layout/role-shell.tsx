@@ -12,6 +12,7 @@ import {
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { CommandPalette } from "@/components/command-palette";
 
 export type NavItem = { label: string; href?: string; children?: NavItem[] };
 export type NavSection = { title?: string; items: NavItem[] };
@@ -35,10 +36,10 @@ export function RoleShell({
       >
         Skip to main content
       </a>
-      <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#0d0e1a] p-4 md:flex">
+      <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar p-4 md:flex">
         <div className="mb-2 px-2">
-          <div className="text-sm font-semibold text-white">Health HMS</div>
-          <div className="text-xs text-white/50">{roleLabel}</div>
+          <div className="text-sm font-semibold text-sidebar-foreground">Health HMS</div>
+          <div className="text-xs text-sidebar-foreground/50">{roleLabel}</div>
         </div>
         <NavLinks sections={navSections} />
       </aside>
@@ -53,11 +54,11 @@ export function RoleShell({
               >
                 <Menu className="size-4" />
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 overflow-y-auto bg-[#0d0e1a] p-4">
+              <SheetContent side="left" className="w-64 overflow-y-auto bg-sidebar p-4">
                 <SheetHeader>
-                  <SheetTitle className="text-white">{roleLabel}</SheetTitle>
+                  <SheetTitle className="text-sidebar-foreground">{roleLabel}</SheetTitle>
                 </SheetHeader>
-                <Separator className="my-3 bg-white/10" />
+                <Separator className="my-3 bg-sidebar-border" />
                 <NavLinks sections={navSections} />
               </SheetContent>
             </Sheet>
@@ -65,6 +66,7 @@ export function RoleShell({
           </div>
 
           <div className="flex items-center gap-3">
+            <CommandPalette sections={navSections} />
             {userName && <span className="hidden text-sm text-muted-foreground sm:inline">{userName}</span>}
             <ThemeToggle />
             <SignOutButton />

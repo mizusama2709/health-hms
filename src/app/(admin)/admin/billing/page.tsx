@@ -1,14 +1,18 @@
 import Link from "next/link";
+import { Users } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listPatients } from "@/lib/patients";
 import { listServices } from "@/lib/services";
 import { db } from "@/lib/db";
-import { billPatient } from "./actions";
+import { billPatientActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { ActionForm } from "@/components/action-form";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -42,7 +46,7 @@ export default async function BillPatientPage({
         <CardContent className="flex flex-col gap-3 pt-6">
           <form method="get" className="flex flex-col gap-1">
             <Label htmlFor="search">Patient</Label>
-            <Input id="search" name="search" placeholder="Search patient by name, phone, or Patient ID..." defaultValue={params.search ?? ""} />
+            <SearchInput id="search" name="search" placeholder="Search patient by name, phone, or Patient ID..." defaultValue={params.search ?? ""} />
           </form>
 
           {matches.length > 0 && (
@@ -66,7 +70,7 @@ export default async function BillPatientPage({
           )}
 
           {params.search && matches.length === 0 && (
-            <p className="text-sm text-muted-foreground">No patients match &quot;{params.search}&quot;.</p>
+            <EmptyState icon={Users} message={<>No patients match &quot;{params.search}&quot;.</>} />
           )}
         </CardContent>
       </Card>
@@ -80,7 +84,7 @@ export default async function BillPatientPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={billPatient} className="flex flex-col gap-2">
+            <ActionForm action={billPatientActionResult} className="flex flex-col gap-2">
               <input type="hidden" name="patientId" value={selectedPatient.id} />
               <Label htmlFor="serviceType">Service type</Label>
               <NativeSelect id="serviceType" name="serviceType" required>
@@ -123,7 +127,7 @@ export default async function BillPatientPage({
               <Button type="submit" className="mt-2">
                 Create invoice
               </Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
       )}

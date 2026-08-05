@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { SearchInput } from "@/components/ui/search-input";
 import { requireTenantId } from "@/lib/tenant";
 import { listConversations, getConversationThread } from "@/lib/whatsappInbox";
 import { cn } from "@/lib/utils";
@@ -36,18 +39,18 @@ export default async function InboxPage({
         <div className="border-b px-4 py-3">
           <h1 className="text-lg font-semibold">Inbox</h1>
           <form method="get" className="mt-2">
-            <input
+            <SearchInput
               name="search"
               placeholder="Search name or phone..."
               defaultValue={params.search ?? ""}
-              className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-9"
             />
           </form>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">No WhatsApp messages yet.</p>
+            <EmptyState icon={MessageSquare} message={<>No WhatsApp messages yet.</>} />
           ) : (
             conversations.map((c) => {
               const query = new URLSearchParams();

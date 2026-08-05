@@ -1,21 +1,29 @@
 import Link from "next/link";
+import { Users } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
-import { listPatients, listDoctorsForFilter, type PatientStatus } from "@/lib/patients";
+import { listPatientsPaged, listDoctorsForFilter, type PatientStatus } from "@/lib/patients";
 import { listLeads } from "@/lib/leads";
 import {
   createPatientAction,
   createLeadAction,
-  importLeadsAction,
+  importLeadsActionResult,
   updateLeadStatusAction,
   convertLeadAction,
 } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { TabsContent } from "@/components/ui/tabs";
+import { PatientsTabs } from "@/components/patients-tabs";
+import { ActionForm } from "@/components/action-form";
+import { BulkImportField } from "@/components/bulk-import-field";
+import { Avatar } from "@/components/avatar";
 import type { LeadStatus } from "@prisma/client";
 
 export const metadata = {
@@ -55,7 +63,15 @@ function formatDateTime(d: Date | null | undefined) {
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; sort?: string; doctorId?: string; status?: string; tab?: string; leadStatus?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    sort?: string;
+    doctorId?: string;
+    status?: string;
+    tab?: string;
+    leadStatus?: string;
+    page?: string;
+  }>;
 }) {
   const tenantId = await requireTenantId();
   const params = await searchParams;
@@ -63,39 +79,37 @@ export default async function PatientsPage({
   const status = (params.status || undefined) as PatientStatus | undefined;
   const tab = params.tab === "enquiry" ? "enquiry" : "patients";
   const leadStatus = (params.leadStatus || undefined) as LeadStatus | undefined;
+  const page = Number(params.page) || 1;
 
-  const [patients, doctors, leads] = await Promise.all([
-    listPatients(tenantId, {
+  const [{ patients, total, totalPages }, doctors, leads] = await Promise.all([
+    listPatientsPaged(tenantId, {
       search: params.search,
       sort,
       doctorId: params.doctorId || undefined,
       status,
+      page,
+      pageSize: 50,
     }),
     listDoctorsForFilter(tenantId),
     listLeads(tenantId, { search: tab === "enquiry" ? params.search : undefined, status: leadStatus }),
   ]);
 
+  function pageHref(p: number) {
+    const q = new URLSearchParams();
+    if (params.search) q.set("search", params.search);
+    if (params.sort) q.set("sort", params.sort);
+    if (params.doctorId) q.set("doctorId", params.doctorId);
+    if (status) q.set("status", status);
+    q.set("page", String(p));
+    return `/admin/patients?${q.toString()}`;
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Patients</h1>
 
-      <div className="flex gap-2 border-b">
-        <Link
-          href="/admin/patients"
-          className={`px-3 py-2 text-sm font-medium ${tab === "patients" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          Patients
-        </Link>
-        <Link
-          href="/admin/patients?tab=enquiry"
-          className={`px-3 py-2 text-sm font-medium ${tab === "enquiry" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          Enquiry
-        </Link>
-      </div>
-
-      {tab === "enquiry" ? (
-        <>
+      <PatientsTabs tab={tab}>
+        <TabsContent value="enquiry" className="flex flex-col gap-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <Card>
               <CardHeader>
@@ -121,19 +135,17 @@ export default async function PatientsPage({
                 <CardTitle>Import leads</CardTitle>
               </CardHeader>
               <CardContent>
-                <form action={importLeadsAction} className="flex flex-col gap-2">
-                  <Label htmlFor="rows">Paste one lead per line: name, phone, email (optional)</Label>
-                  <textarea
+                <ActionForm action={importLeadsActionResult} className="flex flex-col gap-2">
+                  <Label htmlFor="rows">One lead per line: name, phone, email (optional)</Label>
+                  <BulkImportField
                     id="rows"
-                    name="rows"
-                    rows={5}
+                    rowsFieldName="rows"
                     placeholder={"Priya Sharma, +919876543210\nRahul Verma, +919812345678, rahul@example.com"}
-                    className="rounded-md border bg-transparent p-2 text-sm"
                   />
                   <Button type="submit" className="mt-2 self-start">
                     Import leads
                   </Button>
-                </form>
+                </ActionForm>
               </CardContent>
             </Card>
           </div>
@@ -147,7 +159,7 @@ export default async function PatientsPage({
                 <input type="hidden" name="tab" value="enquiry" />
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">Search</span>
-                  <Input name="search" placeholder="Name or phone" defaultValue={params.search ?? ""} className="w-64" />
+                  <SearchInput name="search" placeholder="Name or phone" defaultValue={params.search ?? ""} className="w-64" />
                 </div>
                 <Button type="submit" variant="outline">
                   Apply
@@ -176,7 +188,7 @@ export default async function PatientsPage({
               </div>
 
               {leads.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No leads found.</p>
+                <EmptyState icon={Users} message={<>No leads found.</>} />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -244,9 +256,9 @@ export default async function PatientsPage({
               )}
             </CardContent>
           </Card>
-        </>
-      ) : (
-        <>
+        </TabsContent>
+
+        <TabsContent value="patients" className="flex flex-col gap-6">
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>Add patient</CardTitle>
@@ -279,13 +291,13 @@ export default async function PatientsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Directory ({patients.length})</CardTitle>
+          <CardTitle>Directory ({total})</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <form method="get" className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Search</span>
-              <Input
+              <SearchInput
                 name="search"
                 placeholder="Name, phone, Patient ID, email"
                 defaultValue={params.search ?? ""}
@@ -338,7 +350,7 @@ export default async function PatientsPage({
           </div>
 
           {patients.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No patients found.</p>
+            <EmptyState icon={Users} message={<>No patients found.</>} />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -358,7 +370,12 @@ export default async function PatientsPage({
                 <TableBody>
                   {patients.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.user.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={p.user.name} size="sm" />
+                          {p.user.name}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{p.displayId}</TableCell>
                       <TableCell>{p.user.phone ?? "—"}</TableCell>
                       <TableCell>{p.user.email}</TableCell>
@@ -378,9 +395,17 @@ export default async function PatientsPage({
                       <TableCell>{formatDateTime(p.user.lastLoginAt)}</TableCell>
                       <TableCell>{formatDate(p.user.updatedAt)}</TableCell>
                       <TableCell>
-                        <Link href={`/admin/patients/${p.id}`} className="text-sm font-medium text-primary hover:underline">
-                          View chart
-                        </Link>
+                        <div className="flex gap-3">
+                          <Link href={`/admin/patients/${p.id}`} className="text-sm font-medium text-primary hover:underline">
+                            View chart
+                          </Link>
+                          <Link
+                            href={`/admin?bookPatientId=${p.id}&bookPatientName=${encodeURIComponent(p.user.name)}#book-walkin`}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            Book
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -388,10 +413,30 @@ export default async function PatientsPage({
               </Table>
             </div>
           )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                    ← Previous
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                    Next →
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
-        </>
-      )}
+        </TabsContent>
+      </PatientsTabs>
     </div>
   );
 }

@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { getConsolidatedLedger, type LedgerSource } from "@/lib/billing";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePresets } from "@/components/date-range-presets";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -18,16 +21,28 @@ function formatINR(value: number) {
 export default async function LedgerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; source?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; source?: string; page?: string }>;
 }) {
   const tenantId = await requireTenantId();
   const params = await searchParams;
+  const page = Number(params.page) || 1;
 
   const ledger = await getConsolidatedLedger(tenantId, {
     from: params.from ? new Date(params.from) : undefined,
     to: params.to ? new Date(`${params.to}T23:59:59`) : undefined,
     source: params.source ? (params.source as LedgerSource) : undefined,
+    page,
+    pageSize: 50,
   });
+
+  function pageHref(p: number) {
+    const q = new URLSearchParams();
+    if (params.from) q.set("from", params.from);
+    if (params.to) q.set("to", params.to);
+    if (params.source) q.set("source", params.source);
+    q.set("page", String(p));
+    return `/admin/billing/ledger?${q.toString()}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,14 +54,21 @@ export default async function LedgerPage({
         <p className="text-sm text-muted-foreground">Consultation + pharmacy + lab + manual — one daybook.</p>
       </div>
 
+      <DateRangePresets
+        basePath="/admin/billing/ledger"
+        otherParams={{ source: params.source }}
+        activeFrom={params.from}
+        activeTo={params.to}
+      />
+
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">From</span>
-          <Input name="from" type="date" defaultValue={params.from ?? ""} className="w-40" />
+          <DatePicker name="from" defaultValue={params.from} placeholder="From" />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">To</span>
-          <Input name="to" type="date" defaultValue={params.to ?? ""} className="w-40" />
+          <DatePicker name="to" defaultValue={params.to} placeholder="To" />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Source</span>
@@ -97,7 +119,7 @@ export default async function LedgerPage({
       <Card>
         <CardContent className="pt-6">
           {ledger.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No ledger entries in this range.</p>
+            <EmptyState icon={Receipt} message={<>No ledger entries in this range.</>} />
           ) : (
             <Table>
               <TableHeader>
@@ -128,6 +150,26 @@ export default async function LedgerPage({
           )}
         </CardContent>
       </Card>
+
+      {ledger.totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {page} of {ledger.totalPages}
+          </span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                ← Previous
+              </Link>
+            )}
+            {page < ledger.totalPages && (
+              <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                Next →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

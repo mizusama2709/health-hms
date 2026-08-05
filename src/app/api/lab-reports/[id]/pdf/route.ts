@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { verifyLabReportToken } from "@/lib/labReportUrlSigning";
 import { logAudit } from "@/lib/audit";
 
 // Publicly reachable by id (an unguessable cuid) — this is the link sent to
 // the patient over WhatsApp and shown on the patient's chart. No session is
-// required since the patient has no portal login to attach one to.
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// required since the patient has no portal login to attach one to; a
+// signed, time-limited token (see labReportUrlSigning.ts) takes its place
+// so the link isn't permanent/unrevocable if it ever leaks.
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  if (!verifyLabReportToken(id, req.nextUrl.searchParams.get("token"))) {
+    return NextResponse.json({ error: "This link is invalid or has expired" }, { status: 401 });
+  }
 
   const report = await db.labReport.findUnique({ where: { id }, include: { labOrder: true } });
   if (!report || !report.pdfData) {

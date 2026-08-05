@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoicesDetailed, type InvoiceQuickFilter } from "@/lib/billing";
 import { markInvoicePaidAction, voidInvoiceActionResult } from "../actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { ActionForm } from "@/components/action-form";
@@ -82,7 +85,7 @@ export default async function InvoicesPage({
         {params.filter && <input type="hidden" name="filter" value={params.filter} />}
         <div className="flex flex-1 min-w-[220px] flex-col gap-1">
           <span className="text-xs text-muted-foreground">Search name, phone or patient ID</span>
-          <Input name="search" defaultValue={params.search ?? ""} placeholder="Ravi Kumar, 9000..., 62583" />
+          <SearchInput name="search" defaultValue={params.search ?? ""} placeholder="Ravi Kumar, 9000..., 62583" />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">From</span>
@@ -98,7 +101,7 @@ export default async function InvoicesPage({
       </form>
 
       {invoices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No invoices match these filters.</p>
+        <EmptyState icon={Receipt} message={<>No invoices match these filters.</>} />
       ) : (
         <div className="flex flex-col gap-3">
           {invoices.map((inv) => {

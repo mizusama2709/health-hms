@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { Package } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listPrescriptions } from "@/lib/pharmacy";
 import { listRxTemplates } from "@/lib/rxTemplates";
 import {
@@ -103,7 +105,7 @@ export default async function DispensePage() {
         </CardHeader>
         <CardContent>
           {prescriptions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No prescriptions yet.</p>
+            <EmptyState icon={Package} message={<>No prescriptions yet.</>} />
           ) : (
             <Table>
               <TableHeader>

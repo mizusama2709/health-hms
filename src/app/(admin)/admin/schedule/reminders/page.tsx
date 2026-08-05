@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Stethoscope } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listFollowUps, getFollowUpStats } from "@/lib/followUps";
 import { patientDisplayId } from "@/lib/patients";
@@ -106,10 +108,10 @@ export default async function RemindersPage({
           </form>
 
           {followUps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <EmptyState icon={Stethoscope} message={<>
               No follow-ups match this filter — a follow-up only appears here when a doctor prescribes one while
               completing a visit.
-            </p>
+            </>} />
           ) : (
             <div className="flex flex-col gap-4">
               {followUps.map((f) => {

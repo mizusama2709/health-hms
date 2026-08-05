@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listLabReportTemplates } from "@/lib/lab";
 import { createLabReportTemplateAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -42,7 +44,7 @@ export default async function LabReportTemplatesPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {templates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No templates yet.</p>
+            <EmptyState icon={FileText} message={<>No templates yet.</>} />
           ) : (
             templates.map((t) => (
               <div key={t.id} className="rounded-lg border p-3">

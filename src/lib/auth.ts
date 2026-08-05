@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { isLoginRateLimited, recordFailedLoginAttempt, clearLoginAttempts } from "@/lib/loginRateLimit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -17,12 +18,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
 
+        // Checked before touching the DB/bcrypt — same generic null result
+        // as bad credentials, so a locked-out attempt can't be
+        // distinguished from a wrong password (no account-existence or
+        // lockout-state oracle).
+        if (isLoginRateLimited(email)) return null;
+
         const user = await db.user.findUnique({ where: { email } });
-        if (!user) return null;
+        if (!user) {
+          recordFailedLoginAttempt(email);
+          return null;
+        }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          recordFailedLoginAttempt(email);
+          return null;
+        }
 
+        clearLoginAttempts(email);
         await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
         return {

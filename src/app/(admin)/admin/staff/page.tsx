@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
-import { listStaff } from "@/lib/staff";
-import { createStaff, changeStaffRole, changeStaffStatus } from "./actions";
+import { listStaffPaged } from "@/lib/staff";
+import { createStaffActionResult, changeStaffRoleActionResult, changeStaffStatusActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { ActionForm } from "@/components/action-form";
+import { Avatar } from "@/components/avatar";
 
 export const metadata = {
   title: "Staff",
@@ -16,9 +19,19 @@ export const metadata = {
 const STAFF_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "NURSE", "RECEPTIONIST", "LAB", "PHARMACIST"] as const;
 const STATUSES = ["ACTIVE", "INACTIVE", "SUSPENDED"] as const;
 
-export default async function StaffPage() {
+export default async function StaffPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenantId = await requireTenantId();
-  const staff = await listStaff(tenantId);
+  const params = await searchParams;
+  const page = Number(params.page) || 1;
+  const { staff, total, totalPages } = await listStaffPaged(tenantId, { page, pageSize: 50 });
+
+  function pageHref(p: number) {
+    return `/admin/staff?page=${p}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,7 +42,7 @@ export default async function StaffPage() {
           <CardTitle>Add staff</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createStaff} className="flex flex-col gap-2">
+          <ActionForm action={createStaffActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Full name</Label>
             <Input id="name" name="name" placeholder="Full name" required />
             <Label htmlFor="email">Email</Label>
@@ -49,15 +62,15 @@ export default async function StaffPage() {
             <Button type="submit" className="mt-2">
               Add staff
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>All staff ({staff.length})</CardTitle>
+          <CardTitle>All staff ({total})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -71,7 +84,12 @@ export default async function StaffPage() {
             <TableBody>
               {staff.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={u.name} size="sm" />
+                      {u.name}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {u.email}
                     {u.phone && ` · ${u.phone}`}
@@ -82,7 +100,7 @@ export default async function StaffPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1.5">
-                      <form action={changeStaffRole} className="flex items-center gap-1">
+                      <ActionForm action={changeStaffRoleActionResult} className="flex items-center gap-1">
                         <input type="hidden" name="userId" value={u.id} />
                         <NativeSelect name="role" defaultValue={u.role} className="w-40">
                           {STAFF_ROLES.map((r) => (
@@ -94,8 +112,8 @@ export default async function StaffPage() {
                         <Button type="submit" size="sm" variant="outline">
                           Save
                         </Button>
-                      </form>
-                      <form action={changeStaffStatus} className="flex items-center gap-1">
+                      </ActionForm>
+                      <ActionForm action={changeStaffStatusActionResult} className="flex items-center gap-1">
                         <input type="hidden" name="userId" value={u.id} />
                         <NativeSelect name="status" defaultValue={u.status} className="w-40">
                           {STATUSES.map((s) => (
@@ -107,13 +125,33 @@ export default async function StaffPage() {
                         <Button type="submit" size="sm" variant="outline">
                           Save
                         </Button>
-                      </form>
+                      </ActionForm>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <Link href={pageHref(page - 1)} className="font-medium text-primary hover:underline">
+                    ← Previous
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link href={pageHref(page + 1)} className="font-medium text-primary hover:underline">
+                    Next →
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

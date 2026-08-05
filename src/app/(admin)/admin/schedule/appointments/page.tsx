@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import {
   listAppointmentsForTenantDetailed,
@@ -7,14 +8,16 @@ import {
   type AppointmentDateFilter,
   type AppointmentPaymentFilter,
 } from "@/lib/appointments";
-import { cancelAppointmentActionResult, sendReceiptAction } from "./actions";
+import { cancelAppointmentActionResult, uncancelAppointmentActionResult, sendReceiptAction } from "./actions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { ActionForm } from "@/components/action-form";
+import { StatTile } from "@/components/stat-tile";
 import { cn } from "@/lib/utils";
+import { CalendarDays, Clock, CheckCircle2, CalendarCheck2, IndianRupee, CalendarX2 } from "lucide-react";
 
 export const metadata = {
   title: "Appointments",
@@ -89,26 +92,11 @@ export default async function AdminAppointmentsPage({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.total}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending payment</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-600">{stats.pendingPayment}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Confirmed</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-600">{stats.confirmed}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.completed}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Revenue</p>
-          <p className="mt-1 text-2xl font-semibold">{formatINR(stats.revenue)}</p>
-        </div>
+        <StatTile label="Total" value={stats.total} icon={CalendarDays} iconColor="blue" />
+        <StatTile label="Pending payment" value={stats.pendingPayment} valueClassName="text-amber-500" icon={Clock} iconColor="amber" />
+        <StatTile label="Confirmed" value={stats.confirmed} valueClassName="text-emerald-500" icon={CheckCircle2} iconColor="emerald" />
+        <StatTile label="Completed" value={stats.completed} icon={CalendarCheck2} iconColor="violet" />
+        <StatTile label="Revenue" value={formatINR(stats.revenue)} icon={IndianRupee} iconColor="emerald" />
       </div>
 
       <Card>
@@ -116,7 +104,7 @@ export default async function AdminAppointmentsPage({
           <form method="get" className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-muted-foreground">Search</span>
-              <Input name="search" placeholder="Patient name or phone..." defaultValue={params.search ?? ""} className="w-64" />
+              <SearchInput name="search" placeholder="Patient name or phone..." defaultValue={params.search ?? ""} className="w-64" />
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-muted-foreground">Doctor</span>
@@ -171,7 +159,7 @@ export default async function AdminAppointmentsPage({
           </div>
 
           {appointments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments match these filters.</p>
+            <EmptyState icon={CalendarX2} message={<>No appointments match these filters.</>} />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -232,7 +220,11 @@ export default async function AdminAppointmentsPage({
                           {a.status !== "CANCELLED" && (
                             <ActionForm
                               action={cancelAppointmentActionResult}
-                              confirmMessage={`Cancel ${a.patient.user.name}'s appointment? This cannot be undone.`}
+                              undo={{
+                                action: uncancelAppointmentActionResult,
+                                fields: { appointmentId: a.id },
+                                message: "Cancellation undone",
+                              }}
                             >
                               <input type="hidden" name="appointmentId" value={a.id} />
                               <button type="submit" className="font-medium text-destructive hover:underline">

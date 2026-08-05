@@ -81,6 +81,29 @@ export async function completeStage(tenantId: string, entryId: string) {
   });
 }
 
+/**
+ * A cheap "has anything changed" signature for the queue board — count of
+ * stage entries plus the most recent start/completion timestamp among
+ * today's appointments. Polled client-side (queue-live-refresh.tsx) so a
+ * second staff member's update surfaces as a banner instead of silently
+ * going unnoticed until someone happens to reload.
+ */
+export async function getQueueVersion(tenantId: string, appointmentIds: string[]) {
+  if (appointmentIds.length === 0) return { count: 0, latest: 0 };
+
+  const entries = await db.queueStageEntry.findMany({
+    where: { tenantId, appointmentId: { in: appointmentIds } },
+    select: { startedAt: true, completedAt: true },
+  });
+
+  const latest = entries.reduce((max, e) => {
+    const t = Math.max(e.startedAt.getTime(), e.completedAt?.getTime() ?? 0);
+    return Math.max(max, t);
+  }, 0);
+
+  return { count: entries.length, latest };
+}
+
 export async function setStageRemark(tenantId: string, entryId: string, remark: string) {
   return db.queueStageEntry.updateMany({
     where: { id: entryId, tenantId },

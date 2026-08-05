@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { FileImage } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listImagingOrders } from "@/lib/imaging";
 import { createImagingOrderActionResult, cancelImagingOrderActionResult, searchPatientsAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -68,7 +70,7 @@ export default async function ImagingOrdersPage() {
         </CardHeader>
         <CardContent>
           {orders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No imaging orders yet.</p>
+            <EmptyState icon={FileImage} message={<>No imaging orders yet.</>} />
           ) : (
             <Table>
               <TableHeader>

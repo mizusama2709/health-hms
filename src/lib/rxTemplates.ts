@@ -8,6 +8,25 @@ export async function listRxTemplates(tenantId: string) {
   });
 }
 
+export async function listRxTemplatesPaged(tenantId: string, filters: { page?: number; pageSize?: number } = {}) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = filters.pageSize ?? 50;
+  const where = { tenantId };
+
+  const [total, templates] = await Promise.all([
+    db.rxTemplate.count({ where }),
+    db.rxTemplate.findMany({
+      where,
+      include: { items: { include: { medicine: true } } },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { templates, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+}
+
 export async function createRxTemplate(params: {
   tenantId: string;
   name: string;

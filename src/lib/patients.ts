@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import type { Gender } from "@prisma/client";
 import { decryptPHIMaybe } from "@/lib/phiCrypto";
 import { logAudit } from "@/lib/audit";
+import { isUniqueConstraintViolation } from "@/lib/prismaErrors";
 
 export function computeAge(dateOfBirth: Date | null): number | null {
   if (!dateOfBirth) return null;
@@ -47,29 +48,38 @@ export async function createPatient(params: {
   dateOfBirth?: Date;
   gender?: Gender;
 }) {
-  const existing = await db.user.findUnique({ where: { email: params.email } });
-  if (existing) throw new Error(`A user with email ${params.email} already exists`);
-
   const passwordHash = await bcrypt.hash(params.password, 10);
 
-  return db.user.create({
-    data: {
-      email: params.email,
-      name: params.name,
-      phone: params.phone,
-      role: "PATIENT",
-      passwordHash,
-      tenantId: params.tenantId,
-      patient: {
-        create: {
-          tenantId: params.tenantId,
-          dateOfBirth: params.dateOfBirth,
-          gender: params.gender,
+  // No pre-check by email: since email is globally unique (not per-tenant),
+  // a findUnique-by-email check run before create() would tell staff at one
+  // tenant whether an email is registered at *any* tenant, not just their
+  // own — a cross-tenant enumeration leak. Attempting the create and
+  // catching the real constraint violation gives the same UX without it.
+  try {
+    return await db.user.create({
+      data: {
+        email: params.email,
+        name: params.name,
+        phone: params.phone,
+        role: "PATIENT",
+        passwordHash,
+        tenantId: params.tenantId,
+        patient: {
+          create: {
+            tenantId: params.tenantId,
+            dateOfBirth: params.dateOfBirth,
+            gender: params.gender,
+          },
         },
       },
-    },
-    include: { patient: true },
-  });
+      include: { patient: true },
+    });
+  } catch (e) {
+    if (isUniqueConstraintViolation(e, "email")) {
+      throw new Error("That email may already be registered — try a different one");
+    }
+    throw e;
+  }
 }
 
 export async function updatePatientProfile(
@@ -170,6 +180,36 @@ export async function listPatients(
     if (filters?.doctorId && p.latestAppointment?.doctorId !== filters.doctorId) return false;
     return true;
   });
+}
+
+export async function listPatientsPaged(
+  tenantId: string,
+  filters?: {
+    search?: string;
+    sort?: "newest" | "oldest";
+    doctorId?: string;
+    status?: PatientStatus;
+    page?: number;
+    pageSize?: number;
+  }
+) {
+  // status/doctorId are derived fields computed after the query (see
+  // listPatients above), so they can't be pushed into a Prisma where clause
+  // — filter in memory first, then paginate the filtered set.
+  const filtered = await listPatients(tenantId, filters);
+
+  const page = Math.max(1, filters?.page ?? 1);
+  const pageSize = filters?.pageSize ?? 50;
+  const total = filtered.length;
+  const start = (page - 1) * pageSize;
+
+  return {
+    patients: filtered.slice(start, start + pageSize),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
 
 export async function getPatientWithHistory(

@@ -25,6 +25,18 @@ function startOfMonth() {
   return d;
 }
 
+function startOfLastMonth() {
+  const d = startOfMonth();
+  d.setMonth(d.getMonth() - 1);
+  return d;
+}
+
+function endOfLastMonth() {
+  const d = startOfMonth();
+  d.setMilliseconds(-1); // one ms before this month starts
+  return d;
+}
+
 export async function getOpdToday(tenantId: string) {
   const start = startOfToday();
   const end = endOfToday();
@@ -207,6 +219,7 @@ export async function getDashboardSummary(tenantId: string) {
     confirmedToday,
     completedToday,
     monthInvoices,
+    lastMonthInvoices,
     consultationsThisMonth,
   ] = await Promise.all([
     db.patient.count({ where: { tenantId } }),
@@ -220,6 +233,10 @@ export async function getDashboardSummary(tenantId: string) {
     db.invoice.findMany({
       where: { tenantId, createdAt: { gte: monthStart } },
       select: { totalAmount: true, amountPaid: true, status: true },
+    }),
+    db.invoice.findMany({
+      where: { tenantId, createdAt: { gte: startOfLastMonth(), lte: endOfLastMonth() } },
+      select: { amountPaid: true },
     }),
     db.appointment.count({
       where: {
@@ -235,12 +252,16 @@ export async function getDashboardSummary(tenantId: string) {
   const pendingThisMonth = monthInvoices
     .filter((inv) => inv.status === "UNPAID" || inv.status === "PARTIALLY_PAID")
     .reduce((sum, inv) => sum + (Number(inv.totalAmount) - Number(inv.amountPaid)), 0);
+  const revenueLastMonth = lastMonthInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid), 0);
+  // null (not 0%/Infinity) when there's no prior-month baseline to compare against.
+  const revenueDeltaPercent = revenueLastMonth > 0 ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100 : null;
 
   return {
     totalPatients,
     appointmentsToday: { completed: completedToday, total: appointmentsToday, confirmed: confirmedToday },
     revenueThisMonth,
     pendingThisMonth,
+    revenueDeltaPercent,
     consultationsThisMonth,
   };
 }

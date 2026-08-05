@@ -7,6 +7,7 @@ import { requireTenantId } from "@/lib/tenant";
 import {
   createMedicine,
   createSupplier,
+  updateSupplier,
   createGoodsReceipt,
   createPrescription,
   createPharmacyInvoiceForPrescription,
@@ -94,6 +95,38 @@ export async function createSupplierAction(formData: FormData) {
   revalidatePath("/admin/pharmacy/suppliers");
 }
 
+export const createSupplierActionResult = withActionResult(createSupplierAction, "Supplier added");
+
+export async function updateSupplierAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const supplierId = formData.get("supplierId") as string;
+  const name = formData.get("name") as string;
+  const contactPhone = (formData.get("contactPhone") as string) || undefined;
+  const contactEmail = (formData.get("contactEmail") as string) || undefined;
+
+  await updateSupplier(tenantId, supplierId, { name, contactPhone, contactEmail });
+
+  revalidatePath("/admin/pharmacy/suppliers");
+}
+
+export const updateSupplierActionResult = withActionResult(updateSupplierAction, "Supplier updated");
+
+export async function toggleSupplierActiveAction(formData: FormData) {
+  await requireRole(...PHARMACY_ROLES);
+  const tenantId = await requireTenantId();
+
+  const supplierId = formData.get("supplierId") as string;
+  const isActive = formData.get("isActive") === "true";
+
+  await updateSupplier(tenantId, supplierId, { isActive: !isActive });
+
+  revalidatePath("/admin/pharmacy/suppliers");
+}
+
+export const toggleSupplierActiveActionResult = withActionResult(toggleSupplierActiveAction, "Supplier updated");
+
 export async function createGoodsReceiptAction(formData: FormData) {
   const session = await requireRole(...PHARMACY_ROLES);
   const tenantId = await requireTenantId();
@@ -122,6 +155,8 @@ export async function createGoodsReceiptAction(formData: FormData) {
   revalidatePath("/admin/pharmacy/goods-receipt");
   revalidatePath("/admin/pharmacy/medicines");
 }
+
+export const createGoodsReceiptActionResult = withActionResult(createGoodsReceiptAction, "Receipt recorded");
 
 export async function createPrescriptionAction(formData: FormData) {
   const session = await requireRole(...PHARMACY_ROLES);
@@ -269,6 +304,8 @@ export async function createRxTemplateAction(formData: FormData) {
 
   revalidatePath("/admin/pharmacy/rx-templates");
 }
+
+export const createRxTemplateActionResult = withActionResult(createRxTemplateAction, "Template created");
 
 export async function loadRxTemplateAction(formData: FormData) {
   const session = await requireRole(...PHARMACY_ROLES);

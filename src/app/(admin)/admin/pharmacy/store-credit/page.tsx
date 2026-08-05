@@ -1,4 +1,6 @@
 import { requireTenantId } from "@/lib/tenant";
+import { Package } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { listInvoices } from "@/lib/billing";
 import { listStoreCredits } from "@/lib/pharmacy";
 import { recordPharmacyReturnActionResult, searchPatientsAction } from "../actions";
@@ -36,7 +38,7 @@ export default async function StoreCreditPage() {
         </CardHeader>
         <CardContent>
           {pharmacyLineItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pharmacy line items to return yet.</p>
+            <EmptyState icon={Package} message={<>No pharmacy line items to return yet.</>} />
           ) : (
             <ActionForm
               action={recordPharmacyReturnActionResult}
@@ -82,7 +84,7 @@ export default async function StoreCreditPage() {
         </CardHeader>
         <CardContent>
           {storeCredits.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No store credits issued yet.</p>
+            <EmptyState icon={Package} message={<>No store credits issued yet.</>} />
           ) : (
             <Table>
               <TableHeader>

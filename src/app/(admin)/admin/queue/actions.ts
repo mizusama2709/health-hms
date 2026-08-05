@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { recordVitals } from "@/lib/vitals";
-import { startStage, completeStage, upsertStageConfig, QUEUE_STAGES } from "@/lib/queueStages";
+import { startStage, completeStage, upsertStageConfig, getQueueVersion, QUEUE_STAGES } from "@/lib/queueStages";
 import type { QueueStage } from "@prisma/client";
 
 const QUEUE_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "NURSE", "RECEPTIONIST"] as const;
@@ -56,6 +56,12 @@ export async function completeStageAction(formData: FormData) {
   await completeStage(tenantId, entryId);
 
   revalidatePath("/admin/queue");
+}
+
+export async function getQueueVersionAction(appointmentIds: string[]) {
+  await requireRole(...QUEUE_ROLES);
+  const tenantId = await requireTenantId();
+  return getQueueVersion(tenantId, appointmentIds);
 }
 
 export async function updateStageConfigAction(formData: FormData) {

@@ -93,7 +93,7 @@ export function PdfViewer({ instanceId }: { instanceId: string }) {
           </Button>
         </div>
       )}
-      <canvas ref={canvasRef} style={{ maxWidth: "100%", border: "1px solid #333" }} />
+      <canvas ref={canvasRef} className="border border-border" style={{ maxWidth: "100%" }} />
     </div>
   );
 }

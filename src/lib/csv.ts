@@ -1,5 +1,14 @@
 function escapeCsvCell(value: unknown): string {
-  const str = value === null || value === undefined ? "" : String(value);
+  let str = value === null || value === undefined ? "" : String(value);
+
+  // CSV/formula injection (CWE-1236): a cell opening with one of these
+  // characters is interpreted as a formula by Excel/Sheets when the file is
+  // opened, letting attacker-influenceable data (e.g. a patient name from
+  // self-registration or a WhatsApp lead) execute arbitrary formulas/DDE
+  // payloads on whoever opens the export. A leading apostrophe is the
+  // standard mitigation — it forces the cell to be read as literal text.
+  if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+
   if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
   return str;
 }
