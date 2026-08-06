@@ -70,7 +70,12 @@ export function NavLinks({ sections }: { sections: NavSection[] }) {
                 )}
               >
                 <Icon className={cn("size-5 shrink-0", active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/50")} />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {!!item.badge && (
+                  <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-xs font-semibold text-amber-500 tabular-nums">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

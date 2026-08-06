@@ -14,7 +14,7 @@ import { NavLinks } from "@/components/layout/nav-links";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
 
-export type NavItem = { label: string; href?: string; children?: NavItem[] };
+export type NavItem = { label: string; href?: string; children?: NavItem[]; badge?: number };
 export type NavSection = { title?: string; items: NavItem[] };
 
 export function RoleShell({
