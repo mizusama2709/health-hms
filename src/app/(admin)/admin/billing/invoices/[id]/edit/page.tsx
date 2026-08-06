@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { getInvoiceWithBalance } from "@/lib/billing";
 import { editInvoiceAction } from "../../../actions";
+import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,9 +30,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/billing/invoices" className="text-sm font-medium text-primary hover:underline">
-          ← Back to invoices
-        </Link>
+        <BackLink href="/admin/billing/invoices" label="invoices" />
         <h1 className="mt-2 text-2xl font-semibold">Edit {invoice.invoiceNumber}</h1>
       </div>
 

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { FlaskConical } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { BackLink } from "@/components/back-link";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getLabTest } from "@/lib/lab";
@@ -35,9 +35,7 @@ export default async function LabTestParametersPage({ params }: { params: Promis
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/lab/tests" className="text-sm font-medium text-primary hover:underline">
-          ← Back to Lab Tests
-        </Link>
+        <BackLink href="/admin/lab/tests" label="Lab Tests" />
         <h1 className="mt-2 text-2xl font-semibold">{test.name}</h1>
         <p className="text-sm text-muted-foreground">
           {test.code ?? "No code"} · {test.sampleType ?? "No sample type"} · ₹{Number(test.defaultPrice).toFixed(2)}

@@ -47,10 +47,7 @@ export default async function LedgerPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/billing" className="text-sm font-medium text-primary hover:underline">
-          ← Back to Billing
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Consolidated Ledger</h1>
+        <h1 className="text-2xl font-semibold">Consolidated Ledger</h1>
         <p className="text-sm text-muted-foreground">Consultation + pharmacy + lab + manual — one daybook.</p>
       </div>
 

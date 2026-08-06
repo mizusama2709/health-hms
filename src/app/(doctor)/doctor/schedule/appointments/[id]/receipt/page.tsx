@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getAppointmentDetailed } from "@/lib/appointments";
 import { PrintButton } from "@/components/print-button";
+import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -30,9 +30,7 @@ export default async function AppointmentReceiptPage({ params }: { params: Promi
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
-        <Link href="/doctor/schedule/appointments" className="text-sm font-medium text-primary hover:underline">
-          ← Back to appointments
-        </Link>
+        <BackLink href="/doctor/schedule/appointments" label="appointments" />
         <PrintButton />
       </div>
 

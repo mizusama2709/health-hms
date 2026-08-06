@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getInvoiceWithBalance } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { recordInvoicePayment, refundInvoicePaymentActionResult } from "../../actions";
 import { PrintButton } from "@/components/print-button";
+import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,9 +34,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/admin/billing/invoices" className="text-sm font-medium text-primary hover:underline print:hidden">
-            ← Back to invoices
-          </Link>
+          <BackLink href="/admin/billing/invoices" label="invoices" className="print:hidden" />
           <h1 className="mt-2 text-2xl font-semibold">{invoice.invoiceNumber}</h1>
           <p className="text-sm text-muted-foreground">{patient?.user.name}</p>
         </div>

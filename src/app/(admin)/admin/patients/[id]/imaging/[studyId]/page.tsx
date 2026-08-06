@@ -10,7 +10,7 @@ import { PdfViewer } from "@/components/pdf-viewer";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionForm } from "@/components/action-form";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 
 export const metadata = {
   title: "Imaging Study",
@@ -34,9 +34,7 @@ export default async function ImagingStudyPage({ params }: { params: Promise<{ i
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={`/admin/patients/${patientId}`} className="text-sm font-medium text-primary hover:underline">
-          ← Back to {study.imagingOrder.patient.user.name}
-        </Link>
+        <BackLink href={`/admin/patients/${patientId}`} label={study.imagingOrder.patient.user.name} />
         <h1 className="mt-2 text-2xl font-semibold">
           {study.imagingOrder.modality} — {study.imagingOrder.patient.user.name}
         </h1>

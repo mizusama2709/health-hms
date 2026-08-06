@@ -23,6 +23,7 @@ import { LabResultGauge } from "@/components/lab-result-gauge";
 import { LabTrendChart, type LabTrendPoint } from "@/components/lab-trend-chart";
 import { PatientChartTabs, type ChartAlert } from "@/components/patient-chart-tabs";
 import { Avatar } from "@/components/avatar";
+import { BackLink } from "@/components/back-link";
 import { patientDisplayId } from "@/lib/patients";
 
 export const metadata = {
@@ -93,9 +94,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/patients" className="text-sm font-medium text-primary hover:underline">
-          ← Back to Patients
-        </Link>
+        <BackLink href="/admin/patients" label="Patients" />
         <div className="mt-2 flex items-center gap-3">
           <Avatar name={patient.user.name} size="lg" />
           <div>
