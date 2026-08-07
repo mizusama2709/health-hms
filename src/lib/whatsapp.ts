@@ -3,6 +3,7 @@ import { getInvoiceWithBalance } from "@/lib/billing";
 import { createAppointment } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { MockWhatsAppProvider } from "@/lib/whatsapp/mockProvider";
+import { MetaWhatsAppProvider } from "@/lib/whatsapp/metaProvider";
 import type { WhatsAppProvider } from "@/lib/whatsapp/provider";
 import { withFreshDocumentToken } from "@/lib/documentUrlSigning";
 import { decryptPHIMaybe } from "@/lib/phiCrypto";
@@ -11,8 +12,32 @@ import {
   generateAndAttachPrescriptionDocument,
   generateAndAttachConsultationSummaryDocument,
 } from "@/lib/documents";
+import { notify } from "@/lib/notifications";
+import type { WhatsAppMessageStatus } from "@prisma/client";
 
-const provider: WhatsAppProvider = new MockWhatsAppProvider();
+// Defaults closed to the mock — WHATSAPP_PROVIDER must be explicitly set to
+// "meta", and both Meta credentials must be present, before this will ever
+// place a real call or send a real message to a real phone number. A
+// half-configured environment (e.g. WHATSAPP_PROVIDER=meta but a missing
+// token, perhaps from a copy-pasted .env that dropped a line) falls back to
+// mock rather than throwing or silently no-op'ing — safe by default, never
+// a surprise send. Not cached: cheap to construct, re-reads env on every
+// call, and stays testable (a cached singleton would freeze whichever
+// provider won the first call for the rest of the process).
+export function getWhatsAppProvider(): WhatsAppProvider {
+  if (process.env.WHATSAPP_PROVIDER === "meta") {
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    if (accessToken && phoneNumberId) {
+      return new MetaWhatsAppProvider(accessToken, phoneNumberId);
+    }
+    console.warn(
+      "WHATSAPP_PROVIDER=meta but WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID are not both set — falling back to the mock provider."
+    );
+  }
+
+  return new MockWhatsAppProvider();
+}
 
 function nextBookableSlot() {
   const slot = new Date();
@@ -98,7 +123,7 @@ export async function sendInvoiceViaWhatsApp(params: {
   const downloadUrl = withFreshDocumentToken(document.fileUrl, "invoice", document.id);
   const body = `Invoice ${invoice.invoiceNumber}\nBalance due: ${invoice.balanceDue}\nDownload: ${downloadUrl}`;
 
-  const result = await provider.sendMessage(params.toPhone, body);
+  const result = await getWhatsAppProvider().sendMessage(params.toPhone, body);
 
   return db.whatsAppMessage.create({
     data: {
@@ -108,6 +133,7 @@ export async function sendInvoiceViaWhatsApp(params: {
       toPhone: params.toPhone,
       rawPayload: { body },
       relatedInvoiceId: params.invoiceId,
+      providerMessageId: result.providerMessageId,
       errorMessage: result.errorMessage,
     },
   });
@@ -138,7 +164,7 @@ export async function sendPrescriptionViaWhatsApp(params: { tenantId: string; pr
   const downloadUrl = withFreshDocumentToken(document.fileUrl, "prescription", document.id);
   const body = `Dr. has prescribed medicines for ${prescription.patient.user.name}.\nDownload: ${downloadUrl}\n\nPlease show this at the pharmacy to collect your medicines.`;
 
-  const result = await provider.sendMessage(toPhone, body);
+  const result = await getWhatsAppProvider().sendMessage(toPhone, body);
 
   return db.whatsAppMessage.create({
     data: {
@@ -148,6 +174,7 @@ export async function sendPrescriptionViaWhatsApp(params: { tenantId: string; pr
       toPhone,
       rawPayload: { body },
       relatedPrescriptionId: params.prescriptionId,
+      providerMessageId: result.providerMessageId,
       errorMessage: result.errorMessage,
     },
   });
@@ -168,7 +195,7 @@ export async function sendLabReportViaWhatsApp(params: {
   const reportUrl = withFreshDocumentToken(report.fileUrl, "lab_report", report.id);
   const body = `Lab report for ${report.labOrder.patient.user.name}\nTests: ${testNames}\nView report: ${reportUrl}`;
 
-  const result = await provider.sendMessage(params.toPhone, body);
+  const result = await getWhatsAppProvider().sendMessage(params.toPhone, body);
 
   return db.whatsAppMessage.create({
     data: {
@@ -178,6 +205,7 @@ export async function sendLabReportViaWhatsApp(params: {
       toPhone: params.toPhone,
       rawPayload: { body },
       relatedLabReportId: params.labReportId,
+      providerMessageId: result.providerMessageId,
       errorMessage: result.errorMessage,
     },
   });
@@ -234,7 +262,7 @@ export async function sendConsultationSummaryViaWhatsApp(params: {
   const downloadUrl = withFreshDocumentToken(document.fileUrl, "consultation_summary", document.id);
   const body = `Consultation summary for ${patient.user.name}\nSeen by Dr. ${doctor.user.name} on ${datetime.toLocaleDateString()}\nDownload: ${downloadUrl}`;
 
-  const result = await provider.sendMessage(toPhone, body);
+  const result = await getWhatsAppProvider().sendMessage(toPhone, body);
 
   return db.whatsAppMessage.create({
     data: {
@@ -244,7 +272,67 @@ export async function sendConsultationSummaryViaWhatsApp(params: {
       toPhone,
       rawPayload: { body },
       relatedVisitRecordId: visitRecord.id,
+      providerMessageId: result.providerMessageId,
       errorMessage: result.errorMessage,
     },
   });
+}
+
+const META_STATUS_MAP: Partial<Record<string, WhatsAppMessageStatus>> = {
+  sent: "SENT",
+  delivered: "DELIVERED",
+  read: "READ",
+  failed: "FAILED",
+};
+
+// Meta's delivery-status webhook shape: entry[].changes[].value.statuses[],
+// each an { id: "wamid...", status: "sent"|"delivered"|"read"|"failed" }.
+// Defensively navigated since a malformed/unexpected payload should be
+// skipped, not crash the webhook route.
+function parseMetaStatusWebhook(payload: unknown): { providerMessageId: string; status: string }[] {
+  const entries = (payload as { entry?: unknown[] })?.entry ?? [];
+  const updates: { providerMessageId: string; status: string }[] = [];
+  for (const entry of entries) {
+    const changes = (entry as { changes?: unknown[] })?.changes ?? [];
+    for (const change of changes) {
+      const statuses = (change as { value?: { statuses?: unknown[] } })?.value?.statuses ?? [];
+      for (const s of statuses) {
+        const id = (s as { id?: string })?.id;
+        const status = (s as { status?: string })?.status;
+        if (id && status) updates.push({ providerMessageId: id, status });
+      }
+    }
+  }
+  return updates;
+}
+
+// Only meaningful once the real Meta provider is in use — the mock never
+// produces a providerMessageId a real webhook could reference, so this is
+// a no-op (0 matches) against mock-sent messages, which is correct.
+export async function handleStatusWebhook(payload: unknown) {
+  const updates = parseMetaStatusWebhook(payload);
+  const applied: { id: string; status: WhatsAppMessageStatus }[] = [];
+
+  for (const update of updates) {
+    const mapped = META_STATUS_MAP[update.status];
+    if (!mapped) continue;
+
+    const message = await db.whatsAppMessage.findUnique({ where: { providerMessageId: update.providerMessageId } });
+    if (!message) continue;
+
+    await db.whatsAppMessage.update({ where: { id: message.id }, data: { status: mapped } });
+    applied.push({ id: message.id, status: mapped });
+
+    if (mapped === "FAILED") {
+      await notify({
+        tenantId: message.tenantId,
+        type: "WHATSAPP_DELIVERY_FAILED",
+        title: "WhatsApp message failed to deliver",
+        body: message.toPhone ? `Delivery to ${message.toPhone} failed.` : "A message failed to deliver.",
+        href: "/admin/inbox",
+      });
+    }
+  }
+
+  return applied;
 }

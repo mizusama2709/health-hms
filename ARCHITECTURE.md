@@ -9,7 +9,7 @@ Multi-tenant SaaS replacing a traditional hospital management system: WhatsApp-d
 - **Multi-tenancy**: shared DB, `tenantId` on every row, scoped queries per tenant (manual — every `lib/` function takes an explicit `tenantId` param, no Prisma middleware/extension)
 - **Auth**: NextAuth v5 (Credentials provider, JWT sessions) — roles: `PATIENT`, `DOCTOR`, `ADMIN_RECEPTION`, `SUPER_ADMIN`, `NURSE`, `RECEPTIONIST`, `LAB`, `PHARMACIST`
 - **Authorization**: `lib/authz.ts` (`requireRole()`) for role gating in Server Actions, alongside `lib/tenant.ts` (`requireTenantId()`) for tenant scoping
-- **WhatsApp**: inbound booking + outbound invoice delivery, built against a `WhatsAppProvider` interface (`lib/whatsapp/provider.ts`) with a mock implementation (`lib/whatsapp/mockProvider.ts`) until real credentials exist
+- **WhatsApp**: inbound booking + outbound document delivery (invoice/prescription/consultation-summary/lab-report), built against a `WhatsAppProvider` interface (`lib/whatsapp/provider.ts`). Two implementations: `MockWhatsAppProvider` (default) and `MetaWhatsAppProvider` (real Cloud API calls), selected by `getWhatsAppProvider()` — set `WHATSAPP_PROVIDER=meta` + `WHATSAPP_ACCESS_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` to go live; falls back to mock if any are missing. **Not yet production-ready as-is**: sends free-text messages, which Meta only accepts within an active 24h customer-service window — every send this app makes is staff/system-initiated and normally outside that window, so it needs Meta-approved message templates wired in before it can carry real patient traffic (see the comment in `lib/whatsapp/metaProvider.ts`). Delivery-status callbacks (sent/delivered/read/failed) land on `api/whatsapp/status`, correlated via `WhatsAppMessage.providerMessageId`; a failed delivery raises a `WHATSAPP_DELIVERY_FAILED` notification.
 - **Reminders**: `runFollowUpReminders` (`lib/followUpReminders.ts`) dispatches whatever staff scheduled via the Reminders page (`FollowUp.reminderScheduled`/`reminderAt`/`reminderMessage`) once `reminderAt` arrives — triggered via a secret-protected route (`api/jobs/follow-up-reminders`, `CRON_SECRET`-gated) on Vercel Cron (`vercel.json`)
 - **Mobile**: deferred — responsive web first
 
@@ -48,7 +48,7 @@ health-hms/
 
 ## Deferred (not v1)
 
-- Real WhatsApp provider (Meta Cloud API or a BSP) — mocked for now behind `WhatsAppProvider`
+- Meta message-template approval + wiring (see the WhatsApp note above) — the provider integration itself is done, this is the remaining step before it can carry real traffic
 - Real payment gateway integration beyond a Razorpay link field (stub billing status only)
 - Native mobile app
 - Compliance work (HIPAA/ABDM-equivalent) — revisit once onboarding real hospitals

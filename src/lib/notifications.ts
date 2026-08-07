@@ -4,7 +4,8 @@ export type NotificationType =
   | "APPOINTMENT_BOOKED"
   | "APPOINTMENT_CANCELLED"
   | "LAB_RESULT_CRITICAL"
-  | "SECURITY_ALERT";
+  | "SECURITY_ALERT"
+  | "WHATSAPP_DELIVERY_FAILED";
 
 // userId omitted/null broadcasts to everyone in the tenant — the audit
 // alerts job (SECURITY_ALERT) is the first real use of that: there's no

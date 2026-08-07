@@ -123,6 +123,8 @@ enum WhatsAppMessageStatus {
   FAILED
   SENT
   SIMULATED
+  DELIVERED
+  READ
 }
 
 enum LabOrderStatus {
@@ -794,6 +796,11 @@ model WhatsAppMessage {
   relatedPrescriptionId String?
   relatedFollowUpId     String?
   relatedVisitRecordId  String?
+  // The provider's own message id (Meta's "wamid...") — nothing internal
+  // ever generates or looks this up except the delivery-status webhook,
+  // which has no other way to say "this is the message you sent a minute
+  // ago" than the id the provider itself returned at send time.
+  providerMessageId     String?               @unique
   errorMessage          String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
