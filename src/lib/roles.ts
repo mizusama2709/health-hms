@@ -12,20 +12,23 @@ export const ROLE_HOME: Record<Role, string> = {
 };
 
 /**
- * Reception only needs the front-desk workflow — patients, booking, queue,
- * inbox. Everything else under /admin (billing internals, pharmacy, lab,
- * reports, staff, settings) is admin/super-admin only. Checked both in the
- * proxy (route access) and the admin nav (what's shown), so hiding a link
- * and blocking the route never drift apart.
+ * Every non-admin /admin-console role is scoped to just the prefixes its
+ * job needs — staff management, org settings, and cross-department billing
+ * stay admin/super-admin only. A role with no entry here (ADMIN_RECEPTION,
+ * SUPER_ADMIN) gets unrestricted access. Checked both in the proxy (route
+ * access) and the admin nav (what's shown), so hiding a link and blocking
+ * the route never drift apart.
  */
-export const RECEPTIONIST_ALLOWED_PREFIXES = [
-  "/admin/patients",
-  "/admin/inbox",
-  "/admin/schedule",
-  "/admin/queue",
-];
+export const ROLE_ALLOWED_PREFIXES: Partial<Record<Role, string[]>> = {
+  RECEPTIONIST: ["/admin/patients", "/admin/inbox", "/admin/schedule", "/admin/queue"],
+  NURSE: ["/admin/patients", "/admin/inbox", "/admin/schedule", "/admin/queue"],
+  LAB: ["/admin/patients", "/admin/lab", "/admin/queue"],
+  PHARMACIST: ["/admin/patients", "/admin/pharmacy", "/admin/queue"],
+};
 
-export function isReceptionistAllowed(pathname: string) {
+export function isAdminRouteAllowed(role: Role, pathname: string): boolean {
+  const prefixes = ROLE_ALLOWED_PREFIXES[role];
+  if (!prefixes) return true;
   if (pathname === "/admin") return true;
-  return RECEPTIONIST_ALLOWED_PREFIXES.some((p) => pathname.startsWith(p));
+  return prefixes.some((p) => pathname.startsWith(p));
 }

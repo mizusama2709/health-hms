@@ -11,8 +11,8 @@ type Service = {
   id: string;
   name: string;
   serviceType: string;
-  defaultUnitPrice: unknown;
-  taxRatePercent: unknown;
+  defaultUnitPrice: number;
+  taxRatePercent: number;
   isActive: boolean;
 };
 

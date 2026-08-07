@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { ROLE_HOME, isReceptionistAllowed } from "@/lib/roles";
+import { ROLE_HOME, isAdminRouteAllowed } from "@/lib/roles";
 import type { Role } from "@prisma/client";
 
 const ADMIN_CONSOLE_ROLES = new Set<Role>([
@@ -32,7 +32,7 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(new URL(ROLE_HOME[role] ?? "/login", req.url));
   }
 
-  if (isAdminRoute && role === "RECEPTIONIST" && !isReceptionistAllowed(pathname)) {
+  if (isAdminRoute && !isAdminRouteAllowed(role, pathname)) {
     return NextResponse.redirect(new URL("/admin", req.url));
   }
 

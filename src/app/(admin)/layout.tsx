@@ -1,7 +1,37 @@
 import { auth } from "@/lib/auth";
 import { getNavBadgeCounts } from "@/lib/navBadges";
 import { getUnreadNotificationCount } from "@/lib/notifications";
-import { RoleShell, type NavSection } from "@/components/layout/role-shell";
+import { isAdminRouteAllowed } from "@/lib/roles";
+import { RoleShell, type NavSection, type NavItem } from "@/components/layout/role-shell";
+import type { Role } from "@prisma/client";
+
+const ROLE_LABELS: Partial<Record<Role, string>> = {
+  RECEPTIONIST: "Reception",
+  NURSE: "Nurse",
+  LAB: "Lab",
+  PHARMACIST: "Pharmacist",
+};
+
+// Prunes any link (or group child) the role's route allowlist wouldn't let
+// it open, so a hidden link and a blocked route never drift apart — a
+// group with no surviving children is dropped entirely, and so is a
+// section left with no items.
+function filterNavSectionsForRole(sections: NavSection[], role: Role): NavSection[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items
+        .map((item): NavItem | null => {
+          if (item.children) {
+            const children = item.children.filter((c) => isAdminRouteAllowed(role, c.href!));
+            return children.length > 0 ? { ...item, children } : null;
+          }
+          return item.href && isAdminRouteAllowed(role, item.href) ? item : null;
+        })
+        .filter((item): item is NavItem => item !== null),
+    }))
+    .filter((section) => section.items.length > 0);
+}
 
 function buildAdminNavSections(badges: { unpricedMedicines: number; pendingLabOrders: number }): NavSection[] {
   return [
@@ -83,19 +113,19 @@ function buildAdminNavSections(badges: { unpricedMedicines: number; pendingLabOr
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  const isReceptionist = session?.user?.role === "RECEPTIONIST";
+  const role = session?.user?.role as Role | undefined;
   const tenantId = session?.user?.tenantId;
   const [badges, unreadNotificationCount] = await Promise.all([
     tenantId ? getNavBadgeCounts(tenantId) : Promise.resolve({ unpricedMedicines: 0, pendingLabOrders: 0 }),
     tenantId && session?.user?.id ? getUnreadNotificationCount(tenantId, session.user.id) : Promise.resolve(0),
   ]);
   const adminNavSections = buildAdminNavSections(badges);
-  const navSections = isReceptionist ? adminNavSections.slice(0, 1) : adminNavSections;
+  const navSections = role ? filterNavSectionsForRole(adminNavSections, role) : adminNavSections;
 
   return (
     <RoleShell
       navSections={navSections}
-      roleLabel={isReceptionist ? "Reception" : "Admin"}
+      roleLabel={(role && ROLE_LABELS[role]) ?? "Admin"}
       userName={session?.user?.name ?? undefined}
       unreadNotificationCount={unreadNotificationCount}
     >
