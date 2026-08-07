@@ -1,21 +1,22 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listPatientsPaged, listDoctorsForFilter, type PatientStatus } from "@/lib/patients";
 import { listLeads } from "@/lib/leads";
 import {
-  createPatientAction,
+  createPatientActionResult,
   createLeadAction,
   importLeadsActionResult,
   updateLeadStatusAction,
   convertLeadAction,
 } from "./actions";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardAction, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
@@ -24,6 +25,8 @@ import { PatientsTabs } from "@/components/patients-tabs";
 import { ActionForm } from "@/components/action-form";
 import { BulkImportField } from "@/components/bulk-import-field";
 import { Avatar } from "@/components/avatar";
+import { Breadcrumb } from "@/components/breadcrumb";
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { LeadStatus } from "@prisma/client";
 
 export const metadata = {
@@ -106,7 +109,10 @@ export default async function PatientsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Patients</h1>
+      <div>
+        <Breadcrumb items={[{ label: "Home", href: "/admin" }, { label: "Patients" }]} />
+        <h1 className="mt-1 text-2xl font-semibold">Patients</h1>
+      </div>
 
       <PatientsTabs tab={tab}>
         <TabsContent value="enquiry" className="flex flex-col gap-6">
@@ -259,39 +265,44 @@ export default async function PatientsPage({
         </TabsContent>
 
         <TabsContent value="patients" className="flex flex-col gap-6">
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>Add patient</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={createPatientAction} className="flex flex-col gap-2">
-            <Label htmlFor="name">Full name</Label>
-            <Input id="name" name="name" required />
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
-            <Label htmlFor="phone">Mobile number</Label>
-            <Input id="phone" name="phone" type="tel" placeholder="+91…" required />
-            <Label htmlFor="password">Temporary password</Label>
-            <Input id="password" name="password" type="password" required />
-            <Label htmlFor="dateOfBirth">Date of birth (optional)</Label>
-            <Input id="dateOfBirth" name="dateOfBirth" type="date" />
-            <Label htmlFor="gender">Gender (optional)</Label>
-            <NativeSelect id="gender" name="gender" defaultValue="">
-              <option value="">— not specified —</option>
-              <option value="MALE">Male</option>
-              <option value="FEMALE">Female</option>
-              <option value="OTHER">Other</option>
-            </NativeSelect>
-            <Button type="submit" className="mt-2 self-start">
-              Add patient
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Directory ({total})</CardTitle>
+          <CardAction>
+            <Sheet>
+              <SheetTrigger className={buttonVariants({ size: "sm" })}>
+                <UserPlus className="size-4" />
+                Add patient
+              </SheetTrigger>
+              <SheetContent side="right" className="overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Add patient</SheetTitle>
+                </SheetHeader>
+                <ActionForm action={createPatientActionResult} className="flex flex-col gap-2 px-4 pb-4">
+                  <Label htmlFor="name">Full name</Label>
+                  <Input id="name" name="name" required />
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" name="email" type="email" required />
+                  <Label htmlFor="phone">Mobile number</Label>
+                  <Input id="phone" name="phone" type="tel" placeholder="+91…" required />
+                  <Label htmlFor="password">Temporary password</Label>
+                  <Input id="password" name="password" type="password" required />
+                  <Label htmlFor="dateOfBirth">Date of birth (optional)</Label>
+                  <Input id="dateOfBirth" name="dateOfBirth" type="date" />
+                  <Label htmlFor="gender">Gender (optional)</Label>
+                  <NativeSelect id="gender" name="gender" defaultValue="">
+                    <option value="">— not specified —</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </NativeSelect>
+                  <Button type="submit" className="mt-2 self-start">
+                    Add patient
+                  </Button>
+                </ActionForm>
+              </SheetContent>
+            </Sheet>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <form method="get" className="flex flex-wrap items-end gap-2">
@@ -362,7 +373,7 @@ export default async function PatientsPage({
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Last consultation</TableHead>
-                    <TableHead>Last logged in</TableHead>
+                    <TableHead>Next appointment</TableHead>
                     <TableHead>Updated</TableHead>
                     <TableHead className="sticky right-0 z-20 bg-card"></TableHead>
                   </TableRow>
@@ -392,7 +403,16 @@ export default async function PatientsPage({
                           "—"
                         )}
                       </TableCell>
-                      <TableCell>{formatDateTime(p.user.lastLoginAt)}</TableCell>
+                      <TableCell>
+                        {p.nextAppointment ? (
+                          <div>
+                            <div>{formatDateTime(p.nextAppointment.datetime)}</div>
+                            <div className="text-xs text-muted-foreground">with Dr. {p.nextAppointment.doctor.user.name}</div>
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                       <TableCell>{formatDate(p.user.updatedAt)}</TableCell>
                       <TableCell className="sticky right-0 bg-card">
                         <div className="flex gap-3">

@@ -34,6 +34,8 @@ export async function createPatientAction(formData: FormData) {
   revalidatePath("/admin/patients");
 }
 
+export const createPatientActionResult = withActionResult(createPatientAction, "Patient added");
+
 export async function updatePatientProfileAction(formData: FormData) {
   await requireRole(...PATIENT_MANAGEMENT_ROLES);
   const tenantId = await requireTenantId();

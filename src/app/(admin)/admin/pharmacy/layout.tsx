@@ -1,4 +1,5 @@
 import { SectionTabs } from "@/components/section-tabs";
+import { Breadcrumb } from "@/components/breadcrumb";
 
 const TABS = [
   { label: "Dashboard", href: "/admin/pharmacy" },
@@ -15,6 +16,7 @@ const TABS = [
 export default function PharmacyLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6">
+      <Breadcrumb items={[{ label: "Home", href: "/admin" }, { label: "Pharmacy" }]} />
       <SectionTabs tabs={TABS} />
       {children}
     </div>
