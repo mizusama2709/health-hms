@@ -10,7 +10,7 @@ Multi-tenant SaaS replacing a traditional hospital management system: WhatsApp-d
 - **Auth**: NextAuth v5 (Credentials provider, JWT sessions) — roles: `PATIENT`, `DOCTOR`, `ADMIN_RECEPTION`, `SUPER_ADMIN`, `NURSE`, `RECEPTIONIST`, `LAB`, `PHARMACIST`
 - **Authorization**: `lib/authz.ts` (`requireRole()`) for role gating in Server Actions, alongside `lib/tenant.ts` (`requireTenantId()`) for tenant scoping
 - **WhatsApp**: inbound booking + outbound invoice delivery, built against a `WhatsAppProvider` interface (`lib/whatsapp/provider.ts`) with a mock implementation (`lib/whatsapp/mockProvider.ts`) until real credentials exist
-- **Reminders**: scheduled job for follow-up/appointment notifications (not yet built)
+- **Reminders**: `runFollowUpReminders` (`lib/followUpReminders.ts`) dispatches whatever staff scheduled via the Reminders page (`FollowUp.reminderScheduled`/`reminderAt`/`reminderMessage`) once `reminderAt` arrives — triggered via a secret-protected route (`api/jobs/follow-up-reminders`, `CRON_SECRET`-gated) on Vercel Cron (`vercel.json`)
 - **Mobile**: deferred — responsive web first
 
 ## Data Model
@@ -39,9 +39,10 @@ health-hms/
       appointments.ts billing.ts reports.ts staff.ts
       organization.ts hospitalSettings.ts knowledgeBase.ts
       whatsapp/ provider.ts mockProvider.ts
-      whatsapp.ts
+      whatsapp.ts followUpReminders.ts cronAuth.ts
+    app/api/jobs/follow-up-reminders/route.ts
   prisma/schema.prisma
-  jobs/follow-up-reminders.ts
+  vercel.json
   ARCHITECTURE.md
 ```
 

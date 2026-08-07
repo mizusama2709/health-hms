@@ -392,6 +392,11 @@ model FollowUp {
   reminderScheduled Boolean        @default(false)
   reminderAt        DateTime?
   reminderMessage   String?
+  // Set once the reminder job has dispatched (or terminally failed to
+  // dispatch, e.g. no phone on file) — distinct from reminderScheduled,
+  // which only records staff intent. Null + reminderScheduled + due
+  // reminderAt is exactly the job's "still needs sending" query.
+  reminderSentAt    DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -400,6 +405,7 @@ model FollowUp {
 
   @@index([tenantId, status])
   @@index([tenantId, dueDate])
+  @@index([tenantId, reminderScheduled, reminderSentAt, reminderAt])
 }
 
 model FollowUpCallLog {
@@ -781,6 +787,7 @@ model WhatsAppMessage {
   relatedInvoiceId      String?
   relatedLabReportId    String?
   relatedPrescriptionId String?
+  relatedFollowUpId     String?
   errorMessage          String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
