@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
+import { notify } from "@/lib/notifications";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { LabOrderStatus, LabResultFlag } from "@prisma/client";
 
@@ -201,7 +202,12 @@ export async function recordLabResult(
 ) {
   const item = await db.labOrderItem.findFirstOrThrow({
     where: { id: labOrderItemId, labOrder: { tenantId } },
-    include: { labTest: { include: { parameters: true } } },
+    include: {
+      labTest: { include: { parameters: true } },
+      labOrder: {
+        select: { orderedById: true, patientId: true, patient: { select: { user: { select: { name: true } } } } },
+      },
+    },
   });
 
   // Auto-flagging only makes sense when the test has exactly one parameter —
@@ -235,10 +241,27 @@ export async function recordLabResult(
     flagIsManual = params.flag !== undefined;
   }
 
-  return db.labOrderItem.updateMany({
+  const result = await db.labOrderItem.updateMany({
     where: { id: labOrderItemId, labOrder: { tenantId } },
     data: { resultValue: params.resultValue, resultUnit: params.resultUnit, referenceRange, flag, flagIsManual },
   });
+
+  // Only fires on the transition into CRITICAL, not every re-save of an
+  // already-critical result — otherwise editing an unrelated field on the
+  // same item would re-notify for no reason.
+  if (flag === "CRITICAL" && item.flag !== "CRITICAL") {
+    const orderer = await db.user.findUnique({ where: { id: item.labOrder.orderedById }, select: { role: true } });
+    await notify({
+      tenantId,
+      userId: item.labOrder.orderedById,
+      type: "LAB_RESULT_CRITICAL",
+      title: "Critical lab result",
+      body: `${item.labOrder.patient.user.name} — ${item.labTest.name}${params.resultValue ? `: ${params.resultValue}${params.resultUnit ?? ""}` : ""}`,
+      href: orderer?.role === "DOCTOR" ? "/doctor/schedule/appointments" : `/admin/patients/${item.labOrder.patientId}`,
+    });
+  }
+
+  return result;
 }
 
 export async function approveLabOrder(tenantId: string, labOrderId: string, approvedById: string) {

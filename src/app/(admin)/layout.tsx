@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { getNavBadgeCounts } from "@/lib/navBadges";
+import { getUnreadNotificationCount } from "@/lib/notifications";
 import { RoleShell, type NavSection } from "@/components/layout/role-shell";
 
 function buildAdminNavSections(badges: { unpricedMedicines: number; pendingLabOrders: number }): NavSection[] {
@@ -83,9 +84,11 @@ function buildAdminNavSections(badges: { unpricedMedicines: number; pendingLabOr
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const isReceptionist = session?.user?.role === "RECEPTIONIST";
-  const badges = session?.user?.tenantId
-    ? await getNavBadgeCounts(session.user.tenantId)
-    : { unpricedMedicines: 0, pendingLabOrders: 0 };
+  const tenantId = session?.user?.tenantId;
+  const [badges, unreadNotificationCount] = await Promise.all([
+    tenantId ? getNavBadgeCounts(tenantId) : Promise.resolve({ unpricedMedicines: 0, pendingLabOrders: 0 }),
+    tenantId && session?.user?.id ? getUnreadNotificationCount(tenantId, session.user.id) : Promise.resolve(0),
+  ]);
   const adminNavSections = buildAdminNavSections(badges);
   const navSections = isReceptionist ? adminNavSections.slice(0, 1) : adminNavSections;
 
@@ -94,6 +97,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       navSections={navSections}
       roleLabel={isReceptionist ? "Reception" : "Admin"}
       userName={session?.user?.name ?? undefined}
+      unreadNotificationCount={unreadNotificationCount}
     >
       {children}
     </RoleShell>

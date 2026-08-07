@@ -250,6 +250,24 @@ model AuditLog {
   @@index([tenantId, entityType, entityId])
 }
 
+// userId null = tenant-wide broadcast (visible to everyone in the tenant);
+// set = targeted at one user. A single model covers both without needing
+// per-role fan-out at write time — visibility is just "mine or nobody's".
+model Notification {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String?
+  type      String // e.g. "APPOINTMENT_BOOKED", "APPOINTMENT_CANCELLED", "LAB_RESULT_CRITICAL"
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, readAt])
+}
+
 model User {
   id           String     @id @default(cuid())
   email        String     @unique
