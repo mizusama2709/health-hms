@@ -21,6 +21,7 @@ export async function createStaff(formData: FormData) {
     role: formData.get("role") as Role,
     password: formData.get("password") as string,
     actingRole: session.user.role as Role,
+    actor: { userId: session.user.id, userEmail: session.user.email },
   });
 
   revalidatePath("/admin/staff");
@@ -34,7 +35,10 @@ export async function changeStaffRole(formData: FormData) {
 
   const userId = formData.get("userId") as string;
   const role = formData.get("role") as Role;
-  await updateStaffRole(tenantId, userId, role, session.user.role as Role);
+  await updateStaffRole(tenantId, userId, role, session.user.role as Role, {
+    userId: session.user.id,
+    userEmail: session.user.email,
+  });
 
   revalidatePath("/admin/staff");
 }
@@ -42,12 +46,12 @@ export async function changeStaffRole(formData: FormData) {
 export const changeStaffRoleActionResult = withActionResult(changeStaffRole, "Role updated");
 
 export async function changeStaffStatus(formData: FormData) {
-  await requireRole(...STAFF_ADMIN_ROLES);
+  const session = await requireRole(...STAFF_ADMIN_ROLES);
   const tenantId = await requireTenantId();
 
   const userId = formData.get("userId") as string;
   const status = formData.get("status") as UserStatus;
-  await updateStaffStatus(tenantId, userId, status);
+  await updateStaffStatus(tenantId, userId, status, { userId: session.user.id, userEmail: session.user.email });
 
   revalidatePath("/admin/staff");
 }

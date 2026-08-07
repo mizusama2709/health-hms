@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import type { FollowUpNextAction, FollowUpOutcome, FollowUpStatus } from "@prisma/client";
-import { decryptPHIMaybe } from "@/lib/phiCrypto";
+import { encryptPHI, decryptPHIMaybe } from "@/lib/phiCrypto";
 
 export async function createFollowUp(params: {
   tenantId: string;
@@ -16,7 +16,7 @@ export async function createFollowUp(params: {
       tenantId: params.tenantId,
       appointmentId: params.appointmentId,
       dueDate: params.dueDate,
-      focusInstructions: params.focusInstructions,
+      focusInstructions: encryptPHI(params.focusInstructions),
       prescribedById: params.prescribedById,
     },
   });
@@ -62,6 +62,10 @@ export async function listFollowUps(tenantId: string, filters?: { status?: Follo
       vr.notes = decryptPHIMaybe(vr.notes) ?? vr.notes;
       vr.diagnosis = decryptPHIMaybe(vr.diagnosis);
       vr.prescription = decryptPHIMaybe(vr.prescription);
+    }
+    f.focusInstructions = decryptPHIMaybe(f.focusInstructions) ?? f.focusInstructions;
+    for (const log of f.callLogs) {
+      log.notes = decryptPHIMaybe(log.notes) ?? log.notes;
     }
   }
 
@@ -110,7 +114,7 @@ export async function logFollowUpCall(params: {
         followUpId: params.followUpId,
         calledById: params.calledById,
         outcome: params.outcome,
-        notes: params.notes,
+        notes: encryptPHI(params.notes),
         nextAction: params.nextAction,
         nextFollowUpAt: params.nextFollowUpAt,
       },

@@ -6,7 +6,13 @@ import { isLoginRateLimited, recordFailedLoginAttempt, clearLoginAttempts } from
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
-  session: { strategy: "jwt" },
+  // JWT strategy ties session validity to maxAge from the last refresh, and
+  // updateAge controls how often an active user's token gets re-issued — so
+  // maxAge here is effectively the idle-logout window (30 min, typical for
+  // a PHI-handling app), while updateAge (5 min) keeps a continuously-active
+  // session rolling forward without re-prompting for credentials every 30
+  // minutes of real use.
+  session: { strategy: "jwt", maxAge: 30 * 60, updateAge: 5 * 60 },
   providers: [
     Credentials({
       credentials: {

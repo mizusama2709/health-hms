@@ -1,11 +1,15 @@
 import { db } from "@/lib/db";
 
-export type NotificationType = "APPOINTMENT_BOOKED" | "APPOINTMENT_CANCELLED" | "LAB_RESULT_CRITICAL";
+export type NotificationType =
+  | "APPOINTMENT_BOOKED"
+  | "APPOINTMENT_CANCELLED"
+  | "LAB_RESULT_CRITICAL"
+  | "SECURITY_ALERT";
 
-// userId omitted/null broadcasts to everyone in the tenant — no event uses
-// that yet (all three below target a specific doctor), but visibility only
-// needs "mine or nobody's" so the schema supports it without a migration
-// later.
+// userId omitted/null broadcasts to everyone in the tenant — the audit
+// alerts job (SECURITY_ALERT) is the first real use of that: there's no
+// single target user for "someone granted SUPER_ADMIN", the whole tenant's
+// admin console should see it.
 export async function notify(params: {
   tenantId: string;
   userId?: string | null;

@@ -245,9 +245,14 @@ model AuditLog {
   entityId   String?
   meta       Json?
   createdAt  DateTime @default(now())
+  // Set once the audit-alerts job has surfaced this row as a Notification —
+  // same dedupe pattern as FollowUp.reminderSentAt, so a discrete
+  // alert-worthy event (e.g. a SUPER_ADMIN grant) is never re-notified.
+  alertedAt  DateTime?
 
   @@index([tenantId, createdAt])
   @@index([tenantId, entityType, entityId])
+  @@index([action, alertedAt])
 }
 
 // userId null = tenant-wide broadcast (visible to everyone in the tenant);

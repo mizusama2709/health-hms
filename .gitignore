@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env
+
+# database backups — contain PHI, never commit
+backups/

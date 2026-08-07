@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { requireTenantId } from "@/lib/tenant";
 import { getInvoiceWithBalance } from "@/lib/billing";
+import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { recordInvoicePayment, refundInvoicePaymentActionResult } from "../../actions";
 import { PrintButton } from "@/components/print-button";
@@ -29,6 +31,16 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   if (!invoice) notFound();
 
   const patient = await db.patient.findUnique({ where: { id: invoice.patientId }, include: { user: true } });
+
+  const session = await auth();
+  await logAudit({
+    tenantId,
+    userId: session?.user?.id,
+    userEmail: session?.user?.email,
+    action: "INVOICE_VIEW",
+    entityType: "Invoice",
+    entityId: invoice.id,
+  });
 
   return (
     <div className="flex flex-col gap-6">

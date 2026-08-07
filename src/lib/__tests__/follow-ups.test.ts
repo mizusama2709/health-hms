@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import { db } from "@/lib/db";
 import { createFollowUp, logFollowUpCall, cancelFollowUp, listFollowUps } from "@/lib/followUps";
+import { decryptPHI } from "@/lib/phiCrypto";
 
 // Regression tests for the doctor-prescribed follow-up feature: a FollowUp
 // is now only ever created explicitly (never auto-created on visit
@@ -53,7 +54,10 @@ describe("createFollowUp", () => {
     const { followUp } = await makeAppointmentWithFollowUp(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
 
     expect(followUp.status).toBe("PENDING");
-    expect(followUp.focusInstructions).toBe("Ask if the fever has subsided");
+    // createFollowUp returns the raw row — focusInstructions is PHI and
+    // stored encrypted; decryption only happens on the listFollowUps read
+    // path (covered separately below), so assert via decryptPHI here.
+    expect(decryptPHI(followUp.focusInstructions)).toBe("Ask if the fever has subsided");
     expect(followUp.prescribedById).toBe(staffUserId);
   });
 });
@@ -67,6 +71,27 @@ describe("listFollowUps", () => {
     const match = pending.find((f) => f.id === followUp.id);
 
     expect(match?.isOverdue).toBe(true);
+  });
+
+  it("stores focusInstructions and call-log notes encrypted, and decrypts them on read", async () => {
+    const { followUp } = await makeAppointmentWithFollowUp(new Date());
+    await logFollowUpCall({
+      tenantId,
+      followUpId: followUp.id,
+      calledById: staffUserId,
+      outcome: "NO_CHANGE",
+      notes: "Patient reports feeling better",
+      nextAction: "NONE",
+    });
+
+    const raw = await db.followUp.findUniqueOrThrow({ where: { id: followUp.id }, include: { callLogs: true } });
+    expect(raw.focusInstructions.startsWith("enc:v1:")).toBe(true);
+    expect(raw.callLogs[0].notes.startsWith("enc:v1:")).toBe(true);
+
+    const list = await listFollowUps(tenantId);
+    const match = list.find((f) => f.id === followUp.id)!;
+    expect(match.focusInstructions).toBe("Ask if the fever has subsided");
+    expect(match.callLogs[0].notes).toBe("Patient reports feeling better");
   });
 });
 
