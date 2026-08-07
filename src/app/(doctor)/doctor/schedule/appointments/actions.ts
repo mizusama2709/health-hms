@@ -7,6 +7,7 @@ import { cancelAppointment, updateAppointmentFee, updateAppointmentTiming, getAp
 import { createInvoice } from "@/lib/billing";
 import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
 import { withActionResult } from "@/lib/actionResult";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 async function requireDoctorContext() {
   const session = await auth();
@@ -68,6 +69,6 @@ export async function sendReceiptAction(appointmentId: string) {
     invoiceId = invoice.id;
   }
 
-  await sendInvoiceViaWhatsApp({ tenantId, invoiceId, toPhone: phone });
+  await sendInvoiceViaWhatsApp({ tenantId, invoiceId, toPhone: phone, baseUrl: await getBaseUrl() });
   revalidatePath("/doctor/schedule/appointments");
 }

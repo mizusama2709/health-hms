@@ -9,11 +9,12 @@ import { createFollowUp } from "@/lib/followUps";
 import { createLabOrder, linkLabOrdersToFollowUp } from "@/lib/lab";
 import { createImagingOrder } from "@/lib/imaging";
 import { createPrescription, searchMedicines } from "@/lib/pharmacy";
-import { sendPrescriptionViaWhatsApp } from "@/lib/whatsapp";
+import { sendPrescriptionViaWhatsApp, sendConsultationSummaryViaWhatsApp } from "@/lib/whatsapp";
 import { withActionResult } from "@/lib/actionResult";
 import { db } from "@/lib/db";
 import { encryptPHI } from "@/lib/phiCrypto";
 import { logAudit } from "@/lib/audit";
+import { getBaseUrl } from "@/lib/baseUrl";
 import { AppointmentStatus, JourneyStep, DoseTime, DurationUnit, ImagingModality } from "@prisma/client";
 
 const MAX_PRESCRIPTION_ROWS = 50;
@@ -109,6 +110,11 @@ export async function completeVisitAction(formData: FormData) {
     recordedById: session.user.id,
   });
 
+  // Mirrors prescribeMedicines' automatic send below — the patient's only
+  // touchpoint with the visit is this WhatsApp message, so it fires the
+  // moment the visit record exists rather than needing a separate action.
+  await sendConsultationSummaryViaWhatsApp({ tenantId, appointmentId, baseUrl: await getBaseUrl() });
+
   if (followUpNeeded) {
     if (!followUpDueDate) throw new Error("Choose a due date for the follow-up call");
     if (!followUpInstructions.trim()) throw new Error("Write what the nurse should check on the follow-up call");
@@ -172,7 +178,7 @@ export async function prescribeMedicines(formData: FormData) {
     items,
   });
 
-  await sendPrescriptionViaWhatsApp({ tenantId, prescriptionId: prescription.id });
+  await sendPrescriptionViaWhatsApp({ tenantId, prescriptionId: prescription.id, baseUrl: await getBaseUrl() });
 
   revalidatePath("/doctor");
 }

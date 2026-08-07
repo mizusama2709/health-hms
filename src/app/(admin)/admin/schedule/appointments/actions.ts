@@ -12,6 +12,7 @@ import {
 import { createInvoice } from "@/lib/billing";
 import { sendInvoiceViaWhatsApp } from "@/lib/whatsapp";
 import { withActionResult } from "@/lib/actionResult";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 export async function cancelAppointmentAction(formData: FormData) {
   const tenantId = await requireTenantId();
@@ -72,6 +73,6 @@ export async function sendReceiptAction(appointmentId: string) {
     invoiceId = invoice.id;
   }
 
-  await sendInvoiceViaWhatsApp({ tenantId, invoiceId, toPhone: phone });
+  await sendInvoiceViaWhatsApp({ tenantId, invoiceId, toPhone: phone, baseUrl: await getBaseUrl() });
   revalidatePath("/admin/schedule/appointments");
 }

@@ -8,7 +8,7 @@ import { getPatientWithHistory, computeAge } from "@/lib/patients";
 import { getPatientEfficacyReport } from "@/lib/reports";
 import { listLabOrders } from "@/lib/lab";
 import { listImagingOrders } from "@/lib/imaging";
-import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
+import { withFreshDocumentToken } from "@/lib/documentUrlSigning";
 import { updatePatientProfileActionResult } from "../actions";
 import { ActionForm } from "@/components/action-form";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -252,7 +252,7 @@ export default async function PatientChartPage({ params }: { params: Promise<{ i
                             {order.reports.map((r) => (
                               <a
                                 key={r.id}
-                                href={withFreshLabReportToken(r.fileUrl, r.id)}
+                                href={withFreshDocumentToken(r.fileUrl, "lab_report", r.id)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="font-medium text-primary hover:underline"

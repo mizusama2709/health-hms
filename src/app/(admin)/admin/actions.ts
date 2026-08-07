@@ -11,6 +11,7 @@ import { searchPatients } from "@/lib/patients";
 import { db } from "@/lib/db";
 import { withActionResult } from "@/lib/actionResult";
 import { isUniqueConstraintViolation } from "@/lib/prismaErrors";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 async function requireAdmin() {
   const session = await auth();
@@ -100,7 +101,7 @@ export async function sendInvoiceWhatsApp(formData: FormData) {
   const invoiceId = formData.get("invoiceId") as string;
   const toPhone = formData.get("toPhone") as string;
 
-  await sendInvoiceViaWhatsApp({ tenantId, invoiceId, toPhone });
+  await sendInvoiceViaWhatsApp({ tenantId, invoiceId, toPhone, baseUrl: await getBaseUrl() });
 
   revalidatePath("/admin");
 }

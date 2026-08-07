@@ -2,7 +2,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { BarChart3 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { listLabOrders, listLatestWhatsAppStatusForLabReports } from "@/lib/lab";
-import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
+import { withFreshDocumentToken } from "@/lib/documentUrlSigning";
 import { sendLabReportWhatsAppAction } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,7 @@ export default async function LabReportsPage() {
                 <div key={r.id} className="flex flex-col gap-2 rounded-md border p-2 text-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <a
-                      href={withFreshLabReportToken(r.fileUrl, r.id)}
+                      href={withFreshDocumentToken(r.fileUrl, "lab_report", r.id)}
                       target="_blank"
                       rel="noreferrer"
                       className="font-medium text-primary hover:underline"
