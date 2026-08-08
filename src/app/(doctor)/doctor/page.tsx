@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserX, CalendarX2, CalendarDays, CheckCircle2, Hourglass, Ban } from "lucide-react";
+import { UserX, CalendarX2, CalendarDays, CheckCircle2, Hourglass, Ban, FileWarning } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { StatTile } from "@/components/stat-tile";
 import { auth } from "@/lib/auth";
@@ -128,7 +128,15 @@ export default async function DoctorHome({
                       <span className="font-medium">{appt.patient.user.name}</span>
                       <span className="text-sm text-muted-foreground"> — {new Date(appt.datetime).toLocaleString()}</span>
                     </div>
-                    <StatusBadge status={appt.status} type="appointment" />
+                    <div className="flex items-center gap-2">
+                      {appt.status === "COMPLETED" && !appt.visitRecord?.diagnosis && (
+                        <Badge variant="outline" className="gap-1 border-amber-300 text-amber-700 dark:border-amber-900 dark:text-amber-400">
+                          <FileWarning className="size-3" />
+                          No diagnosis recorded
+                        </Badge>
+                      )}
+                      <StatusBadge status={appt.status} type="appointment" />
+                    </div>
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground">Type: {appt.type}</div>
                   {recentLabs && (

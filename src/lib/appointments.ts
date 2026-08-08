@@ -29,7 +29,7 @@ export async function listAppointmentsForDoctor(
 
   return db.appointment.findMany({
     where: { doctorId, tenantId, ...(datetimeWhere && { datetime: datetimeWhere }) },
-    include: { patient: { include: { user: true } } },
+    include: { patient: { include: { user: true } }, visitRecord: true },
     orderBy: { datetime: "asc" },
   });
 }
