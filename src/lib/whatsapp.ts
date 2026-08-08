@@ -3,10 +3,15 @@ import { getInvoiceWithBalance } from "@/lib/billing";
 import { createAppointment } from "@/lib/appointments";
 import { recordJourneyEvent } from "@/lib/journey";
 import { MockWhatsAppProvider } from "@/lib/whatsapp/mockProvider";
+import { MetaCloudWhatsAppProvider } from "@/lib/whatsapp/metaCloudProvider";
 import type { WhatsAppProvider } from "@/lib/whatsapp/provider";
 import { withFreshLabReportToken } from "@/lib/labReportUrlSigning";
+import { generateAIReply } from "@/lib/openrouter";
 
-const provider: WhatsAppProvider = new MockWhatsAppProvider();
+const provider: WhatsAppProvider =
+  process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID
+    ? new MetaCloudWhatsAppProvider()
+    : new MockWhatsAppProvider();
 
 function nextBookableSlot() {
   const slot = new Date();
@@ -34,7 +39,10 @@ export async function handleInboundWebhook(params: {
     },
   });
 
-  if (parsedIntent !== "BOOK_APPOINTMENT") return message;
+  if (parsedIntent !== "BOOK_APPOINTMENT") {
+    await replyWithAI(params.tenantId, params.fromPhone, params.messageText);
+    return message;
+  }
 
   const patientUser = await db.user.findFirst({
     where: { tenantId: params.tenantId, phone: params.fromPhone, role: "PATIENT" },
@@ -73,6 +81,41 @@ export async function handleInboundWebhook(params: {
   return db.whatsAppMessage.update({
     where: { id: message.id },
     data: { status: "PROCESSED", relatedAppointmentId: appointment.id },
+  });
+}
+
+// AI triage for anything that isn't a recognized hard-coded intent. Q&A only —
+// it never books, cancels, or writes to a record; that stays on the keyword path above.
+async function replyWithAI(tenantId: string, fromPhone: string, messageText: string) {
+  const patientUser = await db.user.findFirst({
+    where: { tenantId, phone: fromPhone, role: "PATIENT" },
+    include: {
+      patient: {
+        include: {
+          appointments: { where: { datetime: { gte: new Date() } }, orderBy: { datetime: "asc" }, take: 1 },
+        },
+      },
+    },
+  });
+
+  const upcoming = patientUser?.patient?.appointments[0];
+  const replyText = await generateAIReply({
+    patientMessage: messageText,
+    patientName: patientUser?.name,
+    upcomingAppointment: upcoming ? upcoming.datetime.toLocaleString() : null,
+  });
+  if (!replyText) return; // no API key configured yet, or the call failed — stay silent rather than send a broken reply
+
+  const result = await provider.sendMessage(fromPhone, replyText);
+  await db.whatsAppMessage.create({
+    data: {
+      tenantId,
+      direction: "OUTBOUND",
+      status: result.status === "SENT" ? "SENT" : result.status === "SIMULATED" ? "SIMULATED" : "FAILED",
+      toPhone: fromPhone,
+      rawPayload: { body: replyText },
+      errorMessage: result.errorMessage,
+    },
   });
 }
 
