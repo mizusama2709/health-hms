@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/health_hms_ci"
+  AUTH_SECRET: "ci-only-secret-never-used-outside-this-workflow"
+  WHATSAPP_WEBHOOK_SECRET: "ci-only-webhook-secret"
+  CRON_SECRET: "ci-only-cron-secret"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: health_hms_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed demo data
+        run: npm run db:seed
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      # Regression coverage for the InvoiceCounter test-isolation bug found
+      # in production (see commit e6599f6): a shared, tenant-wide sequence
+      # reset between tests, not per-test state — the tests themselves
+      # already clean up correctly, this is a CI-specific safety net so a
+      # future reintroduction of that pattern fails fast here instead of
+      # surfacing as flaky "Unique constraint failed" errors down the line.
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build

@@ -153,9 +153,17 @@ export async function listPatients(
     orderBy: { user: { updatedAt: filters?.sort === "oldest" ? "asc" : "desc" } },
   });
 
+  const now = new Date();
+
   const withDerived = patients.map((p) => {
     const latestAppointment = p.appointments[0];
     const lastConsultation = p.appointments.find((a) => a.status === "COMPLETED") ?? null;
+    // Appointments come back newest-first, so the soonest upcoming booking
+    // isn't just the first BOOKED match — sort the future ones ascending.
+    const nextAppointment =
+      p.appointments
+        .filter((a) => a.status === "BOOKED" && a.datetime >= now)
+        .sort((a, b) => a.datetime.getTime() - b.datetime.getTime())[0] ?? null;
     const pendingInvoice = p.invoices.find((i) => i.status === "UNPAID" || i.status === "PARTIALLY_PAID");
     const paidInvoice = p.invoices.find((i) => i.status === "PAID");
     const pendingFollowUp = p.appointments.find((a) => a.followUp && a.followUp.status === "PENDING");
@@ -171,6 +179,7 @@ export async function listPatients(
       displayId: patientDisplayId(p.id),
       status,
       lastConsultation,
+      nextAppointment,
       latestAppointment,
     };
   });

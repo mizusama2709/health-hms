@@ -1,5 +1,11 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
+import { encryptPHI, decryptPHIMaybe } from "@/lib/phiCrypto";
+
+// glucose/weight are Decimal columns — encrypting them would need a
+// String type change touching every calculation that reads them
+// (trend charts, etc.), scoped separately rather than folded in here.
+// See COMPLIANCE.md.
 
 export async function recordVitals(params: {
   tenantId: string;
@@ -16,7 +22,7 @@ export async function recordVitals(params: {
       tenantId: params.tenantId,
       patientId: params.patientId,
       appointmentId: params.appointmentId,
-      bp: params.bp,
+      bp: params.bp ? encryptPHI(params.bp) : params.bp,
       glucose: params.glucose,
       weight: params.weight,
       spo2: params.spo2,
@@ -38,8 +44,14 @@ export async function recordVitals(params: {
 }
 
 export async function listVitalsForPatient(patientId: string, tenantId: string) {
-  return db.vitals.findMany({
+  const vitals = await db.vitals.findMany({
     where: { patientId, tenantId },
     orderBy: { recordedAt: "desc" },
   });
+
+  for (const v of vitals) {
+    v.bp = decryptPHIMaybe(v.bp);
+  }
+
+  return vitals;
 }

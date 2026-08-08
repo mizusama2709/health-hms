@@ -123,6 +123,8 @@ enum WhatsAppMessageStatus {
   FAILED
   SENT
   SIMULATED
+  DELIVERED
+  READ
 }
 
 enum LabOrderStatus {
@@ -235,6 +237,21 @@ model Tenant {
   imagingOrders       ImagingOrder[]
 }
 
+// Append-only, deliberately not per-tenant (login happens before a tenant
+// is known) — a shared, multi-instance-safe replacement for the in-memory
+// Map loginRateLimit.ts used to use, which reset on every deploy/restart
+// and wasn't shared across server instances. Old rows are harmless (the
+// rate-limit query filters by window) but accumulate for accounts that
+// are only ever attacked and never log in successfully — a periodic
+// prune is a reasonable follow-up, not required for correctness.
+model LoginAttempt {
+  id          String   @id @default(cuid())
+  email       String
+  attemptedAt DateTime @default(now())
+
+  @@index([email, attemptedAt])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   tenantId   String
@@ -245,9 +262,32 @@ model AuditLog {
   entityId   String?
   meta       Json?
   createdAt  DateTime @default(now())
+  // Set once the audit-alerts job has surfaced this row as a Notification —
+  // same dedupe pattern as FollowUp.reminderSentAt, so a discrete
+  // alert-worthy event (e.g. a SUPER_ADMIN grant) is never re-notified.
+  alertedAt  DateTime?
 
   @@index([tenantId, createdAt])
   @@index([tenantId, entityType, entityId])
+  @@index([action, alertedAt])
+}
+
+// userId null = tenant-wide broadcast (visible to everyone in the tenant);
+// set = targeted at one user. A single model covers both without needing
+// per-role fan-out at write time — visibility is just "mine or nobody's".
+model Notification {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String?
+  type      String // e.g. "APPOINTMENT_BOOKED", "APPOINTMENT_CANCELLED", "LAB_RESULT_CRITICAL"
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, readAt])
 }
 
 model User {
@@ -295,6 +335,14 @@ model Patient {
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
   dateOfBirth DateTime?
   gender      Gender?
+
+  // ABDM (Ayushman Bharat Digital Mission) groundwork — not an integration,
+  // just the two identifiers ABDM's Health ID system is built around, so a
+  // patient's ABHA can be recorded once linked without a schema change
+  // blocking that later. See ABDM_FHIR.md for what "integration" would
+  // actually require beyond these two columns.
+  abhaNumber  String?   @unique // 14-digit ABHA Number, e.g. "12-3456-7890-1234"
+  abhaAddress String?   @unique // self-chosen ABHA Address, e.g. "ravikumar@abdm"
 
   appointments  Appointment[]
   invoices      Invoice[]
@@ -374,6 +422,11 @@ model FollowUp {
   reminderScheduled Boolean        @default(false)
   reminderAt        DateTime?
   reminderMessage   String?
+  // Set once the reminder job has dispatched (or terminally failed to
+  // dispatch, e.g. no phone on file) — distinct from reminderScheduled,
+  // which only records staff intent. Null + reminderScheduled + due
+  // reminderAt is exactly the job's "still needs sending" query.
+  reminderSentAt    DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -382,6 +435,7 @@ model FollowUp {
 
   @@index([tenantId, status])
   @@index([tenantId, dueDate])
+  @@index([tenantId, reminderScheduled, reminderSentAt, reminderAt])
 }
 
 model FollowUpCallLog {
@@ -763,6 +817,13 @@ model WhatsAppMessage {
   relatedInvoiceId      String?
   relatedLabReportId    String?
   relatedPrescriptionId String?
+  relatedFollowUpId     String?
+  relatedVisitRecordId  String?
+  // The provider's own message id (Meta's "wamid...") — nothing internal
+  // ever generates or looks this up except the delivery-status webhook,
+  // which has no other way to say "this is the message you sent a minute
+  // ago" than the id the provider itself returned at send time.
+  providerMessageId     String?               @unique
   errorMessage          String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -956,6 +1017,30 @@ model LabReportTemplate {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+// Covers the three patient-facing PDF types that don't have their own
+// dedicated table the way LabReport does (invoice, prescription,
+// consultation summary). One row per generation rather than updating in
+// place — a document is regenerated fresh every time it's sent (an
+// invoice's amountPaid/status can change between sends), so each send's
+// download link points at an immutable point-in-time snapshot instead of
+// live data that could drift after the link was already texted out.
+model GeneratedDocument {
+  id             String   @id @default(cuid())
+  tenantId       String
+  type           String // "invoice" | "prescription" | "consultation_summary"
+  invoiceId      String?
+  prescriptionId String?
+  visitRecordId  String?
+  fileUrl        String
+  pdfData        Bytes
+  generatedAt    DateTime @default(now())
+
+  @@index([tenantId, type])
+  @@index([type, invoiceId])
+  @@index([type, prescriptionId])
+  @@index([type, visitRecordId])
 }
 
 model Medicine {

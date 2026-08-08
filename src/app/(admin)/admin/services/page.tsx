@@ -71,7 +71,11 @@ export default async function ServicesPage({
           ) : (
             <>
               <ServicesTable
-                services={services}
+                services={services.map((s) => ({
+                  ...s,
+                  defaultUnitPrice: Number(s.defaultUnitPrice),
+                  taxRatePercent: Number(s.taxRatePercent),
+                }))}
                 toggleAction={toggleServiceActiveActionResult}
                 bulkAction={bulkSetServicesActiveActionResult}
               />

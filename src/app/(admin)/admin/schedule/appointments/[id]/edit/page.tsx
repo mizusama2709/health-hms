@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { getAppointmentDetailed } from "@/lib/appointments";
 import { editAppointmentActionResult } from "../../actions";
+import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,9 +29,7 @@ export default async function EditAppointmentPage({ params }: { params: Promise<
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/schedule/appointments" className="text-sm font-medium text-primary hover:underline">
-          ← Back to appointments
-        </Link>
+        <BackLink href="/admin/schedule/appointments" label="appointments" />
         <h1 className="mt-2 text-2xl font-semibold">Edit appointment</h1>
         <p className="text-sm text-muted-foreground">{appointment.patient.user.name}</p>
       </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { db } from "@/lib/db";
 import { createLabOrder, recordLabResult } from "@/lib/lab";
+import { decryptPHI } from "@/lib/phiCrypto";
 
 // Regression tests for auto-flagging: recordLabResult should infer
 // NORMAL/ABNORMAL (never CRITICAL — see lab.ts) and auto-fill the reference
@@ -105,7 +106,7 @@ describe("recordLabResult auto-flagging — numeric single-parameter test", () =
     await recordLabResult(tenantId, itemId, { resultValue: "4.2" });
     const item = await db.labOrderItem.findUniqueOrThrow({ where: { id: itemId } });
     expect(item.flag).toBe("NORMAL");
-    expect(item.referenceRange).toBe("3.5–5.1 mmol/L");
+    expect(decryptPHI(item.referenceRange!)).toBe("3.5–5.1 mmol/L");
   });
 
   it("flags ABNORMAL when the value is outside range", async () => {
@@ -126,7 +127,7 @@ describe("recordLabResult auto-flagging — numeric single-parameter test", () =
     const itemId = await orderTest(numericTestId);
     await recordLabResult(tenantId, itemId, { resultValue: "4.2", referenceRange: "custom range" });
     const item = await db.labOrderItem.findUniqueOrThrow({ where: { id: itemId } });
-    expect(item.referenceRange).toBe("custom range");
+    expect(decryptPHI(item.referenceRange!)).toBe("custom range");
   });
 
   it("leaves the flag unset when the value isn't a plain number", async () => {
@@ -194,7 +195,7 @@ describe("recordLabResult auto-flagging — qualitative single-parameter test", 
     await recordLabResult(tenantId, itemId, { resultValue: "Non-reactive" });
     const item = await db.labOrderItem.findUniqueOrThrow({ where: { id: itemId } });
     expect(item.flag).toBe("NORMAL");
-    expect(item.referenceRange).toBe("Non-reactive");
+    expect(decryptPHI(item.referenceRange!)).toBe("Non-reactive");
   });
 
   it("flags ABNORMAL when the result contradicts the expected qualitative value", async () => {

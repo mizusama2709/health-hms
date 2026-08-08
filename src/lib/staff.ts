@@ -2,8 +2,11 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { Role, UserStatus } from "@prisma/client";
 import { isUniqueConstraintViolation } from "@/lib/prismaErrors";
+import { logAudit } from "@/lib/audit";
 
 const NON_STAFF_ROLES = new Set<Role>(["PATIENT", "DOCTOR"]);
+
+type Actor = { userId?: string | null; userEmail?: string | null };
 
 export async function listStaff(tenantId: string, filters?: { role?: Role; status?: UserStatus }) {
   return db.user.findMany({
@@ -41,7 +44,7 @@ export async function listStaffPaged(
   return { staff, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
-export async function updateStaffRole(tenantId: string, userId: string, role: Role, actingRole: Role) {
+export async function updateStaffRole(tenantId: string, userId: string, role: Role, actingRole: Role, actor?: Actor) {
   if (NON_STAFF_ROLES.has(role)) {
     throw new Error(`Role ${role} has its own dedicated flow — not managed via staff role changes.`);
   }
@@ -55,17 +58,43 @@ export async function updateStaffRole(tenantId: string, userId: string, role: Ro
     throw new Error("Only a super admin can grant or change a super admin's role");
   }
 
-  return db.user.updateMany({
+  const result = await db.user.updateMany({
     where: { id: userId, tenantId },
     data: { role },
   });
+
+  // The exact vector a prior privilege-escalation fix closed off — worth
+  // its own audited event, distinct from a generic "user updated" log.
+  await logAudit({
+    tenantId,
+    userId: actor?.userId,
+    userEmail: actor?.userEmail,
+    action: "STAFF_ROLE_CHANGE",
+    entityType: "User",
+    entityId: userId,
+    meta: { fromRole: target.role, toRole: role },
+  });
+
+  return result;
 }
 
-export async function updateStaffStatus(tenantId: string, userId: string, status: UserStatus) {
-  return db.user.updateMany({
+export async function updateStaffStatus(tenantId: string, userId: string, status: UserStatus, actor?: Actor) {
+  const result = await db.user.updateMany({
     where: { id: userId, tenantId },
     data: { status },
   });
+
+  await logAudit({
+    tenantId,
+    userId: actor?.userId,
+    userEmail: actor?.userEmail,
+    action: "STAFF_STATUS_CHANGE",
+    entityType: "User",
+    entityId: userId,
+    meta: { toStatus: status },
+  });
+
+  return result;
 }
 
 export async function createStaffUser(params: {
@@ -76,6 +105,7 @@ export async function createStaffUser(params: {
   role: Role;
   password: string;
   actingRole: Role;
+  actor?: Actor;
 }) {
   if (NON_STAFF_ROLES.has(params.role)) {
     throw new Error(`Role ${params.role} has its own dedicated creation flow.`);
@@ -90,8 +120,9 @@ export async function createStaffUser(params: {
   // createPatient: since email is globally unique (not per-tenant), a
   // findUnique-by-email check would tell staff at one tenant whether an
   // email is registered at *any* tenant, a cross-tenant enumeration leak.
+  let created;
   try {
-    return await db.user.create({
+    created = await db.user.create({
       data: {
         email: params.email,
         name: params.name,
@@ -107,4 +138,16 @@ export async function createStaffUser(params: {
     }
     throw e;
   }
+
+  await logAudit({
+    tenantId: params.tenantId,
+    userId: params.actor?.userId,
+    userEmail: params.actor?.userEmail,
+    action: "STAFF_CREATE",
+    entityType: "User",
+    entityId: created.id,
+    meta: { role: params.role },
+  });
+
+  return created;
 }

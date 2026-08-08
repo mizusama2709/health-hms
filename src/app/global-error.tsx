@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { logError } from "@/lib/logger";
+
 // Last-resort boundary: only fires if the root layout itself throws, which
 // is why it must render its own <html>/<body> — Next.js docs, App Router
 // error handling — and why it can't rely on globals.css/Tailwind classes
@@ -7,7 +10,11 @@
 // Dark mode here is a plain <style> tag with a prefers-color-scheme query
 // instead of Tailwind classes, kept deliberately small since this page
 // can't assume any app CSS has loaded.
-export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    logError("client-error-boundary", error, { digest: error.digest, boundary: "global" });
+  }, [error]);
+
   return (
     <html lang="en">
       <body className="ge-body">

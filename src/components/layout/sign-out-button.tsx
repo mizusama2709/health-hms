@@ -1,10 +1,5 @@
-import { signOut } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-
-async function signOutAction() {
-  "use server";
-  await signOut();
-}
+import { signOutAction } from "@/components/layout/sign-out-action";
 
 export function SignOutButton() {
   return (

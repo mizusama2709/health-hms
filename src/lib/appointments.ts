@@ -7,6 +7,7 @@ import {
   PaymentMode,
   CancelledBy,
 } from "@prisma/client";
+import { notify } from "@/lib/notifications";
 
 export async function listAppointmentsForDoctor(
   doctorId: string,
@@ -156,7 +157,29 @@ export async function rescheduleAppointment(
 }
 
 export async function cancelAppointment(appointmentId: string, tenantId: string, cancelledBy: CancelledBy = "STAFF", doctorId?: string) {
-  return updateAppointmentStatus(appointmentId, tenantId, "CANCELLED", cancelledBy, doctorId);
+  const result = await updateAppointmentStatus(appointmentId, tenantId, "CANCELLED", cancelledBy, doctorId);
+
+  // The doctor didn't cause their own cancellation, so only they need
+  // telling — a "DOCTOR"-cancelled appointment already happened at their
+  // own hands.
+  if (cancelledBy !== "DOCTOR") {
+    const appointment = await db.appointment.findFirst({
+      where: { id: appointmentId, tenantId },
+      include: { doctor: { select: { userId: true } }, patient: { select: { user: { select: { name: true } } } } },
+    });
+    if (appointment) {
+      await notify({
+        tenantId,
+        userId: appointment.doctor.userId,
+        type: "APPOINTMENT_CANCELLED",
+        title: "Appointment cancelled",
+        body: `${appointment.patient.user.name} — ${appointment.datetime.toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`,
+        href: "/doctor/schedule/appointments",
+      });
+    }
+  }
+
+  return result;
 }
 
 export async function createAppointment(params: {
@@ -170,7 +193,7 @@ export async function createAppointment(params: {
   feeAmount?: number;
   paymentMode?: PaymentMode;
 }) {
-  return db.appointment.create({
+  const appointment = await db.appointment.create({
     data: {
       tenantId: params.tenantId,
       doctorId: params.doctorId,
@@ -182,7 +205,19 @@ export async function createAppointment(params: {
       feeAmount: params.feeAmount,
       paymentMode: params.paymentMode,
     },
+    include: { doctor: { select: { userId: true } }, patient: { select: { user: { select: { name: true } } } } },
   });
+
+  await notify({
+    tenantId: params.tenantId,
+    userId: appointment.doctor.userId,
+    type: "APPOINTMENT_BOOKED",
+    title: "New appointment booked",
+    body: `${appointment.patient.user.name} — ${appointment.datetime.toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`,
+    href: "/doctor/schedule/appointments",
+  });
+
+  return appointment;
 }
 
 export type AppointmentPaymentFilter = "PENDING_PAYMENT" | "PARTIAL" | "CONFIRMED" | "COMPLETED" | "CANCELLED";

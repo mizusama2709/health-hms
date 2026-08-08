@@ -6,7 +6,13 @@ import { isLoginRateLimited, recordFailedLoginAttempt, clearLoginAttempts } from
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
-  session: { strategy: "jwt" },
+  // JWT strategy ties session validity to maxAge from the last refresh, and
+  // updateAge controls how often an active user's token gets re-issued — so
+  // maxAge here is effectively the idle-logout window (30 min, typical for
+  // a PHI-handling app), while updateAge (5 min) keeps a continuously-active
+  // session rolling forward without re-prompting for credentials every 30
+  // minutes of real use.
+  session: { strategy: "jwt", maxAge: 30 * 60, updateAge: 5 * 60 },
   providers: [
     Credentials({
       credentials: {
@@ -22,21 +28,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // as bad credentials, so a locked-out attempt can't be
         // distinguished from a wrong password (no account-existence or
         // lockout-state oracle).
-        if (isLoginRateLimited(email)) return null;
+        if (await isLoginRateLimited(email)) return null;
 
         const user = await db.user.findUnique({ where: { email } });
         if (!user) {
-          recordFailedLoginAttempt(email);
+          await recordFailedLoginAttempt(email);
           return null;
         }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) {
-          recordFailedLoginAttempt(email);
+          await recordFailedLoginAttempt(email);
           return null;
         }
 
-        clearLoginAttempts(email);
+        await clearLoginAttempts(email);
         await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
         return {

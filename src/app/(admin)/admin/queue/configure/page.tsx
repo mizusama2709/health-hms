@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { requireTenantId } from "@/lib/tenant";
 import { QUEUE_STAGES, listStageConfigs } from "@/lib/queueStages";
 import { updateStageConfigAction } from "../actions";
+import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +28,7 @@ export default async function ConfigureQueueFlowPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/queue" className="text-sm font-medium text-primary hover:underline">
-          ← Back to Queue
-        </Link>
+        <BackLink href="/admin/queue" label="Queue" />
         <h1 className="mt-2 text-2xl font-semibold">Configure flow</h1>
         <p className="text-sm text-muted-foreground">
           Set the turnaround time (in minutes) for each stage — a patient&apos;s stage turns red on the Queue board

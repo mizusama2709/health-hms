@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
@@ -21,16 +20,10 @@ import {
 import { sendLabReportViaWhatsApp } from "@/lib/whatsapp";
 import { searchPatients } from "@/lib/patients";
 import { withActionResult } from "@/lib/actionResult";
+import { getBaseUrl } from "@/lib/baseUrl";
 import type { LabOrderStatus, LabResultFlag } from "@prisma/client";
 
 const LAB_ROLES = ["LAB", "ADMIN_RECEPTION", "SUPER_ADMIN"] as const;
-
-async function getBaseUrl() {
-  const h = await headers();
-  const host = h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
-}
 
 export async function createLabTestAction(formData: FormData) {
   await requireRole(...LAB_ROLES);

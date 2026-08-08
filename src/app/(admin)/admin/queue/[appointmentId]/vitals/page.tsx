@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { BackLink } from "@/components/back-link";
 import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { db } from "@/lib/db";
@@ -32,9 +32,7 @@ export default async function RecordVitalsPage({ params }: { params: Promise<{ a
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/queue" className="text-sm font-medium text-primary hover:underline">
-          ← Back to Queue
-        </Link>
+        <BackLink href="/admin/queue" label="Queue" />
         <h1 className="mt-2 text-2xl font-semibold">Record vitals</h1>
         <p className="text-sm text-muted-foreground">
           {appointment.patient.user.name} — {new Date(appointment.datetime).toLocaleString()}

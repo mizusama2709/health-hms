@@ -1,51 +1,32 @@
-// In-memory sliding-window limiter on failed login attempts, keyed by
-// email. There was previously no limiter at all — bcrypt.compare ran on
-// every request with no cap, so credential stuffing/brute force was only as
-// slow as bcrypt's cost factor made each guess. This is intentionally
-// simple (no Redis/external store): correct for a single Node process, but
-// state isn't shared across multiple instances/regions in a multi-instance
-// deployment — a production rollout across several instances should also
-// add IP-based throttling at the edge/gateway (Vercel WAF, Cloudflare, etc.)
-// rather than relying on this alone.
+import { db } from "@/lib/db";
+
+// Postgres-backed sliding-window limiter on failed login attempts, keyed
+// by email — replaces an in-memory Map that reset on every deploy/restart
+// and wasn't shared across multiple server instances. bcrypt.compare
+// previously ran on every login attempt with no cap at all, so credential
+// stuffing was only as slow as bcrypt's cost factor made each guess.
+//
+// `now` is a parameter (defaulting to the real clock) rather than read
+// internally, so tests can control it directly instead of needing the
+// database to respect a faked JS clock.
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
-
-type Entry = { count: number; windowStart: number };
-
-const attemptsByEmail = new Map<string, Entry>();
 
 function normalize(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function isLoginRateLimited(email: string): boolean {
-  const key = normalize(email);
-  const entry = attemptsByEmail.get(key);
-  if (!entry) return false;
-  if (Date.now() - entry.windowStart > WINDOW_MS) {
-    attemptsByEmail.delete(key);
-    return false;
-  }
-  return entry.count >= MAX_ATTEMPTS;
+export async function isLoginRateLimited(email: string, now: Date = new Date()): Promise<boolean> {
+  const count = await db.loginAttempt.count({
+    where: { email: normalize(email), attemptedAt: { gte: new Date(now.getTime() - WINDOW_MS) } },
+  });
+  return count >= MAX_ATTEMPTS;
 }
 
-export function recordFailedLoginAttempt(email: string): void {
-  const key = normalize(email);
-  const now = Date.now();
-  const entry = attemptsByEmail.get(key);
-  if (!entry || now - entry.windowStart > WINDOW_MS) {
-    attemptsByEmail.set(key, { count: 1, windowStart: now });
-  } else {
-    entry.count += 1;
-  }
+export async function recordFailedLoginAttempt(email: string, now: Date = new Date()): Promise<void> {
+  await db.loginAttempt.create({ data: { email: normalize(email), attemptedAt: now } });
 }
 
-export function clearLoginAttempts(email: string): void {
-  attemptsByEmail.delete(normalize(email));
-}
-
-// Test-only: the map is otherwise process-lifetime, which would leak state
-// between test cases.
-export function __resetLoginRateLimitForTests(): void {
-  attemptsByEmail.clear();
+export async function clearLoginAttempts(email: string): Promise<void> {
+  await db.loginAttempt.deleteMany({ where: { email: normalize(email) } });
 }

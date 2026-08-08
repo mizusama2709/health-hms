@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { verifyLabReportToken } from "@/lib/labReportUrlSigning";
+import { verifyDocumentToken } from "@/lib/documentUrlSigning";
 import { logAudit } from "@/lib/audit";
 
 // Publicly reachable by id (an unguessable cuid) — this is the link sent to
@@ -11,7 +11,7 @@ import { logAudit } from "@/lib/audit";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  if (!verifyLabReportToken(id, req.nextUrl.searchParams.get("token"))) {
+  if (!verifyDocumentToken("lab_report", id, req.nextUrl.searchParams.get("token"))) {
     return NextResponse.json({ error: "This link is invalid or has expired" }, { status: 401 });
   }
 

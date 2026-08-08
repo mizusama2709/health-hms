@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Package } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listMedicineBatches, type BatchExpiryFilter } from "@/lib/pharmacy";
@@ -51,9 +52,7 @@ export default async function MedicineBatchesPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/pharmacy/medicines" className="text-sm font-medium text-primary hover:underline">
-          ← Back to Medicines
-        </Link>
+        <BackLink href="/admin/pharmacy/medicines" label="Medicines" />
         <h1 className="mt-2 text-2xl font-semibold">Batches &amp; Expiry</h1>
       </div>
 

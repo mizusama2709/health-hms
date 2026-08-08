@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { getUnreadNotificationCount } from "@/lib/notifications";
 import { RoleShell, type NavSection } from "@/components/layout/role-shell";
 
 const DOCTOR_NAV_SECTIONS: NavSection[] = [
@@ -19,9 +20,18 @@ const DOCTOR_NAV_SECTIONS: NavSection[] = [
 
 export default async function DoctorLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  const unreadNotificationCount =
+    session?.user?.tenantId && session?.user?.id
+      ? await getUnreadNotificationCount(session.user.tenantId, session.user.id)
+      : 0;
 
   return (
-    <RoleShell navSections={DOCTOR_NAV_SECTIONS} roleLabel="Doctor" userName={session?.user?.name ?? undefined}>
+    <RoleShell
+      navSections={DOCTOR_NAV_SECTIONS}
+      roleLabel="Doctor"
+      userName={session?.user?.name ?? undefined}
+      unreadNotificationCount={unreadNotificationCount}
+    >
       {children}
     </RoleShell>
   );

@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/jobs/follow-up-reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/jobs/audit-alerts",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
