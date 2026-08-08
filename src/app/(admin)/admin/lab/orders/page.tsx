@@ -4,10 +4,10 @@ import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listLabOrders, listLabTests } from "@/lib/lab";
 import {
-  createLabOrderAction,
-  updateLabOrderStatusAction,
-  approveLabOrderAction,
-  recordLabResultAction,
+  createLabOrderActionResult,
+  updateLabOrderStatusActionResult,
+  approveLabOrderActionResult,
+  recordLabResultActionResult,
   searchPatientsAction,
 } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Lab Orders",
@@ -36,7 +37,7 @@ export default async function LabOrdersPage() {
           <CardTitle>Order a test</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createLabOrderAction} className="flex flex-col gap-2">
+          <ActionForm action={createLabOrderActionResult} className="flex flex-col gap-2">
             <Label htmlFor="patientId">Patient</Label>
             <SearchableSelect
               id="patientId"
@@ -60,7 +61,7 @@ export default async function LabOrdersPage() {
             <Button type="submit" className="mt-2">
               Create order
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
@@ -98,19 +99,22 @@ export default async function LabOrdersPage() {
                         {o.approvedAt ? (
                           <Badge variant="default">Approved {o.approvedAt.toLocaleDateString()}</Badge>
                         ) : o.status === "COMPLETED" ? (
-                          <form action={approveLabOrderAction}>
+                          <ActionForm
+                            action={approveLabOrderActionResult}
+                            confirmMessage={`Approve and finalize this lab order for ${o.patient.user.name}? This generates the report and sends it to the patient over WhatsApp.`}
+                          >
                             <input type="hidden" name="labOrderId" value={o.id} />
                             <Button type="submit" size="sm" variant="outline">
                               Approve &amp; finalize
                             </Button>
-                          </form>
+                          </ActionForm>
                         ) : (
                           <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell>{o.reports.length}</TableCell>
                       <TableCell>
-                        <form action={updateLabOrderStatusAction} className="flex items-center gap-1">
+                        <ActionForm action={updateLabOrderStatusActionResult} className="flex items-center gap-1">
                           <input type="hidden" name="labOrderId" value={o.id} />
                           <NativeSelect name="status" defaultValue={o.status} className="w-36">
                             <option value="ORDERED">Ordered</option>
@@ -121,7 +125,7 @@ export default async function LabOrdersPage() {
                           <Button type="submit" size="sm" variant="outline">
                             Save
                           </Button>
-                        </form>
+                        </ActionForm>
                       </TableCell>
                     </TableRow>
                     <TableRow>
@@ -132,9 +136,9 @@ export default async function LabOrdersPage() {
                           </summary>
                           <div className="mt-2 flex flex-col gap-2">
                             {o.items.map((item) => (
-                              <form
+                              <ActionForm
                                 key={item.id}
-                                action={recordLabResultAction}
+                                action={recordLabResultActionResult}
                                 className="flex flex-wrap items-end gap-2 rounded-md border bg-background p-2"
                               >
                                 <input type="hidden" name="labOrderItemId" value={item.id} />
@@ -166,7 +170,7 @@ export default async function LabOrdersPage() {
                                 <Button type="submit" size="sm" variant="outline">
                                   Save result
                                 </Button>
-                              </form>
+                              </ActionForm>
                             ))}
                           </div>
                         </details>

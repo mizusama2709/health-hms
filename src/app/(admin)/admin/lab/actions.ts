@@ -41,6 +41,8 @@ export async function createLabTestAction(formData: FormData) {
   revalidatePath("/admin/lab/tests");
 }
 
+export const createLabTestActionResult = withActionResult(createLabTestAction, "Test added");
+
 export async function deleteLabTestAction(formData: FormData) {
   await requireRole(...LAB_ROLES);
   const tenantId = await requireTenantId();
@@ -113,6 +115,8 @@ export async function createLabOrderAction(formData: FormData) {
   revalidatePath("/admin/lab/orders");
 }
 
+export const createLabOrderActionResult = withActionResult(createLabOrderAction, "Lab order created");
+
 export async function updateLabOrderStatusAction(formData: FormData) {
   const session = await auth();
   await requireRole(...LAB_ROLES);
@@ -125,6 +129,8 @@ export async function updateLabOrderStatusAction(formData: FormData) {
 
   revalidatePath("/admin/lab/orders");
 }
+
+export const updateLabOrderStatusActionResult = withActionResult(updateLabOrderStatusAction, "Status updated");
 
 export async function approveLabOrderAction(formData: FormData) {
   const session = await requireRole(...LAB_ROLES);
@@ -152,6 +158,8 @@ export async function approveLabOrderAction(formData: FormData) {
   if (order) revalidatePath(`/admin/patients/${order.patientId}`);
 }
 
+export const approveLabOrderActionResult = withActionResult(approveLabOrderAction, "Report generated and sent");
+
 export async function recordLabResultAction(formData: FormData) {
   await requireRole(...LAB_ROLES);
   const tenantId = await requireTenantId();
@@ -172,6 +180,8 @@ export async function recordLabResultAction(formData: FormData) {
   revalidatePath("/admin/lab/orders");
 }
 
+export const recordLabResultActionResult = withActionResult(recordLabResultAction, "Result saved");
+
 export async function sendLabReportWhatsAppAction(formData: FormData) {
   await requireRole(...LAB_ROLES);
   const tenantId = await requireTenantId();
@@ -185,6 +195,8 @@ export async function sendLabReportWhatsAppAction(formData: FormData) {
   revalidatePath("/admin/lab/reports/upload");
 }
 
+export const sendLabReportWhatsAppActionResult = withActionResult(sendLabReportWhatsAppAction, "Report sent");
+
 export async function createLabReportTemplateAction(formData: FormData) {
   await requireRole(...LAB_ROLES);
   const tenantId = await requireTenantId();
@@ -196,3 +208,5 @@ export async function createLabReportTemplateAction(formData: FormData) {
 
   revalidatePath("/admin/lab/templates");
 }
+
+export const createLabReportTemplateActionResult = withActionResult(createLabReportTemplateAction, "Template created");

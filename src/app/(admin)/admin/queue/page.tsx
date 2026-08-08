@@ -5,7 +5,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { listAppointmentsForTenant } from "@/lib/appointments";
 import { listStaff } from "@/lib/staff";
 import { QUEUE_STAGES, listStageConfigs, getStageEntriesForAppointments, getQueueVersion } from "@/lib/queueStages";
-import { startStageAction, completeStageAction, getQueueVersionAction } from "./actions";
+import { startStageActionResult, completeStageAction, getQueueVersionAction } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { StatTile } from "@/components/stat-tile";
 import { QueueInProgressCell } from "@/components/queue-in-progress-cell";
 import { QueueLiveRefresh } from "@/components/queue-live-refresh";
+import { ActionForm } from "@/components/action-form";
 import type { QueueStage } from "@prisma/client";
 
 export const metadata = {
@@ -186,7 +187,7 @@ export default async function QueuePage() {
                         if (stage === currentStage) {
                           return (
                             <TableCell key={stage} className="text-xs">
-                              <form action={startStageAction} className="flex flex-col gap-1">
+                              <ActionForm action={startStageActionResult} className="flex flex-col gap-1">
                                 <input type="hidden" name="appointmentId" value={appt.id} />
                                 <input type="hidden" name="stage" value={stage} />
                                 <NativeSelect name="assignedToId" className="h-7 text-xs">
@@ -200,7 +201,7 @@ export default async function QueuePage() {
                                 <Button type="submit" size="sm" variant="outline">
                                   Start
                                 </Button>
-                              </form>
+                              </ActionForm>
                             </TableCell>
                           );
                         }

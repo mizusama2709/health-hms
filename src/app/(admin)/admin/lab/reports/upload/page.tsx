@@ -3,11 +3,12 @@ import { BarChart3 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { listLabOrders, listLatestWhatsAppStatusForLabReports } from "@/lib/lab";
 import { withFreshDocumentToken } from "@/lib/documentUrlSigning";
-import { sendLabReportWhatsAppAction } from "../../actions";
+import { sendLabReportWhatsAppActionResult } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Lab Reports",
@@ -67,20 +68,20 @@ export default async function LabReportsPage() {
                     )}
                   </div>
                   <div className="flex flex-wrap items-end gap-2">
-                    <form action={sendLabReportWhatsAppAction} className="flex items-end gap-2">
+                    <ActionForm action={sendLabReportWhatsAppActionResult} className="flex items-end gap-2">
                       <input type="hidden" name="labReportId" value={r.id} />
                       <input type="hidden" name="toPhone" value={r.patientPhone ?? ""} />
                       <Button type="submit" size="sm" variant="outline" disabled={!r.patientPhone}>
                         Resend to patient{r.patientPhone ? ` (${r.patientPhone})` : " (no phone on file)"}
                       </Button>
-                    </form>
-                    <form action={sendLabReportWhatsAppAction} className="flex items-end gap-2">
+                    </ActionForm>
+                    <ActionForm action={sendLabReportWhatsAppActionResult} className="flex items-end gap-2">
                       <input type="hidden" name="labReportId" value={r.id} />
                       <Input name="toPhone" placeholder="Lab staff phone" className="w-40" required />
                       <Button type="submit" size="sm" variant="outline">
                         Send to lab staff
                       </Button>
-                    </form>
+                    </ActionForm>
                   </div>
                 </div>
                 );

@@ -3,7 +3,7 @@ import { FlaskConical } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listLabTests } from "@/lib/lab";
-import { createLabTestAction, deleteLabTestActionResult } from "../actions";
+import { createLabTestActionResult, deleteLabTestActionResult } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ export default async function LabTestsPage() {
           <CardTitle>Add lab test</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createLabTestAction} className="flex flex-col gap-2">
+          <ActionForm action={createLabTestActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" placeholder="e.g. Complete Blood Count" required />
             <Label htmlFor="code">Code (optional)</Label>
@@ -45,7 +45,7 @@ export default async function LabTestsPage() {
             <Button type="submit" className="mt-2">
               Add test
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 

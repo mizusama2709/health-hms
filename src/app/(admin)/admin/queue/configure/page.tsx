@@ -1,11 +1,12 @@
 import { requireTenantId } from "@/lib/tenant";
 import { QUEUE_STAGES, listStageConfigs } from "@/lib/queueStages";
-import { updateStageConfigAction } from "../actions";
+import { updateStageConfigActionResult } from "../actions";
 import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ActionForm } from "@/components/action-form";
 import type { QueueStage } from "@prisma/client";
 
 export const metadata = {
@@ -41,7 +42,7 @@ export default async function ConfigureQueueFlowPage() {
           <CardTitle>Turnaround times</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updateStageConfigAction} className="flex flex-col gap-3">
+          <ActionForm action={updateStageConfigActionResult} className="flex flex-col gap-3">
             {QUEUE_STAGES.map((stage) => (
               <div key={stage} className="flex flex-col gap-1">
                 <Label htmlFor={`turnaround_${stage}`}>{STAGE_LABELS[stage]} (minutes)</Label>
@@ -58,7 +59,7 @@ export default async function ConfigureQueueFlowPage() {
             <Button type="submit" className="mt-2 self-start">
               Save
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
     </div>

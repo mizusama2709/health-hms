@@ -5,12 +5,13 @@ import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { db } from "@/lib/db";
 import { listVitalsForPatient } from "@/lib/vitals";
-import { recordVitalsAction } from "../../actions";
+import { recordVitalsActionResult } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Record Vitals",
@@ -44,7 +45,11 @@ export default async function RecordVitalsPage({ params }: { params: Promise<{ a
           <CardTitle>Vitals</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={recordVitalsAction} className="flex flex-col gap-2">
+          <ActionForm
+            action={recordVitalsActionResult}
+            className="flex flex-col gap-2"
+            nextStep={{ label: "Back to queue", href: "/admin/queue" }}
+          >
             <input type="hidden" name="patientId" value={appointment.patientId} />
             <input type="hidden" name="appointmentId" value={appointment.id} />
             <Label htmlFor="bp">Blood pressure</Label>
@@ -58,7 +63,7 @@ export default async function RecordVitalsPage({ params }: { params: Promise<{ a
             <Button type="submit" className="mt-2 self-start">
               Save vitals
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 

@@ -2,12 +2,13 @@ import { requireTenantId } from "@/lib/tenant";
 import { FileText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { listLabReportTemplates } from "@/lib/lab";
-import { createLabReportTemplateAction } from "../actions";
+import { createLabReportTemplateActionResult } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Lab Report Templates",
@@ -26,7 +27,7 @@ export default async function LabReportTemplatesPage() {
           <CardTitle>Add template</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createLabReportTemplateAction} className="flex flex-col gap-2">
+          <ActionForm action={createLabReportTemplateActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" placeholder="e.g. CBC Report" required />
             <Label htmlFor="body">Template body</Label>
@@ -34,7 +35,7 @@ export default async function LabReportTemplatesPage() {
             <Button type="submit" className="mt-2">
               Add template
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 

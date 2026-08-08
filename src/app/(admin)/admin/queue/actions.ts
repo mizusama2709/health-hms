@@ -1,11 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import { recordVitals } from "@/lib/vitals";
 import { startStage, completeStage, upsertStageConfig, getQueueVersion, QUEUE_STAGES } from "@/lib/queueStages";
+import { withActionResult } from "@/lib/actionResult";
 import type { QueueStage } from "@prisma/client";
 
 const QUEUE_ROLES = ["ADMIN_RECEPTION", "SUPER_ADMIN", "NURSE", "RECEPTIONIST"] as const;
@@ -32,8 +32,10 @@ export async function recordVitalsAction(formData: FormData) {
     recordedById: session.user.id,
   });
 
-  redirect("/admin/queue");
+  revalidatePath("/admin/queue");
 }
+
+export const recordVitalsActionResult = withActionResult(recordVitalsAction, "Vitals recorded");
 
 export async function startStageAction(formData: FormData) {
   const session = await requireRole(...QUEUE_ROLES);
@@ -47,6 +49,8 @@ export async function startStageAction(formData: FormData) {
 
   revalidatePath("/admin/queue");
 }
+
+export const startStageActionResult = withActionResult(startStageAction, "Stage started");
 
 export async function completeStageAction(formData: FormData) {
   await requireRole(...QUEUE_ROLES);
@@ -78,3 +82,5 @@ export async function updateStageConfigAction(formData: FormData) {
   revalidatePath("/admin/queue");
   revalidatePath("/admin/queue/configure");
 }
+
+export const updateStageConfigActionResult = withActionResult(updateStageConfigAction, "Turnaround targets saved");
