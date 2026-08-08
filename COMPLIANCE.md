@@ -47,6 +47,14 @@ a third-party audit, none of which engineering can deliver alone.
   round-trip restore into a scratch database, row counts matched exactly
   across all tables. `backups/` is gitignored (dump files contain the same
   PHI the live database does).
+- **Legacy plaintext PHI backfill** (`scripts/backfill-phi-encryption.ts`):
+  one-time script that scans every PHI column across `VisitRecord`,
+  `FollowUp`, `FollowUpCallLog`, `LabOrderItem`, `ImagingOrder`, and
+  `Vitals` for values not already `enc:v1:`-prefixed and encrypts them in
+  place. Idempotent (safe to re-run) and supports `--dry-run`. Verified
+  live: a deliberately-inserted legacy-plaintext `Vitals.bp` row was
+  confirmed ciphertext-at-rest after running the script, and a follow-up
+  dry run found zero remaining plaintext.
 
 ## Deferred — needs real infrastructure or organizational decisions
 
@@ -66,10 +74,6 @@ a third-party audit, none of which engineering can deliver alone.
   `sslmode=require` on `DATABASE_URL` and enable the hosting provider's
   Postgres encryption-at-rest setting — both are host configuration, not
   application code, so they need to be set wherever this gets deployed.
-- **Legacy plaintext backfill**: rows written before a given field's
-  encryption coverage was added stay plaintext until they're next updated.
-  A one-time backfill script (read, encrypt, write) would close that gap
-  if a hard requirement to encrypt *everything already stored* exists.
 - **Everything organizational**: named Privacy/Security Officer, formal
   risk assessment, written incident-response/retention/access-control
   policies, signed BAAs/DPAs with every subprocessor, staff training, a
