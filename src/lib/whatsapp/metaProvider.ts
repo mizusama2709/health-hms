@@ -1,4 +1,5 @@
 import { WhatsAppProvider, WhatsAppSendResult } from "./provider";
+import { logError } from "@/lib/logger";
 
 const GRAPH_API_VERSION = "v21.0";
 
@@ -58,6 +59,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
 
       if (!response.ok) {
         const message = payload?.error?.message ?? `WhatsApp API returned HTTP ${response.status}`;
+        logError("whatsapp-meta-send", new Error(message), { httpStatus: response.status });
         return { status: "FAILED", errorMessage: message };
       }
 
@@ -68,6 +70,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
 
       return { status: "SENT", providerMessageId };
     } catch (err) {
+      logError("whatsapp-meta-send", err, { stage: "fetch" });
       return { status: "FAILED", errorMessage: err instanceof Error ? err.message : "Unknown WhatsApp send error" };
     }
   }

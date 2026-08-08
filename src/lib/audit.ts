@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { logError } from "@/lib/logger";
 import type { Prisma } from "@prisma/client";
 
 // ponytail: fire-and-forget insert, no queue/batching. Fine at this write volume;
@@ -25,6 +26,6 @@ export async function logAudit(entry: {
       },
     });
   } catch (err) {
-    console.error("audit log write failed", err);
+    logError("audit-log-write", err, { tenantId: entry.tenantId, action: entry.action, entityType: entry.entityType });
   }
 }

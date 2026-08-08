@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { logError } from "@/lib/logger";
 
 /**
  * Rendered by each role segment's error.tsx so an unhandled error inside the
@@ -20,8 +21,8 @@ export function InAppError({
   homeHref: string;
 }) {
   useEffect(() => {
-    console.error(error);
-  }, [error]);
+    logError("client-error-boundary", error, { digest: error.digest, homeHref });
+  }, [error, homeHref]);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">

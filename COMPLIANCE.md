@@ -67,6 +67,22 @@ a third-party audit, none of which engineering can deliver alone.
   runs are independently tested (backup-db.sh's round-trip restore above;
   the upload script's argument handling and its call into the already-live
   `lib/storage.ts` imaging upload path).
+- **Structured error logging** (`lib/logger.ts`): a dependency-free
+  `logError`/`logInfo` utility — one JSON object per line to stdout/stderr,
+  which hosting platforms including Vercel already collect without extra
+  setup — wired into the client error boundaries (`error.tsx`,
+  `global-error.tsx`, `in-app-error.tsx`), the central Server Action error
+  chokepoint (`lib/actionResult.ts`), the audit-log write failure path
+  (`lib/audit.ts`), both cron job routes, both WhatsApp webhook routes
+  (which previously had no try/catch at all around `JSON.parse`/the
+  handler call — a malformed payload was an unhandled 500), and the Meta
+  WhatsApp provider's send failure paths. No real APM/error-tracking
+  service is integrated — there's no live Sentry (or similar) DSN in this
+  environment to wire up and verify against — but every call goes through
+  this one module, so swapping in a real service later is a one-file
+  change. Verified live: a malformed-JSON POST to `/api/whatsapp/webhook`
+  (valid signature, broken body) returned 400 instead of crashing, and
+  produced a structured log line with the parse error, stack, and stage.
 
 ## Deferred — needs real infrastructure or organizational decisions
 
