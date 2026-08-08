@@ -8,8 +8,8 @@ import {
   createPatientActionResult,
   createLeadAction,
   importLeadsActionResult,
-  updateLeadStatusAction,
-  convertLeadAction,
+  updateLeadStatusActionResult,
+  convertLeadActionResult,
 } from "./actions";
 import { Card, CardHeader, CardTitle, CardAction, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -222,7 +222,7 @@ export default async function PatientsPage({
                           <TableCell>{formatDate(lead.updatedAt)}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-2">
-                              <form action={updateLeadStatusAction} className="flex items-center gap-1">
+                              <ActionForm action={updateLeadStatusActionResult} className="flex items-center gap-1">
                                 <input type="hidden" name="leadId" value={lead.id} />
                                 <NativeSelect name="status" defaultValue={lead.status} className="w-40">
                                   {LEAD_STATUS_FILTERS.filter((f) => f.value).map((f) => (
@@ -234,10 +234,13 @@ export default async function PatientsPage({
                                 <Button type="submit" size="sm" variant="outline">
                                   Save
                                 </Button>
-                              </form>
+                              </ActionForm>
                               <details>
                                 <summary className="cursor-pointer text-xs font-medium text-primary">Convert to patient</summary>
-                                <form action={convertLeadAction} className="mt-2 flex flex-col gap-2 rounded-md border p-2">
+                                <ActionForm
+                                  action={convertLeadActionResult}
+                                  className="mt-2 flex flex-col gap-2 rounded-md border p-2"
+                                >
                                   <input type="hidden" name="leadId" value={lead.id} />
                                   <Label htmlFor={`email-${lead.id}`} className="text-xs">
                                     Email
@@ -250,7 +253,7 @@ export default async function PatientsPage({
                                   <Button type="submit" size="sm" variant="outline" className="self-start">
                                     Create patient
                                   </Button>
-                                </form>
+                                </ActionForm>
                               </details>
                             </div>
                           </TableCell>

@@ -20,6 +20,8 @@ export async function addKnowledgeBaseDocument(formData: FormData) {
   revalidatePath("/admin/knowledge-base");
 }
 
+export const addKnowledgeBaseDocumentActionResult = withActionResult(addKnowledgeBaseDocument, "Document added");
+
 export async function removeKnowledgeBaseDocument(formData: FormData) {
   await requireRole(...SETTINGS_ROLES);
   const tenantId = await requireTenantId();

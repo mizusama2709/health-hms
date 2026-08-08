@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listFollowUps, getFollowUpStats } from "@/lib/followUps";
 import { patientDisplayId } from "@/lib/patients";
-import { scheduleReminderAction, logFollowUpCallActionResult, cancelFollowUpActionResult } from "./actions";
+import { scheduleReminderActionResult, logFollowUpCallActionResult, cancelFollowUpActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -248,14 +248,14 @@ export default async function RemindersPage({
                     )}
 
                     <div className="mt-3 flex flex-wrap items-center gap-3">
-                      <form action={scheduleReminderAction} className="flex flex-wrap items-center gap-1.5">
+                      <ActionForm action={scheduleReminderActionResult} className="flex flex-wrap items-center gap-1.5">
                         <input type="hidden" name="followUpId" value={f.id} />
                         <Input name="reminderAt" type="datetime-local" className="w-44" required />
                         <Input name="reminderMessage" placeholder="WhatsApp reminder message" className="w-52" required />
                         <Button type="submit" size="sm" variant="outline">
                           Schedule reminder
                         </Button>
-                      </form>
+                      </ActionForm>
                       {f.reminderScheduled && (
                         <span className="text-xs text-muted-foreground">
                           Reminder set for {f.reminderAt && new Date(f.reminderAt).toLocaleString()}

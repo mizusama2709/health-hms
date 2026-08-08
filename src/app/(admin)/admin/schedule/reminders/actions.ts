@@ -22,6 +22,8 @@ export async function scheduleReminderAction(formData: FormData) {
   revalidatePath("/admin/schedule/reminders");
 }
 
+export const scheduleReminderActionResult = withActionResult(scheduleReminderAction, "Reminder scheduled");
+
 async function logFollowUpCallAction(formData: FormData) {
   const session = await requireRole(...FOLLOWUP_ROLES);
   const tenantId = await requireTenantId();

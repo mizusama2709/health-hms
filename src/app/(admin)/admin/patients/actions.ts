@@ -112,6 +112,8 @@ export async function updateLeadStatusAction(formData: FormData) {
   revalidatePath("/admin/patients");
 }
 
+export const updateLeadStatusActionResult = withActionResult(updateLeadStatusAction, "Lead status updated");
+
 export async function convertLeadAction(formData: FormData) {
   await requireRole(...PATIENT_MANAGEMENT_ROLES);
   const tenantId = await requireTenantId();
@@ -131,3 +133,5 @@ export async function convertLeadAction(formData: FormData) {
 
   revalidatePath("/admin/patients");
 }
+
+export const convertLeadActionResult = withActionResult(convertLeadAction, "Lead converted to patient");

@@ -2,7 +2,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { FileText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { listKnowledgeBaseDocuments } from "@/lib/knowledgeBase";
-import { addKnowledgeBaseDocument, removeKnowledgeBaseDocumentActionResult } from "./actions";
+import { addKnowledgeBaseDocumentActionResult, removeKnowledgeBaseDocumentActionResult } from "./actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,7 @@ export default async function KnowledgeBasePage() {
           <CardTitle>Add document</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={addKnowledgeBaseDocument} className="flex flex-col gap-2">
+          <ActionForm action={addKnowledgeBaseDocumentActionResult} className="flex flex-col gap-2">
             <Label htmlFor="title">Document title</Label>
             <Input id="title" name="title" placeholder="Document title" required />
             <Label htmlFor="fileUrl">File URL</Label>
@@ -34,7 +34,7 @@ export default async function KnowledgeBasePage() {
             <Button type="submit" className="mt-2 self-start">
               Add document
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
