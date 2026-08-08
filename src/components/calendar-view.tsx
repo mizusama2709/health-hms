@@ -226,7 +226,7 @@ export function CalendarView<T extends CalendarAppointment>({
 
         {/* DAY VIEW */}
         {view === "day" && (
-          <div className="flex">
+          <div className="flex flex-col lg:flex-row">
             <DayViewScrollContainer
               hourHeight={HOUR_HEIGHT}
               scrollToHour={Math.max(0, (isToday ? new Date().getHours() : DOCTOR_WORKING_HOURS.startHour) - 1)}
@@ -276,7 +276,7 @@ export function CalendarView<T extends CalendarAppointment>({
               </div>
             </DayViewScrollContainer>
 
-            <div className="w-[280px] shrink-0 border-l bg-muted/30 px-4 py-4">
+            <div className="w-full shrink-0 border-t bg-muted/30 px-4 py-4 lg:w-[280px] lg:border-t-0 lg:border-l">
               {selected ? (
                 <div className="flex flex-col gap-2 rounded-lg bg-background p-4 shadow-sm">
                   <div className="flex items-center justify-between">

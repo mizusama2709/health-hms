@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/authz";
 import { requireTenantId } from "@/lib/tenant";
 import {
@@ -48,17 +47,20 @@ export async function bulkUpdateMedicinePricesAction(formData: FormData) {
   await requireRole(...PHARMACY_ROLES);
   const tenantId = await requireTenantId();
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    redirect("/admin/pharmacy/medicines?unpriced=true&bulkError=" + encodeURIComponent("Choose a CSV file first"));
-  }
+  const csvText = (formData.get("rows") as string) || "";
+  if (!csvText.trim()) throw new Error("Paste rows or upload a CSV first");
 
-  const csvText = await file.text();
   const { matched, notFound, invalidRows } = await bulkUpdateMedicinePrices(tenantId, csvText);
 
   revalidatePath("/admin/pharmacy/medicines");
-  redirect(`/admin/pharmacy/medicines?unpriced=true&bulkResult=${matched},${notFound},${invalidRows}`);
+
+  const parts = [`${matched} priced`];
+  if (notFound > 0) parts.push(`${notFound} name(s) not found`);
+  if (invalidRows > 0) parts.push(`${invalidRows} row(s) skipped (invalid)`);
+  return { success: true, message: parts.join(" · ") };
 }
+
+export const bulkUpdateMedicinePricesActionResult = withActionResult(bulkUpdateMedicinePricesAction);
 
 export async function searchMedicinesAction(query: string) {
   await requireRole(...PHARMACY_ROLES);

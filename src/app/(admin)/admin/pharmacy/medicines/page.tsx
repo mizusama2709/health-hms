@@ -3,7 +3,7 @@ import { Package } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listMedicinesPaged } from "@/lib/pharmacy";
-import { createMedicineActionResult, updateMedicinePriceActionResult, bulkUpdateMedicinePricesAction } from "../actions";
+import { createMedicineActionResult, updateMedicinePriceActionResult, bulkUpdateMedicinePricesActionResult } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ActionForm } from "@/components/action-form";
+import { BulkImportField } from "@/components/bulk-import-field";
 
 export const metadata = {
   title: "Medicines",
@@ -20,16 +21,13 @@ export const metadata = {
 export default async function MedicinesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; unpriced?: string; page?: string; bulkResult?: string; bulkError?: string }>;
+  searchParams: Promise<{ search?: string; unpriced?: string; page?: string }>;
 }) {
   const tenantId = await requireTenantId();
   const params = await searchParams;
   const search = params.search || undefined;
   const unpriced = params.unpriced === "true";
   const page = Number(params.page) || 1;
-
-  const [bulkMatched, bulkNotFound, bulkInvalid] = params.bulkResult?.split(",").map(Number) ?? [];
-  const hasBulkResult = params.bulkResult !== undefined && [bulkMatched, bulkNotFound, bulkInvalid].every((n) => Number.isFinite(n));
 
   const { medicines, total, totalPages } = await listMedicinesPaged(tenantId, { search, unpriced, page, pageSize: 50 });
 
@@ -50,38 +48,21 @@ export default async function MedicinesPage({
         </Link>
       </div>
 
-      {hasBulkResult && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
-          <span className="font-medium text-emerald-800 dark:text-emerald-300">
-            Bulk price upload: {bulkMatched} priced
-          </span>{" "}
-          <span className="text-emerald-700 dark:text-emerald-400">
-            {bulkNotFound > 0 && `· ${bulkNotFound} name(s) not found `}
-            {bulkInvalid > 0 && `· ${bulkInvalid} row(s) skipped (invalid)`}
-          </span>
-        </div>
-      )}
-      {params.bulkError && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          {params.bulkError}
-        </div>
-      )}
-
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>Bulk price upload</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">
-            Upload a CSV with two columns — medicine name, unit price — to price many medicines at once. Matches by
-            exact name (case-insensitive); an optional header row is skipped automatically.
+            Paste rows or upload a CSV with two columns — medicine name, unit price — to price many medicines at
+            once. Matches by exact name (case-insensitive); an optional header row is skipped automatically.
           </p>
-          <form action={bulkUpdateMedicinePricesAction} className="flex items-end gap-2">
-            <Input name="file" type="file" accept=".csv,text/csv" required className="flex-1" />
-            <Button type="submit" variant="outline">
+          <ActionForm action={bulkUpdateMedicinePricesActionResult} className="flex flex-col gap-2">
+            <BulkImportField placeholder="Paracetamol 500mg, 12.50" />
+            <Button type="submit" variant="outline" className="self-start">
               Upload
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
