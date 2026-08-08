@@ -7,6 +7,12 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     testTimeout: 30000,
     fileParallelism: false,
+    // Env vars like AUTH_SECRET were only ever populated as a side effect of
+    // some earlier test file importing @/lib/db (Prisma Client loads .env on
+    // construction) — test files that don't touch the db saw an unset
+    // AUTH_SECRET depending on run order. Load .env explicitly instead of
+    // relying on that incidental side effect.
+    setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
     alias: {
