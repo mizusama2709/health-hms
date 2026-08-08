@@ -40,7 +40,14 @@ afterEach(async () => {
   for (const id of createdMedicineIds.splice(0)) {
     await db.medicine.deleteMany({ where: { id } });
   }
-  await db.invoiceCounter.updateMany({ where: { tenantId }, data: { value: 0 } });
+  // Deliberately not resetting InvoiceCounter here: it's a shared,
+  // monotonically-increasing sequence used by every invoice in this
+  // tenant, not per-test state. Resetting it to a fixed value (this used
+  // to reset to 0) guarantees the next createInvoice() call anywhere —
+  // in this file or any other — collides with a real invoice number that
+  // already exists above that point. The invoices themselves are already
+  // cleaned up above; leaving the counter wherever it naturally landed is
+  // the safe behavior.
 });
 
 async function makeInvoice(unitPrice: number) {

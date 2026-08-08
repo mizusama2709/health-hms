@@ -28,7 +28,12 @@ afterEach(async () => {
   for (const id of createdMedicineIds.splice(0)) {
     await db.medicine.deleteMany({ where: { id } });
   }
-  await db.invoiceCounter.updateMany({ where: { tenantId }, data: { value: 0 } });
+  // Deliberately not resetting InvoiceCounter — see the matching comment
+  // in concurrency.test.ts's afterEach. It's a shared, monotonically-
+  // increasing sequence for the whole tenant, not per-test state;
+  // resetting it to a fixed value guarantees the next createInvoice()
+  // call anywhere collides with a real invoice number that already
+  // exists above that point.
 });
 
 describe("billCollectAndDispensePrescription", () => {
