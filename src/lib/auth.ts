@@ -28,21 +28,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // as bad credentials, so a locked-out attempt can't be
         // distinguished from a wrong password (no account-existence or
         // lockout-state oracle).
-        if (isLoginRateLimited(email)) return null;
+        if (await isLoginRateLimited(email)) return null;
 
         const user = await db.user.findUnique({ where: { email } });
         if (!user) {
-          recordFailedLoginAttempt(email);
+          await recordFailedLoginAttempt(email);
           return null;
         }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) {
-          recordFailedLoginAttempt(email);
+          await recordFailedLoginAttempt(email);
           return null;
         }
 
-        clearLoginAttempts(email);
+        await clearLoginAttempts(email);
         await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
         return {

@@ -35,6 +35,12 @@ a third-party audit, none of which engineering can deliver alone.
   user viewing 20+ patient charts within an hour — and raises each as a
   real notification through the in-app `Notification` bell rather than
   requiring anyone to go read raw audit rows.
+- **Multi-instance-safe login rate limiting** (`lib/loginRateLimit.ts`):
+  moved from an in-memory `Map` (reset on every deploy/restart, not shared
+  across server instances — previously documented here as a known gap) to
+  a Postgres-backed `LoginAttempt` table. Verified live against the real
+  running app: 5 failed logins locked out the 6th attempt even with the
+  correct password.
 - **Backup/restore** (`scripts/backup-db.sh`, `scripts/restore-db.sh`,
   `npm run db:backup` / `db:restore`): `pg_dump`/`pg_restore` wrapper
   scripts, verified end-to-end against the real dev database — full

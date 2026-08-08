@@ -237,6 +237,21 @@ model Tenant {
   imagingOrders       ImagingOrder[]
 }
 
+// Append-only, deliberately not per-tenant (login happens before a tenant
+// is known) — a shared, multi-instance-safe replacement for the in-memory
+// Map loginRateLimit.ts used to use, which reset on every deploy/restart
+// and wasn't shared across server instances. Old rows are harmless (the
+// rate-limit query filters by window) but accumulate for accounts that
+// are only ever attacked and never log in successfully — a periodic
+// prune is a reasonable follow-up, not required for correctness.
+model LoginAttempt {
+  id          String   @id @default(cuid())
+  email       String
+  attemptedAt DateTime @default(now())
+
+  @@index([email, attemptedAt])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   tenantId   String
