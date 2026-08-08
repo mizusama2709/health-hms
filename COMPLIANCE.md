@@ -105,11 +105,15 @@ a third-party audit, none of which engineering can deliver alone.
 - **Everything organizational**: named Privacy/Security Officer, formal
   risk assessment, written incident-response/retention/access-control
   policies, signed BAAs/DPAs with every subprocessor, staff training, a
-  patient-facing privacy policy (none exists yet), and the actual
-  third-party audit engagement (SOC 2, ABDM empanelment, or both). This is
-  the longer pole and needs a decision-maker on the business side to start
-  in parallel — see the "Compliance (HIPAA/ABDM-equivalent)" discussion
-  this document's history was born from for the full breakdown.
+  patient-facing privacy policy, and the actual third-party audit
+  engagement (SOC 2, ABDM empanelment, or both) remain the longer pole and
+  need a decision-maker on the business side to start in parallel.
+  `compliance/policy-drafts/` now has a starting draft of each of these
+  (role definition, a risk register seeded from this document's own
+  "Deferred" list, a subprocessor tracking list, and the three written
+  policies plus a patient notice) — **drafts only**, not adopted, not a
+  substitute for legal review or an actual named owner. See that folder's
+  README for what still has to happen before any of it is real policy.
 
 ## Operational notes
 
