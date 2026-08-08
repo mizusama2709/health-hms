@@ -336,6 +336,14 @@ model Patient {
   dateOfBirth DateTime?
   gender      Gender?
 
+  // ABDM (Ayushman Bharat Digital Mission) groundwork — not an integration,
+  // just the two identifiers ABDM's Health ID system is built around, so a
+  // patient's ABHA can be recorded once linked without a schema change
+  // blocking that later. See ABDM_FHIR.md for what "integration" would
+  // actually require beyond these two columns.
+  abhaNumber  String?   @unique // 14-digit ABHA Number, e.g. "12-3456-7890-1234"
+  abhaAddress String?   @unique // self-chosen ABHA Address, e.g. "ravikumar@abdm"
+
   appointments  Appointment[]
   invoices      Invoice[]
   journeyEvents PatientJourneyEvent[]
