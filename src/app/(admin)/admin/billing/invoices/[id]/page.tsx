@@ -4,7 +4,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { getInvoiceWithBalance } from "@/lib/billing";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { recordInvoicePayment, refundInvoicePaymentActionResult } from "../../actions";
+import { recordInvoicePaymentActionResult, refundInvoicePaymentActionResult } from "../../actions";
 import { PrintButton } from "@/components/print-button";
 import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -105,7 +105,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             <CardTitle>Record a payment</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={recordInvoicePayment} className="flex items-end gap-2">
+            <ActionForm action={recordInvoicePaymentActionResult} className="flex items-end gap-2">
               <input type="hidden" name="invoiceId" value={invoice.id} />
               <div className="flex flex-col gap-1">
                 <Label htmlFor="amount">Amount</Label>
@@ -122,7 +122,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 </NativeSelect>
               </div>
               <Button type="submit">Record</Button>
-            </form>
+            </ActionForm>
           </CardContent>
         </Card>
       )}

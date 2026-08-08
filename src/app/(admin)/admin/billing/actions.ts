@@ -55,12 +55,19 @@ export async function recordInvoicePayment(formData: FormData) {
   revalidatePath("/admin/billing/invoices");
 }
 
+export const recordInvoicePaymentActionResult = withActionResult(recordInvoicePayment, "Payment recorded");
+
 export async function markInvoicePaidAction(invoiceId: string) {
   await requireRole(...BILLING_ROLES);
   const tenantId = await requireTenantId();
   await markInvoicePaidInFull(tenantId, invoiceId);
   revalidatePath("/admin/billing/invoices");
 }
+
+export const markInvoicePaidActionResult = withActionResult(
+  (formData: FormData) => markInvoicePaidAction(formData.get("invoiceId") as string),
+  "Invoice marked paid"
+);
 
 export async function refundInvoicePayment(formData: FormData) {
   await requireRole(...BILLING_ROLES);
@@ -101,3 +108,5 @@ export async function editInvoiceAction(formData: FormData) {
 
   revalidatePath("/admin/billing/invoices");
 }
+
+export const editInvoiceActionResult = withActionResult(editInvoiceAction, "Invoice updated");

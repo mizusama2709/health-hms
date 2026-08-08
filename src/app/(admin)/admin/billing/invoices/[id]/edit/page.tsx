@@ -1,12 +1,13 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { requireTenantId } from "@/lib/tenant";
 import { getInvoiceWithBalance } from "@/lib/billing";
-import { editInvoiceAction } from "../../../actions";
+import { editInvoiceActionResult } from "../../../actions";
 import { BackLink } from "@/components/back-link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Edit Invoice",
@@ -21,12 +22,6 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
 
   const firstLine = invoice.lineItems[0];
 
-  async function save(formData: FormData) {
-    "use server";
-    await editInvoiceAction(formData);
-    redirect("/admin/billing/invoices");
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -39,7 +34,11 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           <CardTitle>Line item</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={save} className="flex flex-col gap-3">
+          <ActionForm
+            action={editInvoiceActionResult}
+            className="flex flex-col gap-3"
+            nextStep={{ label: "Back to invoices", href: "/admin/billing/invoices" }}
+          >
             <input type="hidden" name="invoiceId" value={invoice.id} />
             <Label htmlFor="description">Description</Label>
             <Input id="description" name="description" defaultValue={firstLine?.description} required />
@@ -48,7 +47,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             <Button type="submit" className="mt-2">
               Save changes
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
     </div>

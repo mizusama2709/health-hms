@@ -3,7 +3,7 @@ import { Receipt } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listInvoicesDetailed, type InvoiceQuickFilter } from "@/lib/billing";
-import { markInvoicePaidAction, voidInvoiceActionResult } from "../actions";
+import { markInvoicePaidActionResult, voidInvoiceActionResult } from "../actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
@@ -143,11 +143,12 @@ export default async function InvoicesPage({
                         </Link>
                       )}
                       {inv.status !== "PAID" && inv.status !== "VOID" && (
-                        <form action={markInvoicePaidAction.bind(null, inv.id)}>
+                        <ActionForm action={markInvoicePaidActionResult}>
+                          <input type="hidden" name="invoiceId" value={inv.id} />
                           <button type="submit" className="rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-foreground hover:opacity-90">
                             Mark paid
                           </button>
-                        </form>
+                        </ActionForm>
                       )}
                       {inv.status !== "VOID" && (
                         <ActionForm
