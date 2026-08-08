@@ -127,6 +127,24 @@ async function main() {
     },
   });
 
+  // Several tests (lab-report-pdf, lab-followup-link) need at least one
+  // lab test to exist for the tenant — previously only true by accident
+  // in the long-lived local dev database, not from this seed script, which
+  // meant a genuinely fresh database (a new contributor, or CI) failed
+  // those tests with no indication why.
+  await db.labTestCatalog.upsert({
+    where: { id: "seed-lab-test-1" },
+    update: {},
+    create: {
+      id: "seed-lab-test-1",
+      tenantId: tenant.id,
+      name: "Complete Blood Count",
+      code: "CBC",
+      sampleType: "Blood",
+      defaultPrice: 400,
+    },
+  });
+
   console.log("Seeded: patient@demo.com / doctor@demo.com / admin@demo.com — password: password123");
 }
 
