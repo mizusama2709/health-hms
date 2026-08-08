@@ -55,6 +55,18 @@ a third-party audit, none of which engineering can deliver alone.
   live: a deliberately-inserted legacy-plaintext `Vitals.bp` row was
   confirmed ciphertext-at-rest after running the script, and a follow-up
   dry run found zero remaining plaintext.
+- **Automated backups** (`.github/workflows/backup.yml`): daily scheduled
+  GitHub Actions workflow runs the already-verified `scripts/backup-db.sh`
+  against production and uploads the dump to the same S3-compatible bucket
+  imaging already uses (`scripts/upload-backup-to-storage.ts`, under a
+  `backups/` prefix). Vercel serverless functions can't run the `pg_dump`
+  binary or persist a local file, which is why this is a GitHub Actions
+  workflow rather than a Vercel cron route. Not runnable end-to-end in this
+  environment — it needs `DATABASE_URL` and the `STORAGE_*` secrets set on
+  the real GitHub repo, which don't exist here — but the two scripts it
+  runs are independently tested (backup-db.sh's round-trip restore above;
+  the upload script's argument handling and its call into the already-live
+  `lib/storage.ts` imaging upload path).
 
 ## Deferred — needs real infrastructure or organizational decisions
 

@@ -58,4 +58,6 @@ The test suite (`src/**/*.test.ts`, Vitest) runs against a real database rather 
 
 Built for Vercel (`vercel.json` configures cron jobs for the reminder and audit-alert background jobs). `npm run build` runs `prisma migrate deploy` before building, so migrations apply automatically on deploy — there's no separate manual migration step. See `.github/workflows/ci.yml` for what's checked on every PR before merge is safe.
 
+`.github/workflows/backup.yml` runs a daily database backup (independent of Vercel, since serverless functions there can't run `pg_dump` or persist a file to upload) — it needs `DATABASE_URL`, `AUTH_SECRET`, and the five `STORAGE_*` variables set as GitHub Actions repo secrets (Settings → Secrets and variables → Actions) before it can run.
+
 Before pointing this at real patient data: `WHATSAPP_PROVIDER=meta` needs approved message templates in Meta Business Manager (the provider currently only sends free-text, which Meta rejects outside a live chat window — see `ARCHITECTURE.md`), and `COMPLIANCE.md` lists what's still open on the compliance side.

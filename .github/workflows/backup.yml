@@ -1,0 +1,57 @@
+name: Database backup
+
+# Daily automated backup: pg_dump the production database (scripts/backup-db.sh,
+# already verified end-to-end for round-trip restore — see COMPLIANCE.md) and
+# upload the dump to the same S3-compatible bucket imaging already uses, under
+# a backups/ prefix. Vercel serverless functions can't run the pg_dump binary
+# or persist a local file to upload, so this runs as a separate scheduled
+# GitHub Actions workflow instead of a Vercel cron route.
+#
+# Requires these repo secrets to be set before this workflow can do anything
+# (none of them exist in this environment, so this workflow is untested
+# against real production credentials — the steps themselves reuse
+# scripts/backup-db.sh and scripts/upload-backup-to-storage.ts, both of which
+# are independently tested):
+#   DATABASE_URL, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY,
+#   STORAGE_BUCKET, STORAGE_ENDPOINT, STORAGE_REGION, AUTH_SECRET
+#
+# Bucket-side retention (e.g. a lifecycle rule to expire objects under
+# backups/ after N days) is a storage-provider configuration, not something
+# this workflow enforces — see COMPLIANCE.md.
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      STORAGE_ACCESS_KEY_ID: ${{ secrets.STORAGE_ACCESS_KEY_ID }}
+      STORAGE_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_SECRET_ACCESS_KEY }}
+      STORAGE_BUCKET: ${{ secrets.STORAGE_BUCKET }}
+      STORAGE_ENDPOINT: ${{ secrets.STORAGE_ENDPOINT }}
+      STORAGE_REGION: ${{ secrets.STORAGE_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Install postgresql-client (pg_dump)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        run: ./scripts/backup-db.sh
+
+      - name: Upload dump to object storage
+        run: |
+          DUMP_FILE=$(ls -t backups/*.dump | head -n1)
+          npx tsx scripts/upload-backup-to-storage.ts "$DUMP_FILE"
