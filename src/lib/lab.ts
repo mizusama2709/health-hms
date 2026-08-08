@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { recordJourneyEvent } from "@/lib/journey";
 import { notify } from "@/lib/notifications";
+import { encryptPHI, decryptPHIMaybe } from "@/lib/phiCrypto";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { LabOrderStatus, LabResultFlag } from "@prisma/client";
 
@@ -241,9 +242,19 @@ export async function recordLabResult(
     flagIsManual = params.flag !== undefined;
   }
 
+  // Encrypted at rest — everything above this point (auto-flagging,
+  // the critical-result notification body) operates on the plaintext
+  // params/local variables, never a re-decrypted DB value, so this is the
+  // one place that needs to change.
   const result = await db.labOrderItem.updateMany({
     where: { id: labOrderItemId, labOrder: { tenantId } },
-    data: { resultValue: params.resultValue, resultUnit: params.resultUnit, referenceRange, flag, flagIsManual },
+    data: {
+      resultValue: params.resultValue ? encryptPHI(params.resultValue) : params.resultValue,
+      resultUnit: params.resultUnit,
+      referenceRange: referenceRange ? encryptPHI(referenceRange) : referenceRange,
+      flag,
+      flagIsManual,
+    },
   });
 
   // Only fires on the transition into CRITICAL, not every re-save of an
@@ -315,8 +326,10 @@ export async function generateLabReportPdf(order: NonNullable<LabOrderForReport>
   for (const item of order.items) {
     const flagLabel = item.flag ? ` [${item.flag}]` : "";
     const color = item.flag === "CRITICAL" ? rgb(0.7, 0.1, 0.1) : item.flag === "ABNORMAL" ? rgb(0.75, 0.45, 0) : rgb(0, 0, 0);
+    const resultValue = decryptPHIMaybe(item.resultValue);
+    const referenceRange = decryptPHIMaybe(item.referenceRange);
     draw(
-      `${item.labTest.name}: ${item.resultValue ?? "—"} ${item.resultUnit ?? ""}  (ref: ${item.referenceRange ?? "n/a"})${flagLabel}`,
+      `${item.labTest.name}: ${resultValue ?? "—"} ${item.resultUnit ?? ""}  (ref: ${referenceRange ?? "n/a"})${flagLabel}`,
       { color }
     );
   }
@@ -349,7 +362,7 @@ export async function generateAndAttachLabReport(
 }
 
 export async function listLabOrders(tenantId: string, filters?: { status?: LabOrderStatus; patientId?: string }) {
-  return db.labOrder.findMany({
+  const orders = await db.labOrder.findMany({
     where: {
       tenantId,
       ...(filters?.status && { status: filters.status }),
@@ -362,6 +375,15 @@ export async function listLabOrders(tenantId: string, filters?: { status?: LabOr
     },
     orderBy: { orderedAt: "desc" },
   });
+
+  for (const order of orders) {
+    for (const item of order.items) {
+      item.resultValue = decryptPHIMaybe(item.resultValue);
+      item.referenceRange = decryptPHIMaybe(item.referenceRange);
+    }
+  }
+
+  return orders;
 }
 
 // Most recent COMPLETED lab order per patient, for a compact inline summary
@@ -373,6 +395,13 @@ export async function listLatestCompletedLabOrdersForPatients(tenantId: string, 
     include: { items: { include: { labTest: true } } },
     orderBy: { orderedAt: "desc" },
   });
+
+  for (const order of orders) {
+    for (const item of order.items) {
+      item.resultValue = decryptPHIMaybe(item.resultValue);
+      item.referenceRange = decryptPHIMaybe(item.referenceRange);
+    }
+  }
 
   const byPatient = new Map<string, (typeof orders)[number]>();
   for (const order of orders) {

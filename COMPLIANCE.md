@@ -9,12 +9,15 @@ a third-party audit, none of which engineering can deliver alone.
 ## Technical safeguards — done
 
 - **Field-level PHI encryption** (AES-256-GCM, `lib/phiCrypto.ts`): visit
-  notes/diagnosis/prescription, follow-up focus instructions, and
-  follow-up call-log notes are encrypted at write time and transparently
-  decrypted on the read paths that display them. Legacy pre-encryption
-  plaintext rows are tolerated (`decryptPHIMaybe` passes through anything
-  without the `enc:v1:` prefix) — no backfill migration required, but see
-  "Deferred" below for what isn't covered yet.
+  notes/diagnosis/prescription, follow-up focus instructions, follow-up
+  call-log notes, lab result values/reference ranges, imaging order
+  descriptions, and vitals blood pressure are encrypted at write time and
+  transparently decrypted on every read path that displays them (verified
+  live for each: ciphertext confirmed at rest via a raw DB read, plaintext
+  confirmed on the actual page). Legacy pre-encryption plaintext rows are
+  tolerated (`decryptPHIMaybe` passes through anything without the
+  `enc:v1:` prefix) — no backfill migration required, but see "Deferred"
+  below for what isn't covered yet.
 - **Session idle timeout** (`lib/auth.ts`): 30-minute idle window
   (`session.maxAge`), refreshed every 5 minutes of active use
   (`session.updateAge`) — previously the JWT session had no configured
@@ -48,11 +51,11 @@ a third-party audit, none of which engineering can deliver alone.
   Not done here — it requires real cloud credentials this environment
   doesn't have, and integrating against a KMS that can never actually be
   tested isn't real progress.
-- **Encryption coverage isn't exhaustive**: lab result values
-  (`LabOrderItem.resultValue`), imaging order descriptions, and vitals
-  (`bp`/`glucose`/`weight`, the latter two of which are `Decimal` columns
-  and would need a type change to hold ciphertext) are still plaintext.
-  Extending coverage there is the natural next slice of this same work.
+- **Encryption coverage still stops short of `Vitals.glucose`/`weight`** —
+  both are `Decimal` columns, so encrypting them needs a type change to
+  `String` first, which touches every calculation that reads them (trend
+  charts, etc.). Deliberately scoped out of the rest of this pass rather
+  than rushed in as a drive-by schema change.
 - **Encryption in transit / at rest at the infrastructure layer**: enforce
   `sslmode=require` on `DATABASE_URL` and enable the hosting provider's
   Postgres encryption-at-rest setting — both are host configuration, not

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { uploadObject, getPresignedGetUrl, deleteObject } from "@/lib/storage";
 import { detectContentType } from "@/lib/imagingFormat";
+import { encryptPHI, decryptPHIMaybe } from "@/lib/phiCrypto";
 import * as dicomParser from "dicom-parser";
 import type { ImagingModality, ImagingOrderStatus } from "@prisma/client";
 
@@ -21,7 +22,7 @@ export async function createImagingOrder(params: {
       appointmentId: params.appointmentId,
       orderedById: params.orderedById,
       modality: params.modality,
-      description: params.description,
+      description: params.description ? encryptPHI(params.description) : params.description,
       patientConsentedAt: params.patientConsentedAt,
     },
   });
@@ -34,7 +35,7 @@ export async function cancelImagingOrder(tenantId: string, imagingOrderId: strin
 }
 
 export async function listImagingOrders(tenantId: string, filters?: { patientId?: string; status?: ImagingOrderStatus }) {
-  return db.imagingOrder.findMany({
+  const orders = await db.imagingOrder.findMany({
     where: {
       tenantId,
       ...(filters?.patientId && { patientId: filters.patientId }),
@@ -46,6 +47,12 @@ export async function listImagingOrders(tenantId: string, filters?: { patientId?
     },
     orderBy: { orderedAt: "desc" },
   });
+
+  for (const order of orders) {
+    order.description = decryptPHIMaybe(order.description);
+  }
+
+  return orders;
 }
 
 type ParsedFileHeader = {
@@ -193,13 +200,15 @@ export async function uploadImagingInstances(tenantId: string, imagingOrderId: s
 }
 
 export async function getImagingStudy(tenantId: string, studyId: string) {
-  return db.imagingStudy.findFirst({
+  const study = await db.imagingStudy.findFirst({
     where: { id: studyId, imagingOrder: { tenantId } },
     include: {
       imagingOrder: { include: { patient: { include: { user: true } } } },
       series: { include: { instances: true } },
     },
   });
+  if (study) study.imagingOrder.description = decryptPHIMaybe(study.imagingOrder.description);
+  return study;
 }
 
 export async function getImagingInstanceUrl(tenantId: string, instanceId: string) {
