@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Stethoscope } from "lucide-react";
+import { Stethoscope, Clock, AlertTriangle, CheckCircle2, ArrowUpCircle } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listFollowUps, getFollowUpStats } from "@/lib/followUps";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Badge } from "@/components/ui/badge";
 import { ActionForm } from "@/components/action-form";
+import { StatTile } from "@/components/stat-tile";
 import type { FollowUpStatus } from "@prisma/client";
 
 export const metadata = {
@@ -63,22 +64,16 @@ export default async function RemindersPage({
       <h1 className="text-2xl font-semibold">Follow-ups</h1>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending</p>
-          <p className="mt-1 text-xl font-semibold">{stats.pending}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Overdue</p>
-          <p className="mt-1 text-xl font-semibold text-destructive">{stats.overdue}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed this month</p>
-          <p className="mt-1 text-xl font-semibold">{stats.completedThisMonth}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Escalated</p>
-          <p className="mt-1 text-xl font-semibold">{stats.escalated}</p>
-        </div>
+        <StatTile label="Pending" value={stats.pending} icon={Clock} iconColor="blue" />
+        <StatTile
+          label="Overdue"
+          value={stats.overdue}
+          icon={AlertTriangle}
+          iconColor="red"
+          valueClassName="text-red-400"
+        />
+        <StatTile label="Completed this month" value={stats.completedThisMonth} icon={CheckCircle2} iconColor="emerald" />
+        <StatTile label="Escalated" value={stats.escalated} icon={ArrowUpCircle} iconColor="amber" />
       </div>
 
       <Card>

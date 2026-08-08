@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Receipt } from "lucide-react";
+import { Receipt, FileText, IndianRupee, Percent, Landmark, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { getConsolidatedLedger, type LedgerSource } from "@/lib/billing";
@@ -9,6 +9,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { DateRangePresets } from "@/components/date-range-presets";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { StatTile } from "@/components/stat-tile";
 
 export const metadata = {
   title: "Consolidated Ledger",
@@ -83,26 +84,17 @@ export default async function LedgerPage({
       </form>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-lg border p-4">
-          <p className="text-2xl font-semibold">{ledger.totals.invoiceCount}</p>
-          <p className="text-xs text-muted-foreground">Invoices</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-2xl font-semibold">{formatINR(ledger.totals.taxable)}</p>
-          <p className="text-xs text-muted-foreground">Taxable</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-2xl font-semibold">{formatINR(ledger.totals.cgst)}</p>
-          <p className="text-xs text-muted-foreground">CGST</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-2xl font-semibold">{formatINR(ledger.totals.sgst)}</p>
-          <p className="text-xs text-muted-foreground">SGST</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-2xl font-semibold">{formatINR(ledger.totals.total)}</p>
-          <p className="text-xs text-muted-foreground">Total</p>
-        </div>
+        <StatTile label="Invoices" value={ledger.totals.invoiceCount} icon={FileText} iconColor="blue" />
+        <StatTile label="Taxable" value={formatINR(ledger.totals.taxable)} icon={IndianRupee} iconColor="violet" />
+        <StatTile label="CGST" value={formatINR(ledger.totals.cgst)} icon={Percent} iconColor="amber" />
+        <StatTile label="SGST" value={formatINR(ledger.totals.sgst)} icon={Landmark} iconColor="amber" />
+        <StatTile
+          label="Total"
+          value={formatINR(ledger.totals.total)}
+          icon={Wallet}
+          iconColor="emerald"
+          valueClassName="text-emerald-400"
+        />
       </div>
 
       <div className="flex flex-wrap gap-2">

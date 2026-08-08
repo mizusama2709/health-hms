@@ -282,14 +282,13 @@ export default async function AdminHome({
             <CardTitle>OPD Today</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Awaiting</p>
-              <p className="mt-1 text-3xl font-semibold">{opdToday.awaiting}</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed</p>
-              <p className="mt-1 text-3xl font-semibold">{opdToday.completed}</p>
-            </div>
+            <StatTile label="Awaiting" value={opdToday.awaiting} className="bg-muted/40 shadow-none ring-0" />
+            <StatTile
+              label="Completed"
+              value={opdToday.completed}
+              className="bg-muted/40 shadow-none ring-0"
+              valueClassName="text-emerald-400"
+            />
           </CardContent>
         </Card>
 
