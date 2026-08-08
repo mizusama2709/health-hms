@@ -42,6 +42,8 @@ export async function createMedicineAction(formData: FormData) {
   revalidatePath("/admin/pharmacy/medicines");
 }
 
+export const createMedicineActionResult = withActionResult(createMedicineAction, "Medicine added");
+
 export async function bulkUpdateMedicinePricesAction(formData: FormData) {
   await requireRole(...PHARMACY_ROLES);
   const tenantId = await requireTenantId();
@@ -81,6 +83,8 @@ export async function updateMedicinePriceAction(formData: FormData) {
 
   revalidatePath("/admin/pharmacy/medicines");
 }
+
+export const updateMedicinePriceActionResult = withActionResult(updateMedicinePriceAction, "Price updated");
 
 export async function createSupplierAction(formData: FormData) {
   await requireRole(...PHARMACY_ROLES);

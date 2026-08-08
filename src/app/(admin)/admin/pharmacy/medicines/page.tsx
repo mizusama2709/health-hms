@@ -3,7 +3,7 @@ import { Package } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { requireTenantId } from "@/lib/tenant";
 import { listMedicinesPaged } from "@/lib/pharmacy";
-import { createMedicineAction, updateMedicinePriceAction, bulkUpdateMedicinePricesAction } from "../actions";
+import { createMedicineActionResult, updateMedicinePriceActionResult, bulkUpdateMedicinePricesAction } from "../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/action-form";
 
 export const metadata = {
   title: "Medicines",
@@ -89,7 +90,7 @@ export default async function MedicinesPage({
           <CardTitle>Add medicine</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createMedicineAction} className="flex flex-col gap-2">
+          <ActionForm action={createMedicineActionResult} className="flex flex-col gap-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" placeholder="e.g. Paracetamol 500mg" required />
             <Label htmlFor="sku">SKU (optional)</Label>
@@ -111,7 +112,7 @@ export default async function MedicinesPage({
             <Button type="submit" className="mt-2">
               Add medicine
             </Button>
-          </form>
+          </ActionForm>
         </CardContent>
       </Card>
 
@@ -162,7 +163,7 @@ export default async function MedicinesPage({
                       <TableCell>{m.sku ?? "—"}</TableCell>
                       <TableCell>
                         {Number(m.unitPrice) === 0 ? (
-                          <form action={updateMedicinePriceAction} className="flex items-center gap-1">
+                          <ActionForm action={updateMedicinePriceActionResult} className="flex items-center gap-1">
                             <input type="hidden" name="medicineId" value={m.id} />
                             <Badge variant="destructive">Unpriced</Badge>
                             <Input
@@ -177,7 +178,7 @@ export default async function MedicinesPage({
                             <Button type="submit" size="sm" variant="outline">
                               Save
                             </Button>
-                          </form>
+                          </ActionForm>
                         ) : (
                           Number(m.unitPrice).toFixed(2)
                         )}
